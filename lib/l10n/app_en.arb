@@ -1,0 +1,23 @@
+{
+  "@@locale": "en",
+  "appTitle": "UMKM POS",
+  "dashboard": "Dashboard",
+  "cashier": "POS Cashier",
+  "products": "Products",
+  "inventory": "Inventory",
+  "transactions": "Transactions",
+  "reports": "Reports",
+  "settings": "Settings",
+  "cashRounding": "Cash Rounding",
+  "cashRoundingDesc": "Rounding cash payment total to nearest denomination",
+  "roundNearest": "Round to Nearest (Half-Up)",
+  "roundDown": "Round Down (Floor)",
+  "roundUp": "Round Up (Ceil)",
+  "roundingIncrement": "Rounding Increment",
+  "originalAmount": "Original Amount",
+  "roundedAmount": "Rounded Amount",
+  "roundingDifference": "Rounding Difference",
+  "systemStatus": "System Status",
+  "readyForUse": "Ready for Use",
+  "phase0Complete": "Phase 0 Foundation Active"
+}

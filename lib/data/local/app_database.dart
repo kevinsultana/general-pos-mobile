@@ -1,0 +1,154 @@
+import 'dart:io';
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+
+import 'tables/store_tables.dart';
+import 'tables/category_tables.dart';
+import 'tables/product_tables.dart';
+import 'tables/inventory_tables.dart';
+import 'tables/customer_tables.dart';
+import 'tables/transaction_tables.dart';
+import 'tables/payment_tables.dart';
+import 'tables/refund_tables.dart';
+import 'tables/promotion_tables.dart';
+import 'tables/printer_tables.dart';
+import 'tables/sync_tables.dart';
+
+import 'daos/store_dao.dart';
+import 'daos/category_dao.dart';
+import 'daos/product_dao.dart';
+import 'daos/stock_movement_dao.dart';
+import 'daos/transaction_dao.dart';
+import 'daos/payment_dao.dart';
+import 'daos/customer_dao.dart';
+import 'daos/promotion_dao.dart';
+import 'daos/report_dao.dart';
+import 'daos/printer_dao.dart';
+import 'daos/sync_event_dao.dart';
+
+part 'app_database.g.dart';
+
+@DriftDatabase(
+  tables: [
+    Stores,
+    Categories,
+    Products,
+    ProductVariants,
+    StockMovements,
+    Customers,
+    Promotions,
+    Transactions,
+    TransactionItems,
+    Payments,
+    PaymentMethods,
+    Refunds,
+    RefundItems,
+    Printers,
+    SyncEvents,
+    SyncCursors,
+  ],
+  daos: [
+    StoreDao,
+    CategoryDao,
+    ProductDao,
+    StockMovementDao,
+    TransactionDao,
+    PaymentDao,
+    CustomerDao,
+    PromotionDao,
+    ReportDao,
+    PrinterDao,
+    SyncEventDao,
+  ],
+)
+class AppDatabase extends _$AppDatabase {
+  AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection('local.sqlite'));
+
+  /// Named constructor for Local mode database (local.sqlite).
+  AppDatabase.openLocal() : super(_openConnection('local.sqlite'));
+
+  /// Named constructor for Cloud mode database (cloud_cache.sqlite).
+  /// Strictly isolated from local.sqlite.
+  AppDatabase.openCloudCache() : super(_openConnection('cloud_cache.sqlite'));
+
+  /// Constructor for in-memory database used in unit/integration tests
+  AppDatabase.forTesting(super.connection);
+
+  @override
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async {
+          await m.createAll();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS "promotions" (
+                "id" TEXT NOT NULL PRIMARY KEY,
+                "store_id" TEXT NOT NULL,
+                "name" TEXT NOT NULL,
+                "code" TEXT,
+                "discount_type" TEXT NOT NULL,
+                "discount_value" INTEGER NOT NULL,
+                "min_spend" INTEGER NOT NULL DEFAULT 0,
+                "start_date" INTEGER,
+                "end_date" INTEGER,
+                "product_id" TEXT,
+                "active" INTEGER NOT NULL DEFAULT 1 CHECK ("active" IN (0, 1)),
+                "created_at" INTEGER NOT NULL,
+                "updated_at" INTEGER NOT NULL
+              );
+            ''');
+          }
+        },
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+          await customStatement('PRAGMA journal_mode = WAL');
+          await customStatement('PRAGMA synchronous = NORMAL');
+
+          // Self-healing: ensure tables exist even if migration was skipped
+          await customStatement('''
+            CREATE TABLE IF NOT EXISTS "promotions" (
+              "id" TEXT NOT NULL PRIMARY KEY,
+              "store_id" TEXT NOT NULL,
+              "name" TEXT NOT NULL,
+              "code" TEXT,
+              "discount_type" TEXT NOT NULL,
+              "discount_value" INTEGER NOT NULL,
+              "min_spend" INTEGER NOT NULL DEFAULT 0,
+              "start_date" INTEGER,
+              "end_date" INTEGER,
+              "product_id" TEXT,
+              "active" INTEGER NOT NULL DEFAULT 1 CHECK ("active" IN (0, 1)),
+              "created_at" INTEGER NOT NULL,
+              "updated_at" INTEGER NOT NULL
+            );
+          ''');
+
+          await customStatement('''
+            CREATE TABLE IF NOT EXISTS "customers" (
+              "id" TEXT NOT NULL PRIMARY KEY,
+              "store_id" TEXT NOT NULL,
+              "name" TEXT NOT NULL,
+              "phone" TEXT,
+              "email" TEXT,
+              "notes" TEXT,
+              "created_at" INTEGER NOT NULL,
+              "updated_at" INTEGER NOT NULL
+            );
+          ''');
+        },
+      );
+
+  static LazyDatabase _openConnection(String dbName) {
+    return LazyDatabase(() async {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dbFolder.path, dbName));
+      return NativeDatabase.createInBackground(file);
+    });
+  }
+}

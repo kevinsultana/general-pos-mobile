@@ -1,0 +1,23 @@
+{
+  "@@locale": "id",
+  "appTitle": "UMKM POS",
+  "dashboard": "Dasbor",
+  "cashier": "Kasir POS",
+  "products": "Produk",
+  "inventory": "Inventori",
+  "transactions": "Transaksi",
+  "reports": "Laporan",
+  "settings": "Pengaturan",
+  "cashRounding": "Pembulatan Tunai",
+  "cashRoundingDesc": "Membulatkan total pembayaran tunai ke pecahan rupiah terdekat",
+  "roundNearest": "Bulatkan Terdekat (Half-Up)",
+  "roundDown": "Bulatkan ke Bawah (Floor)",
+  "roundUp": "Bulatkan ke Atas (Ceil)",
+  "roundingIncrement": "Pecahan Pembulatan",
+  "originalAmount": "Jumlah Awal",
+  "roundedAmount": "Jumlah Dibulatkan",
+  "roundingDifference": "Selisih Pembulatan",
+  "systemStatus": "Status Sistem",
+  "readyForUse": "Siap Digunakan",
+  "phase0Complete": "Fondasi Phase 0 Aktif"
+}
