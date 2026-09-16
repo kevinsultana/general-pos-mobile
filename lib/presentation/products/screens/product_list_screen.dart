@@ -236,6 +236,7 @@ class _ProductCard extends ConsumerWidget {
 
     final canManageProducts = ref.watch(hasPermissionProvider(AppPermissions.manageProducts));
     final canManageInventory = ref.watch(hasPermissionProvider(AppPermissions.manageInventory));
+    final variantsAsync = ref.watch(productVariantsStreamProvider(product.id));
 
     return Card(
       child: Padding(
@@ -360,6 +361,68 @@ class _ProductCard extends ConsumerWidget {
                   ],
                 ),
               ],
+            ),
+
+            variantsAsync.when(
+              data: (variants) {
+                if (variants.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Stok per Varian:',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondaryLight,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: variants.map((v) {
+                          final isVarNegative = v.stock < 0;
+                          final isVarEmpty = v.stock == 0;
+                          Color vColor = AppColors.accent;
+                          Color vBg = AppColors.accentContainer.withValues(alpha: 0.3);
+
+                          if (isVarNegative) {
+                            vColor = AppColors.danger;
+                            vBg = AppColors.danger.withValues(alpha: 0.12);
+                          } else if (isVarEmpty) {
+                            vColor = AppColors.textSecondaryLight;
+                            vBg = AppColors.backgroundLight;
+                          }
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: vBg,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isVarNegative ? AppColors.danger.withValues(alpha: 0.5) : Colors.transparent,
+                              ),
+                            ),
+                            child: Text(
+                              '${v.name}: ${v.stock}${isVarNegative ? ' (Minus)' : ''}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: vColor,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             const Divider(height: 20),
 

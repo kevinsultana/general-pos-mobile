@@ -25,8 +25,17 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
   }
 
   Future<Store> ensureDefaultStore() async {
-    final existing = await getFirstStore();
-    if (existing != null) return existing;
+    try {
+      final existing = await getFirstStore();
+      if (existing != null) return existing;
+    } catch (_) {
+      try {
+        await customStatement("UPDATE \"stores\" SET \"subscription_plan\" = 'PRO' WHERE \"subscription_plan\" IS NULL;");
+        await customStatement("UPDATE \"stores\" SET \"subscription_status\" = 'ACTIVE' WHERE \"subscription_status\" IS NULL;");
+        final healed = await getFirstStore();
+        if (healed != null) return healed;
+      } catch (_) {}
+    }
 
     final now = DateTime.now();
     final defaultStore = StoresCompanion.insert(

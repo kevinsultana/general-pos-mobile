@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/cloud_providers.dart';
 import '../../core/providers/permission_provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/services/cash_rounding_calculator.dart';
 import '../../l10n/app_localizations.dart';
 import '../common/widgets/app_sidebar_drawer.dart';
@@ -19,9 +18,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final int _testAmount = 9997;
-  bool _roundingEnabled = true;
-  int _increment = 1000;
-  CashRoundingMode _mode = CashRoundingMode.roundNearest;
+  final bool _roundingEnabled = true;
+  final int _increment = 1000;
+  final CashRoundingMode _mode = CashRoundingMode.roundNearest;
 
   final CashRoundingCalculator _calculator = const CashRoundingCalculator();
 
@@ -29,30 +28,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isCloudMode = ref.watch(isCloudModeProvider);
-    final canCreateTransaction =
-        ref.watch(hasPermissionProvider(AppPermissions.createTransaction));
-    final canManageProducts = ref.watch(hasAnyPermissionProvider([
-      AppPermissions.manageProducts,
-      AppPermissions.manageInventory,
-      'view_products',
-    ]));
-    final canViewTransactions = ref.watch(hasAnyPermissionProvider([
-      AppPermissions.createTransaction,
-      AppPermissions.viewReports,
-      AppPermissions.refundTransaction,
-    ]));
-    final canManageCustomers = ref.watch(hasAnyPermissionProvider([
-      AppPermissions.manageCustomers,
-      AppPermissions.createTransaction,
-    ]));
-    final canManagePromotions =
-        ref.watch(hasPermissionProvider(AppPermissions.managePromotions));
-    final canViewReports =
-        ref.watch(hasPermissionProvider(AppPermissions.viewReports));
-    final canManageSettings =
-        ref.watch(hasPermissionProvider(AppPermissions.manageSettings));
+    final canCreateTransaction = ref.watch(
+      hasPermissionProvider(AppPermissions.createTransaction),
+    );
+    final canManageProducts = ref.watch(
+      hasAnyPermissionProvider([
+        AppPermissions.manageProducts,
+        AppPermissions.manageInventory,
+        'view_products',
+      ]),
+    );
+    final canViewTransactions = ref.watch(
+      hasAnyPermissionProvider([
+        AppPermissions.createTransaction,
+        AppPermissions.viewReports,
+        AppPermissions.refundTransaction,
+      ]),
+    );
+    final canManageCustomers = ref.watch(
+      hasAnyPermissionProvider([
+        AppPermissions.manageCustomers,
+        AppPermissions.createTransaction,
+      ]),
+    );
+    final canManagePromotions = ref.watch(
+      hasPermissionProvider(AppPermissions.managePromotions),
+    );
+    final canViewReports = ref.watch(
+      hasPermissionProvider(AppPermissions.viewReports),
+    );
+    final canManageSettings = ref.watch(
+      hasPermissionProvider(AppPermissions.manageSettings),
+    );
 
-    final result = _calculator.calculate(
+    _calculator.calculate(
       amount: _testAmount,
       mode: _mode,
       increment: _increment,
@@ -487,211 +496,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // Expandable Technical & Cash Rounding Diagnostics
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppColors.borderLight),
-              ),
-              child: ExpansionTile(
-                tilePadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.amberContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.tune_rounded,
-                    color: AppColors.amber,
-                    size: 20,
-                  ),
-                ),
-                title: Text(
-                  l10n?.cashRounding ?? 'Pembulatan Tunai',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimaryLight,
-                  ),
-                ),
-                subtitle: const Text(
-                  'Simulasi pembulatan kasir dan diagnostik sistem',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Divider(),
-                        const SizedBox(height: 8),
-
-                        // Switch Enable
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text(
-                            'Aktifkan Pembulatan',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          value: _roundingEnabled,
-                          activeThumbColor: AppColors.accent,
-                          activeTrackColor: AppColors.accentContainer,
-                          onChanged: (val) {
-                            setState(() {
-                              _roundingEnabled = val;
-                            });
-                          },
-                        ),
-
-                        // Increment Dropdown
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Interval Pecahan:',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondaryLight,
-                              ),
-                            ),
-                            DropdownButton<int>(
-                              value: _increment,
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 100,
-                                  child: Text('Rp 100'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 500,
-                                  child: Text('Rp 500'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 1000,
-                                  child: Text('Rp 1.000'),
-                                ),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() {
-                                    _increment = val;
-                                  });
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-
-                        // Mode Segmented
-                        const SizedBox(height: 8),
-                        SegmentedButton<CashRoundingMode>(
-                          segments: const [
-                            ButtonSegment(
-                              value: CashRoundingMode.roundNearest,
-                              label: Text(
-                                'Terdekat',
-                                style: TextStyle(fontSize: 11),
-                              ),
-                            ),
-                            ButtonSegment(
-                              value: CashRoundingMode.roundUp,
-                              label: Text(
-                                'Ke Atas',
-                                style: TextStyle(fontSize: 11),
-                              ),
-                            ),
-                            ButtonSegment(
-                              value: CashRoundingMode.roundDown,
-                              label: Text(
-                                'Ke Bawah',
-                                style: TextStyle(fontSize: 11),
-                              ),
-                            ),
-                          ],
-                          selected: {_mode},
-                          onSelectionChanged: (set) {
-                            setState(() {
-                              _mode = set.first;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Result Box
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundLight,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.borderLight),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Tagihan Awal',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                  Text(
-                                    CurrencyFormatter.format(_testAmount),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Icon(
-                                Icons.arrow_forward_rounded,
-                                size: 16,
-                                color: AppColors.textMuted,
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    'Setelah Dibulatkan',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                  Text(
-                                    CurrencyFormatter.format(
-                                      result.roundedAmount,
-                                    ),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: AppColors.accent,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

@@ -54,10 +54,34 @@ class ProductDao extends DatabaseAccessor<AppDatabase> with _$ProductDaoMixin {
   }
 
   // Variants
+  Stream<List<ProductVariant>> watchVariantsByProductId(String productId) {
+    return (select(productVariants)
+          ..where((tbl) => tbl.productId.equals(productId) & tbl.active.equals(true)))
+        .watch();
+  }
+
   Future<List<ProductVariant>> getVariantsByProductId(String productId) {
     return (select(productVariants)
           ..where((tbl) => tbl.productId.equals(productId) & tbl.active.equals(true)))
         .get();
+  }
+
+  Future<void> reconcileVariantStocks() async {
+    final allProducts = await (select(products)..where((tbl) => tbl.active.equals(true))).get();
+    for (final p in allProducts) {
+      final variants = await getVariantsByProductId(p.id);
+      if (variants.isEmpty) continue;
+
+      final sumVariants = variants.fold<int>(0, (sum, v) => sum + v.stock);
+
+      // Auto-heal single variant products where variant became <= 0 due to previous bug while master had stock
+      if (variants.length == 1 && variants.first.stock <= 0 && p.stock > 0) {
+        await updateVariantStock(variants.first.id, p.stock);
+      } else if (sumVariants != p.stock) {
+        // Sync master product stock to the sum of variants
+        await updateStock(p.id, sumVariants);
+      }
+    }
   }
 
   Future<void> insertVariant(ProductVariantsCompanion variant) {

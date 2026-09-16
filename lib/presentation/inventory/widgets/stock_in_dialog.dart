@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/local/app_database.dart';
@@ -23,6 +24,9 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
   final _costController = TextEditingController();
   final _reasonController = TextEditingController(text: 'Pembelian Stok Baru');
 
+  List<ProductVariant> _variants = [];
+  ProductVariant? _selectedVariant;
+
   int _addedQty = 0;
   int _newUnitCost = 0;
   bool _isSubmitting = false;
@@ -32,6 +36,7 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
     super.initState();
     _newUnitCost = widget.product.cost;
     _costController.text = _newUnitCost.toString();
+    _loadVariants();
 
     _qtyController.addListener(() {
       final parsed = int.tryParse(_qtyController.text) ?? 0;
@@ -50,6 +55,20 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
         });
       }
     });
+  }
+
+  Future<void> _loadVariants() async {
+    final variants = await ref
+        .read(productRepositoryProvider)
+        .getVariants(widget.product.id);
+    if (mounted && variants.isNotEmpty) {
+      setState(() {
+        _variants = variants;
+        _selectedVariant = variants.first;
+        _newUnitCost = _selectedVariant!.cost;
+        _costController.text = _newUnitCost.toString();
+      });
+    }
   }
 
   @override
@@ -118,6 +137,35 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
               ),
               const Divider(height: 24),
 
+              // Variant Selector (if product has variants)
+              if (_variants.isNotEmpty) ...[
+                DropdownButtonFormField<ProductVariant>(
+                  initialValue: _selectedVariant,
+                  decoration: const InputDecoration(
+                    labelText: 'Pilih Varian *',
+                    prefixIcon: Icon(Icons.style_rounded),
+                  ),
+                  items: _variants
+                      .map(
+                        (v) => DropdownMenuItem(
+                          value: v,
+                          child: Text('${v.name} (Stok saat ini: ${v.stock})'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedVariant = val;
+                        _newUnitCost = val.cost;
+                        _costController.text = _newUnitCost.toString();
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+
               // Quantity Field
               TextFormField(
                 controller: _qtyController,
@@ -178,12 +226,35 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                 ),
                 child: Column(
                   children: [
+                    if (_selectedVariant != null) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Stok Varian ${_selectedVariant!.name}:',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondaryLight,
+                            ),
+                          ),
+                          Text(
+                            '${_selectedVariant!.stock}  ➜  ${_selectedVariant!.stock + _addedQty} unit',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: AppColors.textPrimaryLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Stok:',
-                          style: TextStyle(
+                        Text(
+                          _selectedVariant != null ? 'Total Stok Master:' : 'Stok:',
+                          style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondaryLight,
                           ),
@@ -248,6 +319,7 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                                   .read(inventoryControllerProvider.notifier)
                                   .stockIn(
                                     productId: widget.product.id,
+                                    variantId: _selectedVariant?.id,
                                     addedQty: _addedQty,
                                     unitCost: _newUnitCost,
                                     reason: _reasonController.text.trim(),

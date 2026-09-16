@@ -133,13 +133,20 @@ class TransactionRepositoryImpl implements ITransactionRepository {
           }
         }
 
-        // Always update parent product stock
         final product = await (_db.select(_db.products)
               ..where((tbl) => tbl.id.equals(item.productId)))
             .getSingleOrNull();
-
         if (product != null) {
-          final newStock = product.stock - item.quantity.round();
+          final variants = await (_db.select(_db.productVariants)
+                ..where((tbl) => tbl.productId.equals(product.id) & tbl.active.equals(true)))
+              .get();
+          final int newStock;
+          if (variants.isNotEmpty) {
+            newStock = variants.fold<int>(0, (sum, v) => sum + v.stock);
+          } else {
+            newStock = product.stock - item.quantity.round();
+          }
+
           await (_db.update(_db.products)
                 ..where((tbl) => tbl.id.equals(product.id)))
               .write(ProductsCompanion(
@@ -300,10 +307,20 @@ class TransactionRepositoryImpl implements ITransactionRepository {
               ..where((tbl) => tbl.id.equals(item.productId)))
             .getSingleOrNull();
         if (product != null) {
+          final variants = await (_db.select(_db.productVariants)
+                ..where((tbl) => tbl.productId.equals(product.id) & tbl.active.equals(true)))
+              .get();
+          final int newStock;
+          if (variants.isNotEmpty) {
+            newStock = variants.fold<int>(0, (sum, v) => sum + v.stock);
+          } else {
+            newStock = product.stock + item.quantity.round();
+          }
+
           await (_db.update(_db.products)
                 ..where((tbl) => tbl.id.equals(product.id)))
               .write(ProductsCompanion(
-            stock: Value(product.stock + item.quantity.round()),
+            stock: Value(newStock),
             updatedAt: Value(now),
           ));
         }
@@ -411,10 +428,20 @@ class TransactionRepositoryImpl implements ITransactionRepository {
               ..where((tbl) => tbl.id.equals(refItem.productId)))
             .getSingleOrNull();
         if (product != null) {
+          final variants = await (_db.select(_db.productVariants)
+                ..where((tbl) => tbl.productId.equals(product.id) & tbl.active.equals(true)))
+              .get();
+          final int newStock;
+          if (variants.isNotEmpty) {
+            newStock = variants.fold<int>(0, (sum, v) => sum + v.stock);
+          } else {
+            newStock = product.stock + refItem.quantity;
+          }
+
           await (_db.update(_db.products)
                 ..where((tbl) => tbl.id.equals(product.id)))
               .write(ProductsCompanion(
-            stock: Value(product.stock + refItem.quantity),
+            stock: Value(newStock),
             updatedAt: Value(now),
           ));
         }

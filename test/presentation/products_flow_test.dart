@@ -75,4 +75,55 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 50));
   });
+
+  testWidgets('ProductFormScreen makes master HPP and Harga Jual optional when variants are added',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+        ],
+        child: const MaterialApp(
+          home: ProductFormScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Initially without variants, HPP and Harga Jual are mandatory
+    expect(find.text('Harga Beli (HPP) *'), findsOneWidget);
+    expect(find.text('Harga Jual *'), findsOneWidget);
+
+    // Tap "+ Tambah Varian" button
+    final addVariantBtn = find.text('Tambah Varian');
+    expect(addVariantBtn, findsOneWidget);
+    await tester.ensureVisible(addVariantBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(addVariantBtn);
+    await tester.pumpAndSettle();
+
+    // Now HPP and Harga Jual on master become optional!
+    final optionalHpp = find.text('Harga Beli (HPP) (Opsional)');
+    await tester.ensureVisible(optionalHpp);
+    expect(optionalHpp, findsOneWidget);
+
+    final optionalPrice = find.text('Harga Jual (Opsional)');
+    await tester.ensureVisible(optionalPrice);
+    expect(optionalPrice, findsOneWidget);
+
+    // Variant card has its own required price and HPP
+    final variantName = find.text('Nama Varian #1 *');
+    await tester.ensureVisible(variantName);
+    expect(variantName, findsOneWidget);
+
+    final variantHpp = find.text('HPP (Modal) *');
+    await tester.ensureVisible(variantHpp);
+    expect(variantHpp, findsOneWidget);
+
+    // Unmount and flush
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
 }

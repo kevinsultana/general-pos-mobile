@@ -104,10 +104,18 @@ class ProductRepositoryImpl implements IProductRepository {
       _productDao.getVariantsByProductId(productId);
 
   @override
+  Stream<List<ProductVariant>> watchVariants(String productId) =>
+      _productDao.watchVariantsByProductId(productId);
+
+  @override
   Future<ProductVariant?> getVariantByBarcode(String barcode) =>
       _productDao.getVariantByBarcode(barcode);
 
   @override
   Future<void> saveVariant(ProductVariantsCompanion variant) =>
       _productDao.insertVariant(variant);
+
+  @override
+  Future<void> reconcileVariantStocks() =>
+      _productDao.reconcileVariantStocks();
 }

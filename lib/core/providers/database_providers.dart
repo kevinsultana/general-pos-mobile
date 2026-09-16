@@ -113,7 +113,9 @@ final currentStoreStreamProvider = StreamProvider.autoDispose<Store?>((ref) asyn
     }
     yield* storeRepo.watchStore(cloudUser.storeId);
   } else {
-    await storeRepo.ensureDefaultStore();
+    try {
+      await storeRepo.ensureDefaultStore();
+    } catch (_) {}
     yield* storeRepo.watchCurrentStore();
   }
 });
@@ -129,6 +131,12 @@ final productRepositoryProvider = Provider<IProductRepository>((ref) {
     isCloudMode: isCloud,
     deviceId: deviceId,
   );
+});
+
+final productVariantsStreamProvider =
+    StreamProvider.autoDispose.family<List<ProductVariant>, String>((ref, productId) {
+  final repo = ref.watch(productRepositoryProvider);
+  return repo.watchVariants(productId);
 });
 
 final inventoryRepositoryProvider = Provider<IInventoryRepository>((ref) {

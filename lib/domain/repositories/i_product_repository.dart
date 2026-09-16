@@ -17,6 +17,8 @@ abstract class IProductRepository {
 
   // Variants
   Future<List<ProductVariant>> getVariants(String productId);
+  Stream<List<ProductVariant>> watchVariants(String productId);
   Future<ProductVariant?> getVariantByBarcode(String barcode);
   Future<void> saveVariant(ProductVariantsCompanion variant);
+  Future<void> reconcileVariantStocks();
 }

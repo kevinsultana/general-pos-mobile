@@ -45,14 +45,39 @@ class InventoryRepositoryImpl implements IInventoryRepository {
       final existingStock = product.stock;
       final existingCost = product.cost;
 
+      // Update variant stock if variantId is provided
+      if (variantId != null && variantId.isNotEmpty) {
+        final variant = await (_db.select(_db.productVariants)
+              ..where((tbl) => tbl.id.equals(variantId)))
+            .getSingleOrNull();
+
+        if (variant != null) {
+          final newVariantStock = variant.stock + addedQty;
+          await (_db.update(_db.productVariants)
+                ..where((tbl) => tbl.id.equals(variant.id)))
+              .write(ProductVariantsCompanion(
+            stock: Value(newVariantStock),
+            cost: Value(unitCost),
+            updatedAt: Value(DateTime.now()),
+          ));
+        }
+      }
+
+      // If product has variants, parent product stock is always the sum of all its variants
+      final variants = await _productDao.getVariantsByProductId(productId);
+      final int newStock;
+      if (variants.isNotEmpty) {
+        newStock = variants.fold<int>(0, (sum, v) => sum + v.stock);
+      } else {
+        newStock = existingStock + addedQty;
+      }
+
       final newCost = CostCalculator.calculateWeightedAverageCost(
         existingQty: existingStock,
         existingCost: existingCost,
         addedQty: addedQty,
         addedCost: unitCost,
       );
-
-      final newStock = existingStock + addedQty;
 
       // Update product stock and cost
       await (_db.update(_db.products)..where((tbl) => tbl.id.equals(productId))).write(
@@ -94,7 +119,31 @@ class InventoryRepositoryImpl implements IInventoryRepository {
         throw ArgumentError('Product not found with id: $productId');
       }
 
-      final newStock = product.stock + deltaQty;
+      // Update variant stock if variantId is provided
+      if (variantId != null && variantId.isNotEmpty) {
+        final variant = await (_db.select(_db.productVariants)
+              ..where((tbl) => tbl.id.equals(variantId)))
+            .getSingleOrNull();
+
+        if (variant != null) {
+          final newVariantStock = variant.stock + deltaQty;
+          await (_db.update(_db.productVariants)
+                ..where((tbl) => tbl.id.equals(variant.id)))
+              .write(ProductVariantsCompanion(
+            stock: Value(newVariantStock),
+            updatedAt: Value(DateTime.now()),
+          ));
+        }
+      }
+
+      // If product has variants, parent product stock is always the sum of all its variants
+      final variants = await _productDao.getVariantsByProductId(productId);
+      final int newStock;
+      if (variants.isNotEmpty) {
+        newStock = variants.fold<int>(0, (sum, v) => sum + v.stock);
+      } else {
+        newStock = product.stock + deltaQty;
+      }
 
       // Update stock
       await _productDao.updateStock(productId, newStock);

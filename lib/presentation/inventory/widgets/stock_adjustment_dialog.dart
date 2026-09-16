@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/app_database.dart';
 import '../controllers/inventory_controller.dart';
@@ -20,6 +21,9 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
   final _formKey = GlobalKey<FormState>();
   final _qtyController = TextEditingController();
 
+  List<ProductVariant> _variants = [];
+  ProductVariant? _selectedVariant;
+
   bool _isIncrease = false; // Default: Pengurangan (paling umum pada adjustment)
   String _selectedReason = 'Damaged';
   bool _isSubmitting = false;
@@ -33,6 +37,24 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _loadVariants();
+  }
+
+  Future<void> _loadVariants() async {
+    final variants = await ref
+        .read(productRepositoryProvider)
+        .getVariants(widget.product.id);
+    if (mounted && variants.isNotEmpty) {
+      setState(() {
+        _variants = variants;
+        _selectedVariant = variants.first;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _qtyController.dispose();
     super.dispose();
@@ -42,7 +64,8 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
   Widget build(BuildContext context) {
     final qty = int.tryParse(_qtyController.text) ?? 0;
     final delta = _isIncrease ? qty : -qty;
-    final newStock = widget.product.stock + delta;
+    final currentStock = _selectedVariant != null ? _selectedVariant!.stock : widget.product.stock;
+    final newStock = currentStock + delta;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -90,6 +113,33 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
                 ],
               ),
               const Divider(height: 24),
+
+              // Variant Selector (if product has variants)
+              if (_variants.isNotEmpty) ...[
+                DropdownButtonFormField<ProductVariant>(
+                  initialValue: _selectedVariant,
+                  decoration: const InputDecoration(
+                    labelText: 'Pilih Varian *',
+                    prefixIcon: Icon(Icons.style_rounded),
+                  ),
+                  items: _variants
+                      .map(
+                        (v) => DropdownMenuItem(
+                          value: v,
+                          child: Text('${v.name} (Stok saat ini: ${v.stock})'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedVariant = val;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Type Selector Segment
               Row(
@@ -197,15 +247,17 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Perubahan Stok:',
-                          style: TextStyle(
+                        Text(
+                          _selectedVariant != null
+                              ? 'Stok Varian ${_selectedVariant!.name}:'
+                              : 'Perubahan Stok:',
+                          style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondaryLight,
                           ),
                         ),
                         Text(
-                          '${widget.product.stock}  ➜  $newStock unit',
+                          '$currentStock  ➜  $newStock unit',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -267,6 +319,7 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
                                   .read(inventoryControllerProvider.notifier)
                                   .stockAdjustment(
                                     productId: widget.product.id,
+                                    variantId: _selectedVariant?.id,
                                     deltaQty: delta,
                                     reason: _reasons[_selectedReason] ?? _selectedReason,
                                   );

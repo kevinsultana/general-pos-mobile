@@ -6,8 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/database_providers.dart';
 import '../../../core/providers/permission_provider.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../data/local/app_database.dart';
 import '../controllers/category_controller.dart';
 import '../controllers/product_controller.dart';
@@ -50,6 +51,41 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _initialStockController.text = p.stock.toString();
       _lowStockController.text = p.lowStockThreshold.toString();
       _selectedCategoryId = p.categoryId;
+      _loadExistingVariants(p.id);
+    }
+  }
+
+  Future<void> _loadExistingVariants(String productId) async {
+    final variants = await ref
+        .read(productRepositoryProvider)
+        .getVariants(productId);
+    if (mounted && variants.isNotEmpty) {
+      setState(() {
+        _variants.clear();
+        for (final v in variants) {
+          final stockCtrl = TextEditingController(text: v.stock.toString());
+          stockCtrl.addListener(_syncTotalVariantStock);
+          _variants.add(_VariantFormEntry(
+            id: v.id,
+            nameController: TextEditingController(text: v.name),
+            skuController: TextEditingController(text: v.sku ?? ''),
+            costController: TextEditingController(text: v.cost.toString()),
+            priceController: TextEditingController(text: v.sellingPrice.toString()),
+            stockController: stockCtrl,
+          ));
+        }
+        _syncTotalVariantStock();
+      });
+    }
+  }
+
+  void _syncTotalVariantStock() {
+    if (_variants.isNotEmpty) {
+      final total = _variants.fold<int>(
+        0,
+        (sum, v) => sum + (int.tryParse(v.stockController.text) ?? 0),
+      );
+      _initialStockController.text = total.toString();
     }
   }
 
@@ -62,6 +98,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _sellingPriceController.dispose();
     _initialStockController.dispose();
     _lowStockController.dispose();
+    for (final v in _variants) {
+      v.dispose();
+    }
     super.dispose();
   }
 
@@ -75,14 +114,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   void _addVariant() {
+    final stockCtrl = TextEditingController(text: '0');
+    stockCtrl.addListener(_syncTotalVariantStock);
+
     setState(() {
       _variants.add(_VariantFormEntry(
         nameController: TextEditingController(),
         skuController: TextEditingController(),
         costController: TextEditingController(text: _costController.text),
         priceController: TextEditingController(text: _sellingPriceController.text),
-        stockController: TextEditingController(text: '0'),
+        stockController: stockCtrl,
       ));
+      _syncTotalVariantStock();
     });
   }
 
@@ -90,6 +133,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     setState(() {
       _variants[index].dispose();
       _variants.removeAt(index);
+      _syncTotalVariantStock();
     });
   }
 
@@ -291,13 +335,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                       controller: _costController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        labelText: 'Harga Beli (HPP) *',
+                      decoration: InputDecoration(
+                        labelText: _variants.isNotEmpty
+                            ? 'Harga Beli (HPP) (Opsional)'
+                            : 'Harga Beli (HPP) *',
                         prefixText: 'Rp ',
-                        prefixIcon: Icon(Icons.monetization_on_outlined),
+                        prefixIcon: const Icon(Icons.monetization_on_outlined),
+                        helperText: _variants.isNotEmpty
+                            ? 'Otomatis mengikuti HPP varian'
+                            : null,
                       ),
                       validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
+                        if (_variants.isEmpty && (val == null || val.trim().isEmpty)) {
                           return 'HPP wajib diisi';
                         }
                         return null;
@@ -310,13 +359,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                       controller: _sellingPriceController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        labelText: 'Harga Jual *',
+                      decoration: InputDecoration(
+                        labelText: _variants.isNotEmpty
+                            ? 'Harga Jual (Opsional)'
+                            : 'Harga Jual *',
                         prefixText: 'Rp ',
-                        prefixIcon: Icon(Icons.sell_outlined),
+                        prefixIcon: const Icon(Icons.sell_outlined),
+                        helperText: _variants.isNotEmpty
+                            ? 'Otomatis mengikuti harga jual varian'
+                            : null,
                       ),
                       validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
+                        if (_variants.isEmpty && (val == null || val.trim().isEmpty)) {
                           return 'Harga jual wajib diisi';
                         }
                         return null;
@@ -343,15 +397,17 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _initialStockController,
-                      enabled: !isEditing, // Initial stock only on creation
+                      enabled: !isEditing && _variants.isEmpty,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         labelText: isEditing ? 'Stok (Saat Ini)' : 'Stok Awal *',
                         prefixIcon: const Icon(Icons.all_inbox_rounded),
-                        helperText: isEditing
-                            ? 'Ubah stok melalui Stock In / Penyesuaian'
-                            : 'Stok awal otomatis tercatat di ledger',
+                        helperText: _variants.isNotEmpty
+                            ? 'Otomatis dihitung dari total stok semua varian'
+                            : (isEditing
+                                ? 'Ubah stok melalui Stock In / Penyesuaian'
+                                : 'Stok awal otomatis tercatat di ledger'),
                       ),
                     ),
                   ),
@@ -458,6 +514,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                       labelText: 'Harga Jual *',
                                       prefixText: 'Rp ',
                                     ),
+                                    validator: (val) =>
+                                        val == null || val.trim().isEmpty
+                                            ? 'Harga wajib diisi'
+                                            : null,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -469,8 +529,43 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                       FilteringTextInputFormatter.digitsOnly
                                     ],
                                     decoration: const InputDecoration(
-                                      labelText: 'HPP *',
+                                      labelText: 'HPP (Modal) *',
                                       prefixText: 'Rp ',
+                                    ),
+                                    validator: (val) =>
+                                        val == null || val.trim().isEmpty
+                                            ? 'HPP wajib diisi'
+                                            : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: v.skuController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'SKU Varian (Opsional)',
+                                      prefixIcon: Icon(Icons.qr_code, size: 20),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: v.stockController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly
+                                    ],
+                                    decoration: InputDecoration(
+                                      labelText: 'Stok Varian *',
+                                      prefixIcon: const Icon(Icons.all_inbox, size: 20),
+                                      helperText: isEditing
+                                          ? 'Bisa disesuaikan via Stock In'
+                                          : 'Stok awal varian',
                                     ),
                                   ),
                                 ),
@@ -553,8 +648,28 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     try {
       final isEditing = widget.productToEdit != null;
-      final cost = int.tryParse(_costController.text) ?? 0;
-      final price = int.tryParse(_sellingPriceController.text) ?? 0;
+      int cost = int.tryParse(_costController.text) ?? 0;
+      int price = int.tryParse(_sellingPriceController.text) ?? 0;
+
+      // If product has variants, fallback cost and price from variants if not set on master
+      if (_variants.isNotEmpty) {
+        final prices = _variants
+            .map((v) => int.tryParse(v.priceController.text) ?? 0)
+            .where((p) => p > 0)
+            .toList();
+        if (price == 0 && prices.isNotEmpty) {
+          price = prices.reduce((a, b) => a < b ? a : b); // Lowest variant price
+        }
+
+        final costs = _variants
+            .map((v) => int.tryParse(v.costController.text) ?? 0)
+            .where((c) => c > 0)
+            .toList();
+        if (cost == 0 && costs.isNotEmpty) {
+          cost = costs.first;
+        }
+      }
+
       final initialStock = int.tryParse(_initialStockController.text) ?? 0;
       final lowStock = int.tryParse(_lowStockController.text) ?? 0;
 
@@ -569,7 +684,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         if (vName.isNotEmpty) {
           variantCompanions.add(
             ProductVariantsCompanion(
-              id: Value(uuid.v4()),
+              id: Value(v.id ?? uuid.v4()),
               productId: Value(targetProductId),
               name: Value(vName),
               sku: Value(v.skuController.text.trim().isNotEmpty
@@ -587,6 +702,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         }
       }
 
+      final totalVariantStock = variantCompanions.fold<int>(
+        0,
+        (sum, v) => sum + v.stock.value,
+      );
+      final effectiveStock = variantCompanions.isNotEmpty
+          ? totalVariantStock
+          : (isEditing ? widget.productToEdit!.stock : initialStock);
+
       await ref.read(productControllerProvider.notifier).saveProduct(
             id: isEditing ? widget.productToEdit!.id : targetProductId,
             categoryId: _selectedCategoryId!,
@@ -595,7 +718,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             barcode: _barcodeController.text.trim(),
             cost: cost,
             sellingPrice: price,
-            initialStock: isEditing ? widget.productToEdit!.stock : initialStock,
+            initialStock: effectiveStock,
             lowStockThreshold: lowStock,
             variants: variantCompanions,
           );
@@ -633,6 +756,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 }
 
 class _VariantFormEntry {
+  final String? id;
   final TextEditingController nameController;
   final TextEditingController skuController;
   final TextEditingController costController;
@@ -640,6 +764,7 @@ class _VariantFormEntry {
   final TextEditingController stockController;
 
   _VariantFormEntry({
+    this.id,
     required this.nameController,
     required this.skuController,
     required this.costController,

@@ -17,7 +17,7 @@ class AppSidebarDrawer extends ConsumerWidget {
     final storeAsync = ref.watch(currentStoreStreamProvider);
     final storeName = isCloud && (cloudUser?.storeName.isNotEmpty ?? false)
         ? cloudUser!.storeName
-        : (storeAsync.value?.name ?? 'General POS');
+        : (storeAsync.valueOrNull?.name ?? 'General POS');
 
     final canCreateTransaction =
         ref.watch(hasPermissionProvider(AppPermissions.createTransaction));

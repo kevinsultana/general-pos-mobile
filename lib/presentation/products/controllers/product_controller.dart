@@ -68,6 +68,8 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
       final productId = id ?? _uuid.v4();
       final now = DateTime.now();
 
+      final hasVariants = variants != null && variants.isNotEmpty;
+
       final companion = ProductsCompanion(
         id: Value(productId),
         storeId: const Value(defaultStoreId),
@@ -77,7 +79,7 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
         barcode: Value(barcode?.trim().isNotEmpty == true ? barcode!.trim() : null),
         cost: Value(cost),
         sellingPrice: Value(sellingPrice),
-        stock: Value(initialStock),
+        stock: Value(id == null ? 0 : initialStock),
         lowStockThreshold: Value(lowStockThreshold),
         active: const Value(true),
         discontinued: const Value(false),
@@ -87,21 +89,39 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
 
       await productRepo.saveProduct(companion);
 
-      // Record initial stock movement if > 0
-      if (initialStock > 0 && id == null) {
+      // Save variants if present
+      if (hasVariants) {
+        for (final v in variants) {
+          if (id == null) {
+            // Initial creation: save with 0 stock, then adjust to record ledger
+            final initialVarStock = v.stock.value;
+            final vWithZero = v.copyWith(stock: const Value(0));
+            await productRepo.saveVariant(vWithZero);
+            if (initialVarStock > 0) {
+              await inventoryRepo.stockAdjustment(
+                storeId: defaultStoreId,
+                productId: productId,
+                variantId: v.id.value,
+                deltaQty: initialVarStock,
+                reason: 'Initial Stock Creation',
+              );
+            }
+          } else {
+            await productRepo.saveVariant(v);
+          }
+        }
+        // Ensure master stock is reconciled with variants
+        final allVariants = await productRepo.getVariants(productId);
+        final sumStock = allVariants.fold<int>(0, (sum, item) => sum + item.stock);
+        await productRepo.updateStock(productId, sumStock);
+      } else if (initialStock > 0 && id == null) {
+        // Record initial stock movement if > 0
         await inventoryRepo.stockAdjustment(
           storeId: defaultStoreId,
           productId: productId,
           deltaQty: initialStock,
           reason: 'Initial Stock Creation',
         );
-      }
-
-      // Save variants if present
-      if (variants != null && variants.isNotEmpty) {
-        for (final v in variants) {
-          await productRepo.saveVariant(v);
-        }
       }
 
       state = const AsyncValue.data(null);
