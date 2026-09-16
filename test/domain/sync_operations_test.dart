@@ -44,6 +44,10 @@ void main() {
       expect(syncService.entityTypeFor('REFUND_TRANSACTION'), equals('Transaction'));
       expect(syncService.entityTypeFor('ADJUST_STOCK'), equals('StockMovement'));
 
+      expect(syncService.entityTypeFor('CREATE_CATEGORY'), equals('Category'));
+      expect(syncService.entityTypeFor('UPDATE_CATEGORY'), equals('Category'));
+      expect(syncService.entityTypeFor('DELETE_CATEGORY'), equals('Category'));
+
       expect(syncService.entityTypeFor('CREATE_PRODUCT'), equals('Product'));
       expect(syncService.entityTypeFor('UPDATE_PRODUCT'), equals('Product'));
       expect(syncService.entityTypeFor('DELETE_PRODUCT'), equals('Product'));
@@ -209,6 +213,89 @@ void main() {
         {'entityType': 'Promotion', 'id': promoId},
       );
       expect(await db.promotionDao.getPromotionById(promoId), isNull);
+    });
+
+    test('Inbound dispatch: CREATE_CATEGORY and DELETE_CATEGORY', () async {
+      const catId = 'cat-test-01';
+
+      // 1. CREATE_CATEGORY
+      await syncService.dispatchOperationForTesting(
+        storeId,
+        'CREATE_CATEGORY',
+        {
+          'id': catId,
+          'name': 'Makanan Ringan',
+        },
+      );
+
+      final cat = await db.categoryDao.getCategoryById(catId);
+      expect(cat, isNotNull);
+      expect(cat!.name, equals('Makanan Ringan'));
+
+      // 2. DELETE_CATEGORY
+      await syncService.dispatchOperationForTesting(
+        storeId,
+        'DELETE_CATEGORY',
+        {'id': catId},
+      );
+
+      final deleted = await db.categoryDao.getCategoryById(catId);
+      expect(deleted, isNull);
+    });
+
+    test('Inbound dispatch: CREATE_PRODUCT with nested variants and ADJUST_STOCK on variant', () async {
+      const prodId = 'prod-var-01';
+      const variantId = 'var-01';
+
+      // 1. CREATE_PRODUCT with variants
+      await syncService.dispatchOperationForTesting(
+        storeId,
+        'CREATE_PRODUCT',
+        {
+          'id': prodId,
+          'name': 'Kemeja Formal',
+          'categoryId': 'cat-apparel',
+          'sellingPrice': 150000,
+          'cost': 100000,
+          'stock': 20,
+          'variants': [
+            {
+              'id': variantId,
+              'name': 'Ukuran XL',
+              'sellingPrice': 160000,
+              'cost': 105000,
+              'stock': 10,
+            }
+          ],
+        },
+      );
+
+      final prod = await db.productDao.getProductById(prodId);
+      expect(prod, isNotNull);
+      expect(prod!.stock, equals(20));
+
+      final variants = await db.productDao.getVariantsByProductId(prodId);
+      expect(variants.length, equals(1));
+      expect(variants.first.id, equals(variantId));
+      expect(variants.first.stock, equals(10));
+
+      // 2. ADJUST_STOCK with variantId
+      await syncService.dispatchOperationForTesting(
+        storeId,
+        'ADJUST_STOCK',
+        {
+          'productId': prodId,
+          'variantId': variantId,
+          'quantityDelta': -3,
+          'reason': 'Damaged item',
+        },
+      );
+
+      final updatedProd = await db.productDao.getProductById(prodId);
+      expect(updatedProd!.stock, equals(17)); // 20 - 3
+
+      final updatedVariants = await db.productDao.getVariantsByProductId(prodId);
+      expect(updatedVariants.first.stock, equals(7)); // 10 - 3
     });
   });
 }

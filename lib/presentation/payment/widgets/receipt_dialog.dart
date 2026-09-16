@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -596,7 +595,10 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
     final payments = await repo.getTransactionPayments(widget.transactionId);
 
     final storeRepo = ref.read(storeRepositoryProvider);
-    final store = await storeRepo.getStore(AppConstants.defaultStoreId);
+    final String targetStoreId = (transaction?.storeId != null && transaction!.storeId.isNotEmpty)
+        ? transaction.storeId
+        : ref.read(activeStoreIdProvider);
+    final store = await storeRepo.getStore(targetStoreId) ?? await storeRepo.getCurrentStore();
 
     Customer? customer;
     if (transaction != null && transaction.customerId != null) {

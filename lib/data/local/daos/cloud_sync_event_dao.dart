@@ -17,6 +17,36 @@ class CloudSyncEventDao extends DatabaseAccessor<CloudDatabase>
     await into(syncEvents).insert(event, mode: InsertMode.insertOrIgnore);
   }
 
+  /// Insert event by primitive fields, decoupling from specific generated Companion classes.
+  Future<void> insertRawEvent({
+    required String id,
+    required String storeId,
+    required String deviceId,
+    required String entityType,
+    required String entityId,
+    required String operation,
+    required String payload,
+    required String status,
+    required DateTime createdAt,
+    DateTime? syncedAt,
+  }) async {
+    await into(syncEvents).insert(
+      SyncEventsCompanion.insert(
+        id: id,
+        storeId: storeId,
+        deviceId: deviceId,
+        entityType: entityType,
+        entityId: entityId,
+        operation: operation,
+        payload: payload,
+        status: status,
+        createdAt: createdAt,
+        syncedAt: syncedAt != null ? Value(syncedAt) : const Value.absent(),
+      ),
+      mode: InsertMode.insertOrIgnore,
+    );
+  }
+
   Future<List<SyncEvent>> getPendingEvents(String storeId,
       {int limit = 50}) {
     return (select(syncEvents)

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -151,15 +152,30 @@ class ApiClient {
     ));
   }
 
+  Completer<bool>? _refreshCompleter;
+
   Future<bool> _tryRefresh() async {
+    // If a refresh is already in flight, await the same single future to avoid concurrent refresh token rotation conflicts
+    if (_refreshCompleter != null) {
+      return _refreshCompleter!.future;
+    }
+
+    _refreshCompleter = Completer<bool>();
     try {
       final refreshToken = await _tokenStorage.getRefreshToken();
       final serverUrl = await _tokenStorage.getServerUrl();
-      if (refreshToken == null || serverUrl == null) return false;
+      if (refreshToken == null || serverUrl == null) {
+        _refreshCompleter!.complete(false);
+        return false;
+      }
 
       final response = await Dio().post(
         '$serverUrl/api/v1/auth/refresh',
         data: {'refreshToken': refreshToken},
+        options: Options(
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
       );
 
       final data = response.data['data'];
@@ -171,10 +187,22 @@ class ApiClient {
         storeId: storeId ?? '',
         userId: userId ?? '',
       );
+      _refreshCompleter!.complete(true);
       return true;
-    } catch (_) {
-      await _tokenStorage.clearTokens();
+    } on DioException catch (dioErr) {
+      // Only clear tokens if the server explicitly rejected the refresh token (HTTP 401 or 403).
+      // Transient network errors, socket timeouts, or offline disconnections must NOT wipe local user session!
+      final status = dioErr.response?.statusCode;
+      if (status == 401 || status == 403) {
+        await _tokenStorage.clearTokens();
+      }
+      _refreshCompleter!.complete(false);
       return false;
+    } catch (_) {
+      _refreshCompleter!.complete(false);
+      return false;
+    } finally {
+      _refreshCompleter = null;
     }
   }
 

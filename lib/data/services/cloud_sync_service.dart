@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:uuid/uuid.dart';
 import 'package:drift/drift.dart' show Value;
-import '../local/daos/cloud_sync_event_dao.dart';
-import '../local/cloud_database.dart' show SyncEvent, SyncEventsCompanion;
+import '../local/cloud_database.dart' show SyncEvent;
 import '../local/app_database.dart' hide SyncEvent, SyncEventsCompanion;
 import '../../core/constants/scale_constants.dart';
 import '../../domain/models/printer_device.dart';
@@ -34,7 +33,7 @@ const _retryDelays = [2, 5, 15, 30, 60];
 
 /// Orchestrates push (mobile → server) and pull (server → mobile) sync.
 class CloudSyncService {
-  final CloudSyncEventDao _dao;
+  final dynamic _dao;
   final ApiClient _apiClient;
   final TokenStorage _tokenStorage;
   final AppDatabase? _db;
@@ -52,18 +51,16 @@ class CloudSyncService {
     required Map<String, dynamic> payload,
   }) async {
     final id = const Uuid().v4();
-    await _dao.insertEvent(
-      SyncEventsCompanion.insert(
-        id: id,
-        storeId: storeId,
-        deviceId: deviceId,
-        entityType: _entityTypeFor(operation),
-        entityId: entityId,
-        operation: operation,
-        payload: jsonEncode(payload),
-        status: 'PENDING',
-        createdAt: DateTime.now(),
-      ),
+    await _dao.insertRawEvent(
+      id: id,
+      storeId: storeId,
+      deviceId: deviceId,
+      entityType: _entityTypeFor(operation),
+      entityId: entityId,
+      operation: operation,
+      payload: jsonEncode(payload),
+      status: 'PENDING',
+      createdAt: DateTime.now(),
     );
   }
 
@@ -91,7 +88,7 @@ class CloudSyncService {
       final events = pending.map((e) => {
             'eventId': e.id,
             'deviceId': deviceId,
-            'occurredAt': e.createdAt.toIso8601String(),
+            'occurredAt': e.createdAt.toUtc().toIso8601String(),
             'operation': e.operation,
             'entityId': e.entityId,
             'payload': jsonDecode(e.payload),
@@ -186,23 +183,19 @@ class CloudSyncService {
 
     if (eventId != null) {
       // Record received event into cloud_cache sync log as SYNCED
-      await _dao.insertEvent(
-        SyncEventsCompanion.insert(
-          id: eventId,
-          storeId: storeId,
-          deviceId: eventDeviceId,
-          entityType: entityType,
-          entityId: entityId,
-          operation: operation,
-          payload: payloadStr,
-          status: 'SYNCED',
-          createdAt: DateTime.tryParse(raw['occurredAt'] as String? ?? '') ??
-              DateTime.now(),
-          syncedAt: Value(
-            DateTime.tryParse(raw['syncedAt'] as String? ?? '') ??
-                DateTime.now(),
-          ),
-        ),
+      await _dao.insertRawEvent(
+        id: eventId,
+        storeId: storeId,
+        deviceId: eventDeviceId,
+        entityType: entityType,
+        entityId: entityId,
+        operation: operation,
+        payload: payloadStr,
+        status: 'SYNCED',
+        createdAt: DateTime.tryParse(raw['occurredAt'] as String? ?? '') ??
+            DateTime.now(),
+        syncedAt: DateTime.tryParse(raw['syncedAt'] as String? ?? '') ??
+            DateTime.now(),
       );
     }
 
@@ -233,6 +226,14 @@ class CloudSyncService {
         break;
       case 'ADJUST_STOCK':
         await _handleAdjustStock(storeId, payload);
+        break;
+      case 'CREATE_CATEGORY':
+      case 'UPDATE_CATEGORY':
+      case 'UPSERT_CATEGORY':
+        await _handleCategoryUpsert(storeId, payload);
+        break;
+      case 'DELETE_CATEGORY':
+        await _handleCategoryDelete(storeId, payload);
         break;
       case 'CREATE_PRODUCT':
       case 'UPDATE_PRODUCT':
@@ -271,6 +272,8 @@ class CloudSyncService {
         final entityType = payload['entityType'] as String?;
         if (entityType == 'Product') {
           await _handleProductUpsert(storeId, payload);
+        } else if (entityType == 'Category') {
+          await _handleCategoryUpsert(storeId, payload);
         } else if (entityType == 'Promotion') {
           await _handlePromotionUpsert(storeId, payload);
         } else if (entityType == 'Customer') {
@@ -284,6 +287,8 @@ class CloudSyncService {
         final entityType = payload['entityType'] as String?;
         if (entityType == 'Product') {
           await _handleProductDelete(storeId, payload);
+        } else if (entityType == 'Category') {
+          await _handleCategoryDelete(storeId, payload);
         } else if (entityType == 'Promotion') {
           await _handlePromotionDelete(storeId, payload);
         } else if (entityType == 'Customer') {
@@ -439,29 +444,72 @@ class CloudSyncService {
     final db = _db;
     if (db == null) return;
     final productId = payload['productId'] as String?;
+    final variantId = payload['variantId'] as String?;
     final deltaNum = (payload['quantityDelta'] ?? payload['delta']) as num?;
     final reason = payload['reason'] as String? ?? 'Remote Sync: Stock Adjustment';
     if (productId == null || deltaNum == null) return;
 
-      final delta = deltaNum.toInt();
-      final prod = await db.productDao.getProductById(productId);
-      if (prod != null) {
-        final newStock = prod.stock + delta;
-        await db.productDao.updateStock(productId, newStock);
-
-        await db.stockMovementDao.recordMovement(
-          StockMovementsCompanion.insert(
-            id: const Uuid().v4(),
-            storeId: storeId,
-            productId: productId,
-            type: 'ADJUSTMENT',
-            quantityDelta: toScaled(delta.toDouble(), stockScale), // Scaled by 1000 in Drift ledger
-            referenceType: const Value('ADJUSTMENT'),
-            reason: Value(reason),
-            createdAt: DateTime.now(),
-          ),
-        );
+    final delta = deltaNum.toInt();
+    if (variantId != null && variantId.isNotEmpty) {
+      final variants = await db.productDao.getVariantsByProductId(productId);
+      final variant = variants.where((v) => v.id == variantId).firstOrNull;
+      if (variant != null) {
+        final newVariantStock = variant.stock + delta;
+        await db.productDao.updateVariantStock(variantId, newVariantStock);
       }
+    }
+
+    final prod = await db.productDao.getProductById(productId);
+    if (prod != null) {
+      final newStock = prod.stock + delta;
+      await db.productDao.updateStock(productId, newStock);
+
+      await db.stockMovementDao.recordMovement(
+        StockMovementsCompanion.insert(
+          id: const Uuid().v4(),
+          storeId: storeId,
+          productId: productId,
+          variantId: Value(variantId),
+          type: 'ADJUSTMENT',
+          quantityDelta: toScaled(delta.toDouble(), stockScale), // Scaled by 1000 in Drift ledger
+          referenceType: const Value('ADJUSTMENT'),
+          reason: Value(reason),
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleCategoryUpsert(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String? ?? payload['categoryId'] as String?;
+    final name = payload['name'] as String?;
+    if (id == null || name == null) return;
+
+    await db.categoryDao.insertCategory(
+      CategoriesCompanion.insert(
+        id: id,
+        storeId: storeId,
+        name: name,
+        createdAt: DateTime.tryParse(payload['createdAt']?.toString() ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(payload['updatedAt']?.toString() ?? '') ?? DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> _handleCategoryDelete(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String? ?? payload['categoryId'] as String? ?? payload['entityId'] as String?;
+    if (id == null) return;
+    await db.categoryDao.deleteCategory(id);
   }
 
   Future<void> _handleProductUpsert(
@@ -497,6 +545,32 @@ class CloudSyncService {
         updatedAt: DateTime.now(),
       ),
     );
+
+    final rawVariants = payload['variants'] as List<dynamic>?;
+    if (rawVariants != null) {
+      for (final v in rawVariants) {
+        if (v is! Map<String, dynamic>) continue;
+        final vId = v['id'] as String?;
+        final vName = v['name'] as String?;
+        if (vId == null || vName == null) continue;
+
+        await db.productDao.insertVariant(
+          ProductVariantsCompanion.insert(
+            id: vId,
+            productId: id,
+            name: vName,
+            cost: (v['cost'] as num?)?.toInt() ?? cost,
+            sellingPrice: (v['sellingPrice'] as num?)?.toInt() ?? sellingPrice,
+            stock: (v['stock'] as num?)?.toInt() ?? 0,
+            sku: Value(v['sku'] as String?),
+            barcode: Value(v['barcode'] as String?),
+            active: Value(v['active'] as bool? ?? true),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handlePromotionUpsert(
@@ -664,15 +738,37 @@ class CloudSyncService {
     await db.printerDao.deletePrinter(id);
   }
 
+  SyncEvent _mapToSyncEvent(dynamic e) {
+    if (e is SyncEvent) return e;
+    return SyncEvent(
+      id: e.id as String,
+      storeId: e.storeId as String,
+      deviceId: e.deviceId as String,
+      entityType: e.entityType as String,
+      entityId: e.entityId as String,
+      operation: e.operation as String,
+      payload: e.payload as String,
+      status: e.status as String,
+      attemptCount: e.attemptCount as int,
+      lastAttemptAt: e.lastAttemptAt as DateTime?,
+      createdAt: e.createdAt as DateTime,
+      syncedAt: e.syncedAt as DateTime?,
+    );
+  }
+
   // ──────────────── Get Failed / Conflict ────────────────
 
   /// Get all failed events for this store.
-  Future<List<SyncEvent>> getFailedEvents(String storeId) =>
-      _dao.getFailedEvents(storeId);
+  Future<List<SyncEvent>> getFailedEvents(String storeId) async {
+    final list = await _dao.getFailedEvents(storeId);
+    return (list as List).map(_mapToSyncEvent).toList();
+  }
 
   /// Get all conflict events for this store.
-  Future<List<SyncEvent>> getConflictEvents(String storeId) =>
-      _dao.getConflictEvents(storeId);
+  Future<List<SyncEvent>> getConflictEvents(String storeId) async {
+    final list = await _dao.getConflictEvents(storeId);
+    return (list as List).map(_mapToSyncEvent).toList();
+  }
 
   // ──────────────── Retry ────────────────
 
@@ -724,6 +820,7 @@ class CloudSyncService {
     if (operation.contains('TRANSACTION')) return 'Transaction';
     if (operation.contains('STOCK')) return 'StockMovement';
     if (operation.contains('PRODUCT')) return 'Product';
+    if (operation.contains('CATEGORY')) return 'Category';
     if (operation.contains('CUSTOMER')) return 'Customer';
     if (operation.contains('PROMOTION')) return 'Promotion';
     if (operation.contains('PRINTER')) return 'Printer';

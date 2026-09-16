@@ -70,6 +70,15 @@ class ProductDao extends DatabaseAccessor<AppDatabase> with _$ProductDaoMixin {
         .getSingleOrNull();
   }
 
+  Future<void> updateVariantStock(String variantId, int newStock) {
+    return (update(productVariants)..where((tbl) => tbl.id.equals(variantId))).write(
+      ProductVariantsCompanion(
+        stock: Value(newStock),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   Future<int> deleteProduct(String id) async {
     await (delete(productVariants)..where((tbl) => tbl.productId.equals(id))).go();
     return (delete(products)..where((tbl) => tbl.id.equals(id))).go();

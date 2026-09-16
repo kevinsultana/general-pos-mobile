@@ -3,10 +3,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/local/cloud_database.dart';
-import '../../data/local/daos/cloud_sync_event_dao.dart';
 import '../../data/services/api_client.dart';
 import '../../data/services/cloud_auth_service.dart';
 import '../../data/services/cloud_sync_service.dart';
+import '../../data/services/sync_coordinator.dart';
 import '../../data/repositories/sync_repository_impl.dart';
 import '../../domain/repositories/i_sync_repository.dart';
 import 'database_providers.dart' show cloudCacheDatabaseProvider;
@@ -141,9 +141,9 @@ final isCloudModeProvider = Provider<bool>((ref) {
 
 // ──────────────── Sync ────────────────
 
-final syncEventDaoProvider = Provider<CloudSyncEventDao>((ref) {
-  final db = ref.watch(cloudDatabaseProvider);
-  return db.cloudSyncEventDao;
+final syncEventDaoProvider = Provider<dynamic>((ref) {
+  final db = ref.watch(cloudCacheDatabaseProvider);
+  return db.syncEventDao;
 });
 
 final cloudSyncServiceProvider = Provider<CloudSyncService>((ref) {
@@ -158,6 +158,21 @@ final syncRepositoryProvider = Provider<ISyncRepository>((ref) {
   final syncService = ref.watch(cloudSyncServiceProvider);
   final tokens = ref.watch(tokenStorageProvider);
   return SyncRepositoryImpl(syncService, tokens);
+});
+
+final syncCoordinatorProvider = Provider<SyncCoordinator>((ref) {
+  final syncRepo = ref.watch(syncRepositoryProvider);
+  final coordinator = SyncCoordinator(syncRepo);
+  final isCloud = ref.watch(isCloudModeProvider);
+
+  if (isCloud) {
+    coordinator.startPeriodicSync();
+  } else {
+    coordinator.stopPeriodicSync();
+  }
+
+  ref.onDispose(() => coordinator.dispose());
+  return coordinator;
 });
 
 // ──────────────── Sync Status ────────────────

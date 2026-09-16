@@ -454,6 +454,35 @@ class TransactionRepositoryImpl implements ITransactionRepository {
         updatedAt: Value(now),
       ));
 
+      // 4. Enqueue REFUND_TRANSACTION sync event if in Cloud Mode
+      if (_isCloudMode) {
+        await _db.syncEventDao.insertRawEvent(
+          id: _uuid.v4(),
+          storeId: trx.storeId,
+          deviceId: _deviceId ?? 'pos-device',
+          entityType: 'Transaction',
+          entityId: transactionId,
+          operation: 'REFUND_TRANSACTION',
+          payload: jsonEncode({
+            'id': refundId,
+            'transactionId': transactionId,
+            'reason': reason,
+            'amount': totalRefundAmount,
+            'refundedAt': now.toUtc().toIso8601String(),
+            'isFullRefund': totalRefundedQty >= originalTotalQty,
+            'items': items.map((it) => {
+              'transactionItemId': it.transactionItemId,
+              'productId': it.productId,
+              'variantId': it.variantId,
+              'quantity': it.quantity,
+              'refundAmount': it.refundAmount,
+            }).toList(),
+          }),
+          status: 'PENDING',
+          createdAt: now,
+        );
+      }
+
       return refundId;
     });
   }
@@ -509,7 +538,9 @@ class TransactionRepositoryImpl implements ITransactionRepository {
     final year = date.year.toString();
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
-    final suffix = _uuid.v4().substring(0, 4).toUpperCase();
-    return 'TRX-$year$month$day-$suffix';
+    final timeStr =
+        '${date.hour.toString().padLeft(2, '0')}${date.minute.toString().padLeft(2, '0')}${date.second.toString().padLeft(2, '0')}';
+    final suffix = _uuid.v4().replaceAll('-', '').substring(0, 8).toUpperCase();
+    return 'TRX-$year$month$day-$timeStr-$suffix';
   }
 }

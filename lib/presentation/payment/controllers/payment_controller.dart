@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
+import '../../../core/providers/cloud_providers.dart';
 import '../../../domain/models/payment_input.dart';
 import '../../../domain/repositories/i_store_repository.dart';
 import '../../../domain/repositories/i_transaction_repository.dart';
@@ -71,6 +72,11 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
       // Reset cart after successful transaction
       _ref.read(cartControllerProvider.notifier).clearCart();
 
+      // Trigger automatic background push in Cloud Mode
+      if (_ref.read(isCloudModeProvider)) {
+        _ref.read(syncCoordinatorProvider).triggerImmediatePush();
+      }
+
       state = AsyncValue.data(transactionId);
       return transactionId;
     } catch (e, st) {
@@ -90,6 +96,12 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
         transactionId: transactionId,
         reason: reason,
       );
+
+      // Trigger automatic background push in Cloud Mode
+      if (_ref.read(isCloudModeProvider)) {
+        _ref.read(syncCoordinatorProvider).triggerImmediatePush();
+      }
+
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -112,6 +124,12 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
         items: items,
         totalRefundAmount: totalRefundAmount,
       );
+
+      // Trigger automatic background push in Cloud Mode
+      if (_ref.read(isCloudModeProvider)) {
+        _ref.read(syncCoordinatorProvider).triggerImmediatePush();
+      }
+
       state = const AsyncValue.data(null);
       return refundId;
     } catch (e, st) {

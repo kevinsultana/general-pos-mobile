@@ -10,7 +10,8 @@ const String defaultStoreId = AppConstants.defaultStoreId;
 
 final categoryListStreamProvider = StreamProvider<List<Category>>((ref) {
   final repo = ref.watch(productRepositoryProvider);
-  return repo.watchCategories(defaultStoreId);
+  final storeId = ref.watch(activeStoreIdProvider);
+  return repo.watchCategories(storeId);
 });
 
 final categoryControllerProvider =
@@ -28,13 +29,14 @@ class CategoryController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     try {
       final repo = _ref.read(productRepositoryProvider);
+      final storeId = _ref.read(activeStoreIdProvider);
       final id = _uuid.v4();
       final now = DateTime.now();
 
       await repo.saveCategory(
         CategoriesCompanion(
           id: Value(id),
-          storeId: const Value(defaultStoreId),
+          storeId: Value(storeId),
           name: Value(name.trim()),
           createdAt: Value(now),
           updatedAt: Value(now),
@@ -44,7 +46,7 @@ class CategoryController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return Category(
         id: id,
-        storeId: defaultStoreId,
+        storeId: storeId,
         name: name.trim(),
         createdAt: now,
         updatedAt: now,

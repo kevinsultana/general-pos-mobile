@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -8,9 +9,17 @@ import '../local/daos/customer_dao.dart';
 class CustomerRepositoryImpl implements ICustomerRepository {
   final CustomerDao _customerDao;
   final Uuid _uuid;
+  final AppDatabase? _db;
+  final bool _isCloudMode;
+  final String? _deviceId;
 
-  CustomerRepositoryImpl(this._customerDao, {Uuid? uuid})
-      : _uuid = uuid ?? const Uuid();
+  CustomerRepositoryImpl(
+    this._customerDao, {
+    Uuid? uuid,
+    this._db,
+    this._isCloudMode = false,
+    this._deviceId,
+  }) : _uuid = uuid ?? const Uuid();
 
   @override
   Future<List<Customer>> getCustomers(String storeId) {
@@ -56,6 +65,26 @@ class CustomerRepositoryImpl implements ICustomerRepository {
       ),
     );
 
+    if (_isCloudMode && _db != null) {
+      await _db.syncEventDao.insertRawEvent(
+        id: _uuid.v4(),
+        storeId: storeId,
+        deviceId: _deviceId ?? 'pos-device',
+        entityType: 'Customer',
+        entityId: customerId,
+        operation: 'CREATE_CUSTOMER',
+        payload: jsonEncode({
+          'id': customerId,
+          'name': name.trim(),
+          'phone': phone?.trim(),
+          'email': email?.trim(),
+          'notes': notes?.trim(),
+        }),
+        status: 'PENDING',
+        createdAt: now,
+      );
+    }
+
     return customerId;
   }
 
@@ -86,10 +115,47 @@ class CustomerRepositoryImpl implements ICustomerRepository {
         updatedAt: Value(now),
       ),
     );
+
+    if (_isCloudMode && _db != null) {
+      await _db.syncEventDao.insertRawEvent(
+        id: _uuid.v4(),
+        storeId: storeId,
+        deviceId: _deviceId ?? 'pos-device',
+        entityType: 'Customer',
+        entityId: id,
+        operation: 'UPDATE_CUSTOMER',
+        payload: jsonEncode({
+          'id': id,
+          'name': name.trim(),
+          'phone': phone?.trim(),
+          'email': email?.trim(),
+          'notes': notes?.trim(),
+        }),
+        status: 'PENDING',
+        createdAt: now,
+      );
+    }
   }
 
   @override
   Future<void> deleteCustomer(String id) async {
+    final existing = await _customerDao.getCustomerById(id);
     await _customerDao.deleteCustomer(id);
+
+    if (_isCloudMode && _db != null && existing != null) {
+      await _db.syncEventDao.insertRawEvent(
+        id: _uuid.v4(),
+        storeId: existing.storeId,
+        deviceId: _deviceId ?? 'pos-device',
+        entityType: 'Customer',
+        entityId: id,
+        operation: 'DELETE_CUSTOMER',
+        payload: jsonEncode({
+          'id': id,
+        }),
+        status: 'PENDING',
+        createdAt: DateTime.now(),
+      );
+    }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_constants.dart';
 import '../../data/local/app_database.dart';
@@ -65,15 +66,69 @@ final storeRepositoryProvider = Provider<IStoreRepository>((ref) {
   return StoreRepositoryImpl(db.storeDao);
 });
 
+/// Active store ID based on operational mode:
+/// In Cloud mode -> gets storeId from authenticated cloud user or token storage
+/// In Local mode -> defaults to AppConstants.defaultStoreId ('store-default-001')
+final activeStoreIdProvider = Provider<String>((ref) {
+  final isCloud = ref.watch(isCloudModeProvider);
+  if (isCloud) {
+    final cloudUser = ref.watch(cloudAuthProvider).valueOrNull;
+    if (cloudUser != null && cloudUser.storeId.isNotEmpty) {
+      return cloudUser.storeId;
+    }
+  }
+  return AppConstants.defaultStoreId;
+});
+
 final currentStoreStreamProvider = StreamProvider.autoDispose<Store?>((ref) async* {
   final storeRepo = ref.watch(storeRepositoryProvider);
-  await storeRepo.ensureDefaultStore();
-  yield* storeRepo.watchCurrentStore();
+  final isCloud = ref.watch(isCloudModeProvider);
+  final cloudUser = ref.watch(cloudAuthProvider).valueOrNull;
+
+  if (isCloud && cloudUser != null && cloudUser.storeId.isNotEmpty) {
+    final existing = await storeRepo.getStore(cloudUser.storeId);
+    if (existing == null) {
+      await storeRepo.saveStore(
+        StoresCompanion.insert(
+          id: cloudUser.storeId,
+          name: cloudUser.storeName.isNotEmpty ? cloudUser.storeName : 'Toko Cloud POS',
+          ownerName: Value(cloudUser.displayName),
+          currency: const Value('IDR'),
+          timezone: const Value('Asia/Jakarta'),
+          language: const Value('id'),
+          businessType: const Value('GENERAL'),
+          customerEnabled: const Value(true),
+          draftEnabled: const Value(true),
+          splitPaymentEnabled: const Value(true),
+          refundEnabled: const Value(true),
+          cashRoundingEnabled: const Value(true),
+          cashRoundingIncrement: const Value(100),
+          cashRoundingMode: const Value('ROUND_NEAREST'),
+          subscriptionPlan: const Value('PRO'),
+          subscriptionStatus: const Value('ACTIVE'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+    }
+    yield* storeRepo.watchStore(cloudUser.storeId);
+  } else {
+    await storeRepo.ensureDefaultStore();
+    yield* storeRepo.watchCurrentStore();
+  }
 });
 
 final productRepositoryProvider = Provider<IProductRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return ProductRepositoryImpl(db.productDao, db.categoryDao);
+  final isCloud = ref.watch(isCloudModeProvider);
+  final deviceId = ref.watch(deviceIdProvider).valueOrNull;
+  return ProductRepositoryImpl(
+    db.productDao,
+    db.categoryDao,
+    db: db,
+    isCloudMode: isCloud,
+    deviceId: deviceId,
+  );
 });
 
 final inventoryRepositoryProvider = Provider<IInventoryRepository>((ref) {
@@ -85,7 +140,8 @@ final inventoryRepositoryProvider = Provider<IInventoryRepository>((ref) {
 final transactionRepositoryProvider = Provider<ITransactionRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final isCloud = ref.watch(isCloudModeProvider);
-  return TransactionRepositoryImpl(db, null, isCloud);
+  final deviceId = ref.watch(deviceIdProvider).valueOrNull;
+  return TransactionRepositoryImpl(db, null, isCloud, deviceId);
 });
 
 final draftRepositoryProvider = Provider<IDraftRepository>((ref) {
@@ -95,7 +151,14 @@ final draftRepositoryProvider = Provider<IDraftRepository>((ref) {
 
 final customerRepositoryProvider = Provider<ICustomerRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
-  return CustomerRepositoryImpl(db.customerDao);
+  final isCloud = ref.watch(isCloudModeProvider);
+  final deviceId = ref.watch(deviceIdProvider).valueOrNull;
+  return CustomerRepositoryImpl(
+    db.customerDao,
+    db: db,
+    isCloudMode: isCloud,
+    deviceId: deviceId,
+  );
 });
 
 final promotionRepositoryProvider = Provider<IPromotionRepository>((ref) {
@@ -113,22 +176,26 @@ final transactionCalculatorProvider = Provider<TransactionCalculator>((ref) {
 
 final draftListStreamProvider = StreamProvider.autoDispose<List<Transaction>>((ref) {
   final draftRepo = ref.watch(draftRepositoryProvider);
-  return draftRepo.watchDrafts(AppConstants.defaultStoreId);
+  final storeId = ref.watch(activeStoreIdProvider);
+  return draftRepo.watchDrafts(storeId);
 });
 
 final transactionListStreamProvider = StreamProvider.autoDispose<List<Transaction>>((ref) {
   final trxRepo = ref.watch(transactionRepositoryProvider);
-  return trxRepo.watchTransactions(AppConstants.defaultStoreId);
+  final storeId = ref.watch(activeStoreIdProvider);
+  return trxRepo.watchTransactions(storeId);
 });
 
 final customerListStreamProvider = StreamProvider.autoDispose<List<Customer>>((ref) {
   final customerRepo = ref.watch(customerRepositoryProvider);
-  return customerRepo.watchCustomers(AppConstants.defaultStoreId);
+  final storeId = ref.watch(activeStoreIdProvider);
+  return customerRepo.watchCustomers(storeId);
 });
 
 final promotionListStreamProvider = StreamProvider.autoDispose<List<Promotion>>((ref) {
   final promoRepo = ref.watch(promotionRepositoryProvider);
-  return promoRepo.watchPromotions(AppConstants.defaultStoreId);
+  final storeId = ref.watch(activeStoreIdProvider);
+  return promoRepo.watchPromotions(storeId);
 });
 
 final reportRepositoryProvider = Provider<IReportRepository>((ref) {
@@ -211,7 +278,8 @@ final printerServiceProvider = Provider<PrinterService>((ref) {
 final printerListStreamProvider =
     StreamProvider.autoDispose<List<PrinterDevice>>((ref) {
   final repo = ref.watch(printerRepositoryProvider);
-  return repo.watchAllPrinters(AppConstants.defaultStoreId);
+  final storeId = ref.watch(activeStoreIdProvider);
+  return repo.watchAllPrinters(storeId);
 });
 
 

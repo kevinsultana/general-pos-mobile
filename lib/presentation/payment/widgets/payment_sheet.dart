@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/payment_input.dart';
@@ -807,9 +808,10 @@ class _PaymentSheetState extends ConsumerState<PaymentSheet> {
     }
 
     try {
+      final activeStoreId = ref.read(activeStoreIdProvider);
       final transactionId = await ref
           .read(paymentControllerProvider.notifier)
-          .completePayment(payments: payments);
+          .completePayment(payments: payments, storeId: activeStoreId);
 
       if (mounted) {
         Navigator.pop(context); // Close PaymentSheet
