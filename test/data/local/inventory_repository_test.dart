@@ -70,7 +70,7 @@ void main() {
     // 3. Verify stock movement entry
     final movements = await inventoryRepo.getProductStockMovements(productId);
     expect(movements.length, equals(1));
-    expect(movements.first.type, equals('IN'));
+    expect(movements.first.type, equals('STOCK_IN'));
     expect(movements.first.quantityDelta, equals(20000)); // 20 units * 1000 scale
     expect(movements.first.unitCost, equals(6000));
     expect(movements.first.reason, equals('Purchase Batch 2'));
@@ -89,6 +89,6 @@ void main() {
     final allMovements = await inventoryRepo.getProductStockMovements(productId);
     expect(allMovements.length, equals(2));
     expect(allMovements.any((m) => m.type == 'ADJUSTMENT' && m.quantityDelta == -5000), isTrue);
-    expect(allMovements.any((m) => m.type == 'IN' && m.quantityDelta == 20000), isTrue);
+    expect(allMovements.any((m) => m.type == 'STOCK_IN' && m.quantityDelta == 20000), isTrue);
   });
 }

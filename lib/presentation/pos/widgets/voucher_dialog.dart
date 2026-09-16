@@ -92,7 +92,9 @@ class _VoucherDialogState extends ConsumerState<VoucherDialog>
       vsync: this,
       initialIndex: widget.currentPromotionId != null ? 1 : 0,
     );
-    _manualType = widget.initialType ?? 'PERCENTAGE';
+    _manualType = widget.initialType == 'FIXED' || widget.initialType == 'FIXED_AMOUNT'
+        ? 'FIXED_AMOUNT'
+        : (widget.initialType ?? 'PERCENTAGE');
     _manualValueController = TextEditingController(
       text: widget.initialValue != null && widget.initialValue! > 0
           ? widget.initialValue.toString()
@@ -236,7 +238,7 @@ class _VoucherDialogState extends ConsumerState<VoucherDialog>
                         icon: Icon(Icons.percent_rounded),
                       ),
                       ButtonSegment(
-                        value: 'FIXED',
+                        value: 'FIXED_AMOUNT',
                         label: Text('Nominal (Rp)'),
                         icon: Icon(Icons.money_rounded),
                       ),
@@ -258,7 +260,7 @@ class _VoucherDialogState extends ConsumerState<VoucherDialog>
                       labelText: _manualType == 'PERCENTAGE'
                           ? 'Persentase Diskon (0 - 100%)'
                           : 'Nominal Potongan (Rp)',
-                      prefixText: _manualType == 'FIXED' ? 'Rp ' : null,
+                      prefixText: _manualType == 'PERCENTAGE' ? null : 'Rp ',
                       suffixText: _manualType == 'PERCENTAGE' ? '%' : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),

@@ -12,12 +12,16 @@ class PaymentInput {
     required this.paymentMethodId,
     required this.paymentType,
     required this.amount,
-    this.roundingAmount = 0,
+    int roundingAmount = 0,
     this.tenderedAmount,
     this.changeAmount,
     this.referenceNumber,
     this.note,
-  });
+  })  : roundingAmount = paymentType == 'CASH' ? roundingAmount : 0,
+        assert(
+          paymentType == 'CASH' || roundingAmount == 0,
+          'Cash rounding only applies to CASH payments. Received paymentType=$paymentType with roundingAmount=$roundingAmount',
+        );
 
   /// Total cash received from customer including rounding
   int get totalCashDue => amount + roundingAmount;

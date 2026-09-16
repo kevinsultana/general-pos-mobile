@@ -22,7 +22,7 @@ class SyncCursors extends Table {
   TextColumn get id => text()();
   TextColumn get storeId => text()();
   TextColumn get deviceId => text()();
-  IntColumn get cursor => integer().withDefault(const Constant(0))();
+  Int64Column get cursor => int64().withDefault(Constant(BigInt.zero))();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override

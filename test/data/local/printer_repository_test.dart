@@ -117,4 +117,48 @@ void main() {
     expect(afterDelete.length, equals(1));
     expect(afterDelete.first.id, equals('printer-c1'));
   });
+
+  test('PrinterRole.both and PrinterPaperSize (PAPER_58MM, PAPER_80MM) mapping tests', () async {
+    final now = DateTime.now();
+
+    // 1. Verify PrinterPaperSize mapping
+    expect(PrinterPaperSize.mm58.toDbString(), equals('PAPER_58MM'));
+    expect(PrinterPaperSize.mm80.toDbString(), equals('PAPER_80MM'));
+    expect(PrinterPaperSize.fromString('PAPER_58MM'), equals(PrinterPaperSize.mm58));
+    expect(PrinterPaperSize.fromString('PAPER_80MM'), equals(PrinterPaperSize.mm80));
+    expect(PrinterPaperSize.fromString('80mm'), equals(PrinterPaperSize.mm80));
+    expect(PrinterPaperSize.fromString('58mm'), equals(PrinterPaperSize.mm58));
+    expect(PrinterPaperSize.fromString(null), equals(PrinterPaperSize.mm58));
+
+    // 2. Save Dual-Role Printer (BOTH)
+    final bothPrinter = PrinterDevice(
+      id: 'printer-both-01',
+      storeId: storeId,
+      name: 'Dual Receipt & Kitchen 80mm',
+      role: PrinterRole.both,
+      connectionType: PrinterConnectionType.network,
+      addressReference: '192.168.1.100',
+      paperSize: PrinterPaperSize.mm80,
+      receiptCopies: 1,
+      kitchenCopies: 1,
+      autoPrint: true,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await printerRepo.savePrinter(bothPrinter);
+
+    // 3. Fetch and verify BOTH role and PAPER_80MM configuration
+    final fetchedBoth = await printerRepo.getPrinterById('printer-both-01');
+    expect(fetchedBoth, isNotNull);
+    expect(fetchedBoth!.role, equals(PrinterRole.both));
+    expect(fetchedBoth.role.toDbString(), equals('BOTH'));
+    expect(fetchedBoth.paperSize, equals(PrinterPaperSize.mm80));
+    expect(fetchedBoth.paperSize.toDbString(), equals('PAPER_80MM'));
+
+    // 4. Query active printers by BOTH role
+    final bothPrinters = await printerRepo.getActivePrintersByRole(storeId, PrinterRole.both);
+    expect(bothPrinters.length, equals(1));
+    expect(bothPrinters.first.id, equals('printer-both-01'));
+  });
 }

@@ -6,7 +6,7 @@ class StockMovements extends Table {
   TextColumn get productId => text()();
   TextColumn get variantId => text().nullable()();
 
-  // Type: IN, SALE, ADJUSTMENT, CANCEL, REFUND
+  // Type: INITIAL, STOCK_IN, SALE, ADJUSTMENT, CANCEL_REVERSAL, REFUND_REVERSAL
   TextColumn get type => text()();
 
   // Signed integer with scale 1000 (e.g., 1 unit = 1000, -2 units = -2000)

@@ -45,6 +45,7 @@ class PromotionRepositoryImpl implements IPromotionRepository {
     required String discountType,
     required int discountValue,
     int minSpend = 0,
+    int? minimumPurchase,
     DateTime? startDate,
     DateTime? endDate,
     String? productId,
@@ -52,6 +53,10 @@ class PromotionRepositoryImpl implements IPromotionRepository {
   }) async {
     final now = DateTime.now();
     final promoId = _uuid.v4();
+    final effectiveMin = minimumPurchase ?? minSpend;
+    final normalizedType = discountType.trim().toUpperCase() == 'FIXED'
+        ? 'FIXED_AMOUNT'
+        : discountType.trim().toUpperCase();
 
     await _promotionDao.insertPromotion(
       PromotionsCompanion(
@@ -59,9 +64,9 @@ class PromotionRepositoryImpl implements IPromotionRepository {
         storeId: Value(storeId),
         name: Value(name.trim()),
         code: Value(code?.trim().toUpperCase()),
-        discountType: Value(discountType),
+        discountType: Value(normalizedType),
         discountValue: Value(discountValue),
-        minSpend: Value(minSpend),
+        minSpend: Value(effectiveMin),
         startDate: Value(startDate),
         endDate: Value(endDate),
         productId: Value(productId),
@@ -83,6 +88,7 @@ class PromotionRepositoryImpl implements IPromotionRepository {
     required String discountType,
     required int discountValue,
     int minSpend = 0,
+    int? minimumPurchase,
     DateTime? startDate,
     DateTime? endDate,
     String? productId,
@@ -94,15 +100,20 @@ class PromotionRepositoryImpl implements IPromotionRepository {
     }
 
     final now = DateTime.now();
+    final effectiveMin = minimumPurchase ?? minSpend;
+    final normalizedType = discountType.trim().toUpperCase() == 'FIXED'
+        ? 'FIXED_AMOUNT'
+        : discountType.trim().toUpperCase();
+
     await _promotionDao.updatePromotion(
       PromotionsCompanion(
         id: Value(id),
         storeId: Value(storeId),
         name: Value(name.trim()),
         code: Value(code?.trim().toUpperCase()),
-        discountType: Value(discountType),
+        discountType: Value(normalizedType),
         discountValue: Value(discountValue),
-        minSpend: Value(minSpend),
+        minSpend: Value(effectiveMin),
         startDate: Value(startDate),
         endDate: Value(endDate),
         productId: Value(productId),

@@ -23,7 +23,6 @@ void main() {
 
     // Verify that HomeScreen title and components are rendered
     expect(find.text('UMKM POS'), findsWidgets);
-    expect(find.text('PHASE 0'), findsOneWidget);
     expect(find.text('Pembulatan Tunai'), findsOneWidget);
   });
 }

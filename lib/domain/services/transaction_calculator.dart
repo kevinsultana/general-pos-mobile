@@ -43,7 +43,7 @@ class TransactionCalculator {
     if (discountType == 'PERCENTAGE') {
       final calculated = (subtotal * discountValue / 100).round();
       return math.min(subtotal, math.max(0, calculated));
-    } else if (discountType == 'FIXED') {
+    } else if (discountType == 'FIXED' || discountType == 'FIXED_AMOUNT') {
       return math.min(subtotal, math.max(0, discountValue));
     }
 

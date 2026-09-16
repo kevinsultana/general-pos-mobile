@@ -4820,7 +4820,13 @@ class Promotion extends DataClass implements Insertable<Promotion> {
   final String name;
   final String? code;
   final String discountType;
+
+  /// Value of discount: percentage (e.g. 10 for 10%) or fixed Rupiah nominal (e.g. 10000).
   final int discountValue;
+
+  /// Corresponds to Prisma `minimumPurchase Decimal(18,2)` in backend.
+  /// Stored as whole Rupiah without fractional cents (1:1 scale, Rp 1 = 1 unit).
+  /// E.g. Rp 50.000 = 50000. DO NOT multiply or divide by 100/1000.
   final int minSpend;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -5456,6 +5462,17 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _refundedAtMeta = const VerificationMeta(
+    'refundedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> refundedAt = GeneratedColumn<DateTime>(
+    'refunded_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -5489,6 +5506,7 @@ class $TransactionsTable extends Transactions
     createdAt,
     completedAt,
     cancelledAt,
+    refundedAt,
     updatedAt,
   ];
   @override
@@ -5667,6 +5685,12 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('refunded_at')) {
+      context.handle(
+        _refundedAtMeta,
+        refundedAt.isAcceptableOrUnknown(data['refunded_at']!, _refundedAtMeta),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -5768,6 +5792,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.dateTime,
         data['${effectivePrefix}cancelled_at'],
       ),
+      refundedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}refunded_at'],
+      ),
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -5802,6 +5830,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final DateTime createdAt;
   final DateTime? completedAt;
   final DateTime? cancelledAt;
+  final DateTime? refundedAt;
   final DateTime updatedAt;
   const Transaction({
     required this.id,
@@ -5824,6 +5853,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.createdAt,
     this.completedAt,
     this.cancelledAt,
+    this.refundedAt,
     required this.updatedAt,
   });
   @override
@@ -5868,6 +5898,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     if (!nullToAbsent || cancelledAt != null) {
       map['cancelled_at'] = Variable<DateTime>(cancelledAt);
+    }
+    if (!nullToAbsent || refundedAt != null) {
+      map['refunded_at'] = Variable<DateTime>(refundedAt);
     }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -5915,6 +5948,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       cancelledAt: cancelledAt == null && nullToAbsent
           ? const Value.absent()
           : Value(cancelledAt),
+      refundedAt: refundedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(refundedAt),
       updatedAt: Value(updatedAt),
     );
   }
@@ -5945,6 +5981,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
+      refundedAt: serializer.fromJson<DateTime?>(json['refundedAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -5972,6 +6009,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
+      'refundedAt': serializer.toJson<DateTime?>(refundedAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -5997,6 +6035,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     DateTime? createdAt,
     Value<DateTime?> completedAt = const Value.absent(),
     Value<DateTime?> cancelledAt = const Value.absent(),
+    Value<DateTime?> refundedAt = const Value.absent(),
     DateTime? updatedAt,
   }) => Transaction(
     id: id ?? this.id,
@@ -6023,6 +6062,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     createdAt: createdAt ?? this.createdAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
+    refundedAt: refundedAt.present ? refundedAt.value : this.refundedAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   Transaction copyWithCompanion(TransactionsCompanion data) {
@@ -6071,6 +6111,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       cancelledAt: data.cancelledAt.present
           ? data.cancelledAt.value
           : this.cancelledAt,
+      refundedAt: data.refundedAt.present
+          ? data.refundedAt.value
+          : this.refundedAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -6098,6 +6141,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('cancelledAt: $cancelledAt, ')
+          ..write('refundedAt: $refundedAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -6125,6 +6169,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     createdAt,
     completedAt,
     cancelledAt,
+    refundedAt,
     updatedAt,
   ]);
   @override
@@ -6151,6 +6196,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.createdAt == this.createdAt &&
           other.completedAt == this.completedAt &&
           other.cancelledAt == this.cancelledAt &&
+          other.refundedAt == this.refundedAt &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -6175,6 +6221,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<DateTime> createdAt;
   final Value<DateTime?> completedAt;
   final Value<DateTime?> cancelledAt;
+  final Value<DateTime?> refundedAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const TransactionsCompanion({
@@ -6198,6 +6245,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.createdAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.cancelledAt = const Value.absent(),
+    this.refundedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -6222,6 +6270,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required DateTime createdAt,
     this.completedAt = const Value.absent(),
     this.cancelledAt = const Value.absent(),
+    this.refundedAt = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -6253,6 +6302,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? cancelledAt,
+    Expression<DateTime>? refundedAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -6277,6 +6327,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (createdAt != null) 'created_at': createdAt,
       if (completedAt != null) 'completed_at': completedAt,
       if (cancelledAt != null) 'cancelled_at': cancelledAt,
+      if (refundedAt != null) 'refunded_at': refundedAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -6303,6 +6354,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<DateTime>? createdAt,
     Value<DateTime?>? completedAt,
     Value<DateTime?>? cancelledAt,
+    Value<DateTime?>? refundedAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -6327,6 +6379,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
       cancelledAt: cancelledAt ?? this.cancelledAt,
+      refundedAt: refundedAt ?? this.refundedAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -6395,6 +6448,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (cancelledAt.present) {
       map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
     }
+    if (refundedAt.present) {
+      map['refunded_at'] = Variable<DateTime>(refundedAt.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -6427,6 +6483,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('cancelledAt: $cancelledAt, ')
+          ..write('refundedAt: $refundedAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -10938,13 +10995,13 @@ class $SyncCursorsTable extends SyncCursors
   );
   static const VerificationMeta _cursorMeta = const VerificationMeta('cursor');
   @override
-  late final GeneratedColumn<int> cursor = GeneratedColumn<int>(
+  late final GeneratedColumn<BigInt> cursor = GeneratedColumn<BigInt>(
     'cursor',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.bigInt,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0),
+    defaultValue: Constant(BigInt.zero),
   );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
@@ -11038,7 +11095,7 @@ class $SyncCursorsTable extends SyncCursors
         data['${effectivePrefix}device_id'],
       )!,
       cursor: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.bigInt,
         data['${effectivePrefix}cursor'],
       )!,
       updatedAt: attachedDatabase.typeMapping.read(
@@ -11058,7 +11115,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
   final String id;
   final String storeId;
   final String deviceId;
-  final int cursor;
+  final BigInt cursor;
   final DateTime updatedAt;
   const SyncCursor({
     required this.id,
@@ -11073,7 +11130,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
     map['id'] = Variable<String>(id);
     map['store_id'] = Variable<String>(storeId);
     map['device_id'] = Variable<String>(deviceId);
-    map['cursor'] = Variable<int>(cursor);
+    map['cursor'] = Variable<BigInt>(cursor);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -11097,7 +11154,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
       id: serializer.fromJson<String>(json['id']),
       storeId: serializer.fromJson<String>(json['storeId']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
-      cursor: serializer.fromJson<int>(json['cursor']),
+      cursor: serializer.fromJson<BigInt>(json['cursor']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -11108,7 +11165,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
       'id': serializer.toJson<String>(id),
       'storeId': serializer.toJson<String>(storeId),
       'deviceId': serializer.toJson<String>(deviceId),
-      'cursor': serializer.toJson<int>(cursor),
+      'cursor': serializer.toJson<BigInt>(cursor),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -11117,7 +11174,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
     String? id,
     String? storeId,
     String? deviceId,
-    int? cursor,
+    BigInt? cursor,
     DateTime? updatedAt,
   }) => SyncCursor(
     id: id ?? this.id,
@@ -11165,7 +11222,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
   final Value<String> id;
   final Value<String> storeId;
   final Value<String> deviceId;
-  final Value<int> cursor;
+  final Value<BigInt> cursor;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const SyncCursorsCompanion({
@@ -11191,7 +11248,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
     Expression<String>? id,
     Expression<String>? storeId,
     Expression<String>? deviceId,
-    Expression<int>? cursor,
+    Expression<BigInt>? cursor,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -11209,7 +11266,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
     Value<String>? id,
     Value<String>? storeId,
     Value<String>? deviceId,
-    Value<int>? cursor,
+    Value<BigInt>? cursor,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -11236,7 +11293,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
       map['device_id'] = Variable<String>(deviceId.value);
     }
     if (cursor.present) {
-      map['cursor'] = Variable<int>(cursor.value);
+      map['cursor'] = Variable<BigInt>(cursor.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
@@ -13836,6 +13893,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required DateTime createdAt,
       Value<DateTime?> completedAt,
       Value<DateTime?> cancelledAt,
+      Value<DateTime?> refundedAt,
       required DateTime updatedAt,
       Value<int> rowid,
     });
@@ -13861,6 +13919,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime?> completedAt,
       Value<DateTime?> cancelledAt,
+      Value<DateTime?> refundedAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -13971,6 +14030,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
     column: $table.cancelledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get refundedAt => $composableBuilder(
+    column: $table.refundedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14089,6 +14153,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get refundedAt => $composableBuilder(
+    column: $table.refundedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -14188,6 +14257,11 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get refundedAt => $composableBuilder(
+    column: $table.refundedAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
@@ -14243,6 +14317,7 @@ class $$TransactionsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<DateTime?> refundedAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
@@ -14266,6 +14341,7 @@ class $$TransactionsTableTableManager
                 createdAt: createdAt,
                 completedAt: completedAt,
                 cancelledAt: cancelledAt,
+                refundedAt: refundedAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -14291,6 +14367,7 @@ class $$TransactionsTableTableManager
                 required DateTime createdAt,
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<DateTime?> refundedAt = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -14314,6 +14391,7 @@ class $$TransactionsTableTableManager
                 createdAt: createdAt,
                 completedAt: completedAt,
                 cancelledAt: cancelledAt,
+                refundedAt: refundedAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -16549,7 +16627,7 @@ typedef $$SyncCursorsTableCreateCompanionBuilder =
       required String id,
       required String storeId,
       required String deviceId,
-      Value<int> cursor,
+      Value<BigInt> cursor,
       required DateTime updatedAt,
       Value<int> rowid,
     });
@@ -16558,7 +16636,7 @@ typedef $$SyncCursorsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> storeId,
       Value<String> deviceId,
-      Value<int> cursor,
+      Value<BigInt> cursor,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -16587,7 +16665,7 @@ class $$SyncCursorsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get cursor => $composableBuilder(
+  ColumnFilters<BigInt> get cursor => $composableBuilder(
     column: $table.cursor,
     builder: (column) => ColumnFilters(column),
   );
@@ -16622,7 +16700,7 @@ class $$SyncCursorsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get cursor => $composableBuilder(
+  ColumnOrderings<BigInt> get cursor => $composableBuilder(
     column: $table.cursor,
     builder: (column) => ColumnOrderings(column),
   );
@@ -16651,7 +16729,7 @@ class $$SyncCursorsTableAnnotationComposer
   GeneratedColumn<String> get deviceId =>
       $composableBuilder(column: $table.deviceId, builder: (column) => column);
 
-  GeneratedColumn<int> get cursor =>
+  GeneratedColumn<BigInt> get cursor =>
       $composableBuilder(column: $table.cursor, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
@@ -16692,7 +16770,7 @@ class $$SyncCursorsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> storeId = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
-                Value<int> cursor = const Value.absent(),
+                Value<BigInt> cursor = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncCursorsCompanion(
@@ -16708,7 +16786,7 @@ class $$SyncCursorsTableTableManager
                 required String id,
                 required String storeId,
                 required String deviceId,
-                Value<int> cursor = const Value.absent(),
+                Value<BigInt> cursor = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => SyncCursorsCompanion.insert(

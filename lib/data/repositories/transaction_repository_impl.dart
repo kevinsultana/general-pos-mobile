@@ -43,6 +43,24 @@ class TransactionRepositoryImpl implements ITransactionRepository {
     final transactionId = _uuid.v4();
     final transactionNumber = _generateTransactionNumber(now);
 
+    final expectedRounding = payments
+        .where((p) => p.paymentType == 'CASH')
+        .fold<int>(0, (sum, p) => sum + p.roundingAmount);
+
+    for (final p in payments) {
+      if (p.paymentType != 'CASH' && p.roundingAmount != 0) {
+        throw ArgumentError(
+          'PRD Bab 21 / INV-013: Cash rounding hanya berlaku untuk metode pembayaran CASH, namun tipe ${p.paymentType} memiliki roundingAmount: ${p.roundingAmount}',
+        );
+      }
+    }
+
+    if (roundingAmount != expectedRounding) {
+      throw ArgumentError(
+        'PRD Bab 21 Invariant 1: Transaction.roundingAmount ($roundingAmount) harus sama dengan SUM(Payment.roundingAmount) ($expectedRounding)',
+      );
+    }
+
     final paidTotal = payments.fold<int>(0, (sum, p) => sum + p.amount);
 
     return _db.transaction(() async {
@@ -297,7 +315,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
                 storeId: Value(trx.storeId),
                 productId: Value(item.productId),
                 variantId: Value(item.variantId),
-                type: const Value('CANCEL'),
+                type: const Value('CANCEL_REVERSAL'),
                 quantityDelta: Value(item.quantity * 1000), // Positive reversal
                 unitCost: Value(item.unitCostSnapshot),
                 referenceType: const Value('TRANSACTION'),
@@ -408,7 +426,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
                 storeId: Value(trx.storeId),
                 productId: Value(refItem.productId),
                 variantId: Value(refItem.variantId),
-                type: const Value('REFUND'),
+                type: const Value('REFUND_REVERSAL'),
                 quantityDelta: Value(refItem.quantity * 1000),
                 referenceType: const Value('REFUND'),
                 referenceId: Value(refundId),
@@ -432,6 +450,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
             ..where((tbl) => tbl.id.equals(transactionId)))
           .write(TransactionsCompanion(
         status: Value(newStatus),
+        refundedAt: Value(now),
         updatedAt: Value(now),
       ));
 

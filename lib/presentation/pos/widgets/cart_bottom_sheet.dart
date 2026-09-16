@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/database_providers.dart';
+import '../../../core/providers/permission_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/local/app_database.dart';
@@ -48,6 +49,8 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
     final cartState = ref.watch(cartControllerProvider);
     final cartNotifier = ref.read(cartControllerProvider.notifier);
     final store = ref.watch(currentStoreStreamProvider).valueOrNull;
+    final canCreateTransaction =
+        ref.watch(hasPermissionProvider(AppPermissions.createTransaction));
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
@@ -671,70 +674,112 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
                   const SizedBox(height: 16),
 
                   // Action Buttons (Simpan Draft & Bayar)
-                  Row(
+                  Column(
                     children: [
-                      // Simpan Draft
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(color: AppColors.primary),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      if (!canCreateTransaction) ...[
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.lock_outline,
+                                  size: 14, color: AppColors.warning),
+                              SizedBox(width: 6),
+                              Text(
+                                'Akses kasir terbatas (perlu izin create_transaction)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textPrimaryLight,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      Row(
+                        children: [
+                          // Simpan Draft
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.textPrimaryLight,
+                                side: BorderSide(color: Colors.grey.shade300),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: !canCreateTransaction
+                                  ? null
+                                  : () async {
+                                      try {
+                                        final draftId =
+                                            await cartNotifier.saveAsDraft();
+                                        if (context.mounted) {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              backgroundColor:
+                                                  Colors.green.shade700,
+                                              content: Text(
+                                                'Draft pesanan berhasil disimpan (ID: ${draftId.substring(0, 8)}...)',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              backgroundColor: AppColors.danger,
+                                              content: Text(
+                                                  'Gagal menyimpan draft: $e'),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                              icon: const Icon(Icons.bookmark_add_outlined),
+                              label: const Text('Simpan Draft'),
                             ),
                           ),
-                          onPressed: () async {
-                            try {
-                              final draftId =
-                                  await cartNotifier.saveAsDraft();
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.green.shade700,
-                                    content: Text(
-                                      'Draft pesanan berhasil disimpan (ID: ${draftId.substring(0, 8)}...)',
-                                    ),
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: AppColors.danger,
-                                    content: Text('Gagal menyimpan draft: $e'),
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.bookmark_add_outlined),
-                          label: const Text('Simpan Draft'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                          const SizedBox(width: 12),
 
-                      // Bayar
-                      Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.accent,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          // Bayar
+                          Expanded(
+                            child: FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.accent,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: !canCreateTransaction
+                                  ? null
+                                  : () {
+                                      Navigator.pop(context);
+                                      PaymentSheet.show(context);
+                                    },
+                              icon: const Icon(Icons.payments_outlined),
+                              label: const Text(
+                                'Bayar',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            PaymentSheet.show(context);
-                          },
-                          icon: const Icon(Icons.payments_outlined),
-                          label: const Text(
-                            'Bayar',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
+                        ],
                       ),
                     ],
                   ),

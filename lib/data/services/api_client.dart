@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -10,9 +11,13 @@ class _StorageKeys {
   static const deviceId = 'cloud_device_id';
   static const userId = 'cloud_user_id';
   static const isCloudMode = 'cloud_mode_enabled';
+  static const permissions = 'cloud_permissions';
+  static const username = 'cloud_username';
+  static const displayName = 'cloud_display_name';
+  static const storeName = 'cloud_store_name';
 }
 
-/// Manages JWT tokens and cloud server URL in secure storage.
+/// Manages JWT tokens, cloud server URL, and cached user profile/permissions in secure storage.
 class TokenStorage {
   final FlutterSecureStorage _storage;
 
@@ -24,6 +29,20 @@ class TokenStorage {
   Future<String?> getStoreId() => _storage.read(key: _StorageKeys.storeId);
   Future<String?> getDeviceId() => _storage.read(key: _StorageKeys.deviceId);
   Future<String?> getUserId() => _storage.read(key: _StorageKeys.userId);
+  Future<String?> getUsername() => _storage.read(key: _StorageKeys.username);
+  Future<String?> getDisplayName() => _storage.read(key: _StorageKeys.displayName);
+  Future<String?> getStoreName() => _storage.read(key: _StorageKeys.storeName);
+
+  Future<List<String>> getPermissions() async {
+    final val = await _storage.read(key: _StorageKeys.permissions);
+    if (val == null || val.isEmpty) return [];
+    try {
+      final list = jsonDecode(val) as List<dynamic>;
+      return list.cast<String>();
+    } catch (_) {
+      return [];
+    }
+  }
 
   Future<bool> isCloudMode() async {
     final val = await _storage.read(key: _StorageKeys.isCloudMode);
@@ -44,6 +63,20 @@ class TokenStorage {
     ]);
   }
 
+  Future<void> saveUserData({
+    required String username,
+    required String displayName,
+    required String storeName,
+    required List<String> permissions,
+  }) async {
+    await Future.wait([
+      _storage.write(key: _StorageKeys.username, value: username),
+      _storage.write(key: _StorageKeys.displayName, value: displayName),
+      _storage.write(key: _StorageKeys.storeName, value: storeName),
+      _storage.write(key: _StorageKeys.permissions, value: jsonEncode(permissions)),
+    ]);
+  }
+
   Future<void> saveServerConfig({required String serverUrl, required String deviceId}) async {
     await Future.wait([
       _storage.write(key: _StorageKeys.serverUrl, value: serverUrl),
@@ -60,6 +93,10 @@ class TokenStorage {
       _storage.delete(key: _StorageKeys.refreshToken),
       _storage.delete(key: _StorageKeys.storeId),
       _storage.delete(key: _StorageKeys.userId),
+      _storage.delete(key: _StorageKeys.permissions),
+      _storage.delete(key: _StorageKeys.username),
+      _storage.delete(key: _StorageKeys.displayName),
+      _storage.delete(key: _StorageKeys.storeName),
     ]);
   }
 

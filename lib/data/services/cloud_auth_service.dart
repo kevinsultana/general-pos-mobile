@@ -65,6 +65,12 @@ class CloudAuthService {
         storeId: user.storeId,
         userId: user.userId,
       );
+      await _tokenStorage.saveUserData(
+        username: user.username,
+        displayName: user.displayName,
+        storeName: user.storeName,
+        permissions: user.permissions,
+      );
       await _tokenStorage.setCloudMode(true);
 
       return user;

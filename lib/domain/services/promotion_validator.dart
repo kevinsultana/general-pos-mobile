@@ -25,8 +25,9 @@ class PromotionValidator {
     DateTime? startDate,
     DateTime? endDate,
     int minSpend = 0,
+    int? minimumPurchase,
     String? productId,
-    required String discountType, // 'PERCENTAGE' or 'FIXED'
+    required String discountType, // 'PERCENTAGE' or 'FIXED_AMOUNT' (legacy 'FIXED' is also supported)
     required int discountValue,
     required int cartSubtotal,
     required List<CartItem> cartItems,
@@ -46,8 +47,10 @@ class PromotionValidator {
       return const PromotionValidationResult.invalid('Promosi telah berakhir');
     }
 
-    if (cartSubtotal < minSpend) {
-      final formattedMin = CurrencyFormatter.format(minSpend);
+    // Scale is 1:1 whole Rupiah (Rp 1 = 1 unit)
+    final effectiveMinSpend = minimumPurchase ?? minSpend;
+    if (cartSubtotal < effectiveMinSpend) {
+      final formattedMin = CurrencyFormatter.format(effectiveMinSpend);
       return PromotionValidationResult.invalid(
         'Belanja minimal $formattedMin untuk menggunakan promo ini',
       );
@@ -65,11 +68,12 @@ class PromotionValidator {
 
     // Calculate discount amount
     int discount = 0;
-    if (discountType == 'PERCENTAGE') {
+    final normalizedType = discountType.trim().toUpperCase();
+    if (normalizedType == 'PERCENTAGE') {
       if (discountValue <= 0) return const PromotionValidationResult.valid(0);
       final pct = discountValue > 100 ? 100 : discountValue;
       discount = (cartSubtotal * pct) ~/ 100;
-    } else if (discountType == 'FIXED') {
+    } else if (normalizedType == 'FIXED' || normalizedType == 'FIXED_AMOUNT') {
       discount = discountValue <= 0 ? 0 : discountValue;
     }
 

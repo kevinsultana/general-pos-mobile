@@ -92,7 +92,7 @@ void main() {
           transactionId: const Value(trxId),
           productId: const Value('prod-001'),
           productNameSnapshot: const Value('Kopi Susu Regal'),
-          quantity: const Value(2000), // 2 units (scale 1000)
+          quantity: const Value(2), // 2 units (raw, no scaling)
           unitPrice: const Value(20000),
           unitCostSnapshot: const Value(10000),
           subtotal: const Value(40000),

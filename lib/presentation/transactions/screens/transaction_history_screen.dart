@@ -357,9 +357,10 @@ class _TransactionDetailSheet extends ConsumerWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 2),
                     Text(
-                      'Status: ${transaction.status}',
+                      transaction.refundedAt != null
+                          ? 'Status: ${transaction.status} • Refund: ${transaction.refundedAt!.day}/${transaction.refundedAt!.month}/${transaction.refundedAt!.year} ${transaction.refundedAt!.hour.toString().padLeft(2, '0')}:${transaction.refundedAt!.minute.toString().padLeft(2, '0')}'
+                          : 'Status: ${transaction.status}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondaryLight,

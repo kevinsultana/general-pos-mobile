@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 class PaymentMethods extends Table {
   TextColumn get id => text()();
   TextColumn get storeId => text()();
-  // Type: CASH, QRIS, CARD, TRANSFER
+  // Type: CASH, QRIS, TRANSFER, DEBIT, CREDIT
   TextColumn get type => text()();
   TextColumn get name => text()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
@@ -24,7 +24,7 @@ class Payments extends Table {
   IntColumn get amount => integer()();
   IntColumn get roundingAmount => integer().withDefault(const Constant(0))();
 
-  // Status: PENDING, COMPLETED, FAILED, REFUNDED
+  // Status: PENDING, COMPLETED, VOIDED
   TextColumn get status => text()();
   TextColumn get metadata => text().nullable()(); // JSON string
 

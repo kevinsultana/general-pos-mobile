@@ -53,8 +53,10 @@ class CashRoundingCalculator {
     required CashRoundingMode mode,
     required int increment,
     bool enabled = true,
+    String paymentType = 'CASH',
   }) {
-    if (!enabled || increment <= 1 || amount <= 0) {
+    // PRD Bab 21 & INV-013: Cash rounding only applies to CASH payments
+    if (paymentType != 'CASH' || !enabled || increment <= 1 || amount <= 0) {
       return CashRoundingResult(
         originalAmount: amount,
         roundedAmount: amount,

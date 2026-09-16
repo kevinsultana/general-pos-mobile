@@ -172,11 +172,11 @@ void main() {
         .getSingle();
     expect(prod.stock, equals(30));
 
-    // 3. CRITICAL PRD VERIFICATION: StockMovements must have SALE (-5000) and CANCEL (+5000)
+    // 3. CRITICAL PRD VERIFICATION: StockMovements must have SALE (-5000) and CANCEL_REVERSAL (+5000)
     final movements = await db.select(db.stockMovements).get();
     expect(movements.length, equals(2));
 
-    final cancelMovement = movements.firstWhere((m) => m.type == 'CANCEL');
+    final cancelMovement = movements.firstWhere((m) => m.type == 'CANCEL_REVERSAL');
     expect(cancelMovement.quantityDelta, equals(5000));
     expect(cancelMovement.reason, equals('Pelanggan membatalkan pesanan'));
   });
@@ -231,9 +231,10 @@ void main() {
 
     expect(refundId, isNotEmpty);
 
-    // 1. Transaction status must be PARTIALLY_REFUNDED
+    // 1. Transaction status must be PARTIALLY_REFUNDED and refundedAt must be set
     final updatedTrx = await trxRepo.getTransaction(trxId);
     expect(updatedTrx!.status, equals('PARTIALLY_REFUNDED'));
+    expect(updatedTrx.refundedAt, isNotNull);
 
     // 2. Stock must be reversed for the 2 refunded units (30 - 4 + 2 = 28)
     final prod = await (db.select(db.products)
@@ -241,9 +242,97 @@ void main() {
         .getSingle();
     expect(prod.stock, equals(28));
 
-    // 3. StockMovements must have REFUND row with +2000
+    // 3. StockMovements must have REFUND_REVERSAL row with +2000
     final movements = await db.select(db.stockMovements).get();
-    final refMovement = movements.firstWhere((m) => m.type == 'REFUND');
+    final refMovement = movements.firstWhere((m) => m.type == 'REFUND_REVERSAL');
     expect(refMovement.quantityDelta, equals(2000));
+  });
+
+  test('PRD Bab 21: completeTransaction rejects mismatched roundingAmount', () async {
+    final cartItems = [
+      const CartItem(
+        productId: 'prod-latte',
+        productName: 'Caffe Latte',
+        quantity: 1,
+        unitPrice: 20000,
+        unitCostSnapshot: 10000,
+      ),
+    ];
+
+    final payments = [
+      const PaymentInput(
+        paymentMethodId: 'pm-cash',
+        paymentType: 'CASH',
+        amount: 20000,
+        roundingAmount: 200,
+      ),
+    ];
+
+    expect(
+      () => trxRepo.completeTransaction(
+        storeId: 'store-default-01',
+        orderType: 'DINE_IN',
+        subtotal: 20000,
+        discountTotal: 0,
+        roundingAmount: 500, // MISMATCH: payment has 200, trx has 500
+        total: 20500,
+        items: cartItems,
+        payments: payments,
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('PRD Bab 21: Split payment applies cash rounding strictly to CASH component', () async {
+    final cartItems = [
+      const CartItem(
+        productId: 'prod-latte',
+        productName: 'Caffe Latte',
+        quantity: 1,
+        unitPrice: 23500,
+        unitCostSnapshot: 10000,
+      ),
+    ];
+
+    // Total 23.500: Paid 15.000 via QRIS (exact), remaining 8.500 cash rounded with +500 -> 9.000
+    final payments = [
+      const PaymentInput(
+        paymentMethodId: 'pm-qris',
+        paymentType: 'QRIS',
+        amount: 15000,
+        roundingAmount: 0,
+      ),
+      const PaymentInput(
+        paymentMethodId: 'pm-cash',
+        paymentType: 'CASH',
+        amount: 8500,
+        roundingAmount: 500,
+        tenderedAmount: 10000,
+        changeAmount: 1000,
+      ),
+    ];
+
+    final trxId = await trxRepo.completeTransaction(
+      storeId: 'store-default-01',
+      orderType: 'DINE_IN',
+      subtotal: 23500,
+      discountTotal: 0,
+      roundingAmount: 500,
+      total: 24000,
+      items: cartItems,
+      payments: payments,
+    );
+
+    final savedTrx = await trxRepo.getTransaction(trxId);
+    expect(savedTrx, isNotNull);
+    expect(savedTrx!.roundingAmount, equals(500));
+    expect(savedTrx.total, equals(24000));
+
+    final savedPayments = await trxRepo.getTransactionPayments(trxId);
+    expect(savedPayments.length, equals(2));
+    final qrisPayment = savedPayments.firstWhere((p) => p.paymentMethodId == 'pm-qris');
+    final cashPayment = savedPayments.firstWhere((p) => p.paymentMethodId == 'pm-cash');
+    expect(qrisPayment.roundingAmount, equals(0));
+    expect(cashPayment.roundingAmount, equals(500));
   });
 }

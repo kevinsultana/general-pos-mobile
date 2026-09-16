@@ -44,7 +44,7 @@ void main() {
           transactionId: const Value(trxId),
           productId: const Value('prod-001'),
           productNameSnapshot: const Value('Kopi Susu Gula Aren'),
-          quantity: const Value(1000), // 1 unit in scale 1000
+          quantity: const Value(1), // 1 unit (raw, no scaling)
           unitPrice: const Value(9997),
           unitCostSnapshot: const Value(5000), // Historical Cost snapshot
           subtotal: const Value(9997),

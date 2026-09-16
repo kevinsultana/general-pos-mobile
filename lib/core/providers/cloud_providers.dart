@@ -55,15 +55,24 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
     final isLoggedIn = await authService.isLoggedIn();
     if (!isLoggedIn) return null;
 
-    // We don't re-fetch from server on startup to keep it offline-safe.
-    // Just return a minimal user from stored tokens.
     final tokens = ref.watch(tokenStorageProvider);
-    final info = await tokens.getStoreId();
-    if (info == null) return null;
+    final storeId = await tokens.getStoreId();
+    final userId = await tokens.getUserId();
+    if (storeId == null || userId == null) return null;
 
-    // Can't fully reconstruct CloudUser without network, return null and let
-    // the UI trigger a re-login if needed.
-    return null;
+    final username = await tokens.getUsername() ?? 'user';
+    final displayName = await tokens.getDisplayName() ?? username;
+    final storeName = await tokens.getStoreName() ?? '';
+    final perms = await tokens.getPermissions();
+
+    return CloudUser(
+      userId: userId,
+      username: username,
+      displayName: displayName,
+      storeId: storeId,
+      storeName: storeName,
+      permissions: perms,
+    );
   }
 
   Future<CloudUser> login({

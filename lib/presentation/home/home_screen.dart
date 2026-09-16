@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/cloud_providers.dart';
+import '../../core/providers/permission_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/services/cash_rounding_calculator.dart';
@@ -28,6 +29,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isCloudMode = ref.watch(isCloudModeProvider);
+    final canCreateTransaction =
+        ref.watch(hasPermissionProvider(AppPermissions.createTransaction));
+    final canManageProducts = ref.watch(hasAnyPermissionProvider([
+      AppPermissions.manageProducts,
+      AppPermissions.manageInventory,
+      'view_products',
+    ]));
+    final canViewTransactions = ref.watch(hasAnyPermissionProvider([
+      AppPermissions.createTransaction,
+      AppPermissions.viewReports,
+      AppPermissions.refundTransaction,
+    ]));
+    final canManageCustomers = ref.watch(hasAnyPermissionProvider([
+      AppPermissions.manageCustomers,
+      AppPermissions.createTransaction,
+    ]));
+    final canManagePromotions =
+        ref.watch(hasPermissionProvider(AppPermissions.managePromotions));
+    final canViewReports =
+        ref.watch(hasPermissionProvider(AppPermissions.viewReports));
+    final canManageSettings =
+        ref.watch(hasPermissionProvider(AppPermissions.manageSettings));
+
     final result = _calculator.calculate(
       amount: _testAmount,
       mode: _mode,
@@ -244,7 +268,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  onTap: () => context.push('/pos'),
+                  onTap: canCreateTransaction
+                      ? () => context.push('/pos')
+                      : () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Anda tidak memiliki izin kasir (create_transaction)',
+                              ),
+                              backgroundColor: AppColors.warning,
+                            ),
+                          );
+                        },
                   child: Padding(
                     padding: const EdgeInsets.all(22),
                     child: Column(
@@ -279,18 +314,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 color: Colors.white.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.flash_on_rounded,
+                                    canCreateTransaction
+                                        ? Icons.flash_on_rounded
+                                        : Icons.lock_outline_rounded,
                                     size: 14,
-                                    color: Colors.amber,
+                                    color: canCreateTransaction
+                                        ? Colors.amber
+                                        : Colors.white70,
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    'Buka Kasir',
-                                    style: TextStyle(
+                                    canCreateTransaction
+                                        ? 'Buka Kasir'
+                                        : 'Akses Dibatasi',
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -359,51 +400,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               mainAxisSpacing: 12,
               childAspectRatio: 1.25,
               children: [
-                _buildMenuTile(
-                  context,
-                  title: 'Katalog & Inventori',
-                  subtitle: 'Produk & stok',
-                  icon: Icons.inventory_2_rounded,
-                  color: AppColors.accent,
-                  containerColor: AppColors.accentContainer,
-                  route: '/products',
-                ),
-                _buildMenuTile(
-                  context,
-                  title: 'Riwayat Transaksi',
-                  subtitle: 'Struk & refund',
-                  icon: Icons.receipt_long_rounded,
-                  color: Colors.purple.shade700,
-                  containerColor: Colors.purple.shade50,
-                  route: '/transactions',
-                ),
-                _buildMenuTile(
-                  context,
-                  title: 'Daftar Pelanggan',
-                  subtitle: 'Database pembeli',
-                  icon: Icons.people_alt_rounded,
-                  color: Colors.blue.shade700,
-                  containerColor: Colors.blue.shade50,
-                  route: '/customers',
-                ),
-                _buildMenuTile(
-                  context,
-                  title: 'Promosi & Voucher',
-                  subtitle: 'Diskon belanja',
-                  icon: Icons.local_offer_rounded,
-                  color: Colors.orange.shade800,
-                  containerColor: Colors.orange.shade50,
-                  route: '/promotions',
-                ),
-                _buildMenuTile(
-                  context,
-                  title: 'Laporan & Analisis',
-                  subtitle: 'Omzet & laba kotor',
-                  icon: Icons.insights_rounded,
-                  color: Colors.teal.shade700,
-                  containerColor: Colors.teal.shade50,
-                  route: '/reports',
-                ),
+                if (canManageProducts)
+                  _buildMenuTile(
+                    context,
+                    title: 'Katalog & Inventori',
+                    subtitle: 'Produk & stok',
+                    icon: Icons.inventory_2_rounded,
+                    color: AppColors.accent,
+                    containerColor: AppColors.accentContainer,
+                    route: '/products',
+                  ),
+                if (canViewTransactions)
+                  _buildMenuTile(
+                    context,
+                    title: 'Riwayat Transaksi',
+                    subtitle: 'Struk & refund',
+                    icon: Icons.receipt_long_rounded,
+                    color: Colors.purple.shade700,
+                    containerColor: Colors.purple.shade50,
+                    route: '/transactions',
+                  ),
+                if (canManageCustomers)
+                  _buildMenuTile(
+                    context,
+                    title: 'Daftar Pelanggan',
+                    subtitle: 'Database pembeli',
+                    icon: Icons.people_alt_rounded,
+                    color: Colors.blue.shade700,
+                    containerColor: Colors.blue.shade50,
+                    route: '/customers',
+                  ),
+                if (canManagePromotions)
+                  _buildMenuTile(
+                    context,
+                    title: 'Promosi & Voucher',
+                    subtitle: 'Diskon belanja',
+                    icon: Icons.local_offer_rounded,
+                    color: Colors.orange.shade800,
+                    containerColor: Colors.orange.shade50,
+                    route: '/promotions',
+                  ),
+                if (canViewReports)
+                  _buildMenuTile(
+                    context,
+                    title: 'Laporan & Analisis',
+                    subtitle: 'Omzet & laba kotor',
+                    icon: Icons.insights_rounded,
+                    color: Colors.teal.shade700,
+                    containerColor: Colors.teal.shade50,
+                    route: '/reports',
+                  ),
                 _buildMenuTile(
                   context,
                   title: 'Printer Thermal',
@@ -428,15 +474,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       : const Color(0xFFF1F5F9),
                   route: isCloudMode ? '/cloud-sync' : '/cloud-login',
                 ),
-                _buildMenuTile(
-                  context,
-                  title: 'Cadangkan & Pulihkan',
-                  subtitle: 'Backup enkripsi',
-                  icon: Icons.backup_rounded,
-                  color: Colors.blueGrey.shade700,
-                  containerColor: Colors.blueGrey.shade50,
-                  route: '/backup',
-                ),
+                if (canManageSettings)
+                  _buildMenuTile(
+                    context,
+                    title: 'Cadangkan & Pulihkan',
+                    subtitle: 'Backup enkripsi',
+                    icon: Icons.backup_rounded,
+                    color: Colors.blueGrey.shade700,
+                    containerColor: Colors.blueGrey.shade50,
+                    route: '/backup',
+                  ),
               ],
             ),
             const SizedBox(height: 24),

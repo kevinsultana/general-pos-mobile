@@ -8,7 +8,7 @@ class CartItem {
   final int quantity;
   final int unitPrice;
   final int unitCostSnapshot;
-  final String? discountType; // 'PERCENTAGE' or 'FIXED'
+  final String? discountType; // 'PERCENTAGE' or 'FIXED_AMOUNT'
   final int? discountValue; // percentage (e.g., 10 for 10%) or nominal amount (e.g., 5000)
 
   const CartItem({
@@ -43,7 +43,7 @@ class CartItem {
     if (discountType == 'PERCENTAGE') {
       final calculated = (subtotal * discountValue! / 100).round();
       return calculated > subtotal ? subtotal : calculated;
-    } else if (discountType == 'FIXED') {
+    } else if (discountType == 'FIXED' || discountType == 'FIXED_AMOUNT') {
       return discountValue! > subtotal ? subtotal : discountValue!;
     }
     return 0;

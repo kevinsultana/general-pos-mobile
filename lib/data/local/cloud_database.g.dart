@@ -759,13 +759,13 @@ class $SyncCursorsTable extends SyncCursors
   );
   static const VerificationMeta _cursorMeta = const VerificationMeta('cursor');
   @override
-  late final GeneratedColumn<int> cursor = GeneratedColumn<int>(
+  late final GeneratedColumn<BigInt> cursor = GeneratedColumn<BigInt>(
     'cursor',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.bigInt,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0),
+    defaultValue: Constant(BigInt.zero),
   );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
@@ -859,7 +859,7 @@ class $SyncCursorsTable extends SyncCursors
         data['${effectivePrefix}device_id'],
       )!,
       cursor: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.bigInt,
         data['${effectivePrefix}cursor'],
       )!,
       updatedAt: attachedDatabase.typeMapping.read(
@@ -879,7 +879,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
   final String id;
   final String storeId;
   final String deviceId;
-  final int cursor;
+  final BigInt cursor;
   final DateTime updatedAt;
   const SyncCursor({
     required this.id,
@@ -894,7 +894,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
     map['id'] = Variable<String>(id);
     map['store_id'] = Variable<String>(storeId);
     map['device_id'] = Variable<String>(deviceId);
-    map['cursor'] = Variable<int>(cursor);
+    map['cursor'] = Variable<BigInt>(cursor);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -918,7 +918,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
       id: serializer.fromJson<String>(json['id']),
       storeId: serializer.fromJson<String>(json['storeId']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
-      cursor: serializer.fromJson<int>(json['cursor']),
+      cursor: serializer.fromJson<BigInt>(json['cursor']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -929,7 +929,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
       'id': serializer.toJson<String>(id),
       'storeId': serializer.toJson<String>(storeId),
       'deviceId': serializer.toJson<String>(deviceId),
-      'cursor': serializer.toJson<int>(cursor),
+      'cursor': serializer.toJson<BigInt>(cursor),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -938,7 +938,7 @@ class SyncCursor extends DataClass implements Insertable<SyncCursor> {
     String? id,
     String? storeId,
     String? deviceId,
-    int? cursor,
+    BigInt? cursor,
     DateTime? updatedAt,
   }) => SyncCursor(
     id: id ?? this.id,
@@ -986,7 +986,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
   final Value<String> id;
   final Value<String> storeId;
   final Value<String> deviceId;
-  final Value<int> cursor;
+  final Value<BigInt> cursor;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const SyncCursorsCompanion({
@@ -1012,7 +1012,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
     Expression<String>? id,
     Expression<String>? storeId,
     Expression<String>? deviceId,
-    Expression<int>? cursor,
+    Expression<BigInt>? cursor,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -1030,7 +1030,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
     Value<String>? id,
     Value<String>? storeId,
     Value<String>? deviceId,
-    Value<int>? cursor,
+    Value<BigInt>? cursor,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -1057,7 +1057,7 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
       map['device_id'] = Variable<String>(deviceId.value);
     }
     if (cursor.present) {
-      map['cursor'] = Variable<int>(cursor.value);
+      map['cursor'] = Variable<BigInt>(cursor.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
@@ -1445,7 +1445,7 @@ typedef $$SyncCursorsTableCreateCompanionBuilder =
       required String id,
       required String storeId,
       required String deviceId,
-      Value<int> cursor,
+      Value<BigInt> cursor,
       required DateTime updatedAt,
       Value<int> rowid,
     });
@@ -1454,7 +1454,7 @@ typedef $$SyncCursorsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> storeId,
       Value<String> deviceId,
-      Value<int> cursor,
+      Value<BigInt> cursor,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -1483,7 +1483,7 @@ class $$SyncCursorsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get cursor => $composableBuilder(
+  ColumnFilters<BigInt> get cursor => $composableBuilder(
     column: $table.cursor,
     builder: (column) => ColumnFilters(column),
   );
@@ -1518,7 +1518,7 @@ class $$SyncCursorsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get cursor => $composableBuilder(
+  ColumnOrderings<BigInt> get cursor => $composableBuilder(
     column: $table.cursor,
     builder: (column) => ColumnOrderings(column),
   );
@@ -1547,7 +1547,7 @@ class $$SyncCursorsTableAnnotationComposer
   GeneratedColumn<String> get deviceId =>
       $composableBuilder(column: $table.deviceId, builder: (column) => column);
 
-  GeneratedColumn<int> get cursor =>
+  GeneratedColumn<BigInt> get cursor =>
       $composableBuilder(column: $table.cursor, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
@@ -1588,7 +1588,7 @@ class $$SyncCursorsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> storeId = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
-                Value<int> cursor = const Value.absent(),
+                Value<BigInt> cursor = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncCursorsCompanion(
@@ -1604,7 +1604,7 @@ class $$SyncCursorsTableTableManager
                 required String id,
                 required String storeId,
                 required String deviceId,
-                Value<int> cursor = const Value.absent(),
+                Value<BigInt> cursor = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => SyncCursorsCompanion.insert(

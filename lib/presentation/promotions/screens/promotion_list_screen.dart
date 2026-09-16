@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/database_providers.dart';
+import '../../../core/providers/permission_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/local/app_database.dart';
@@ -64,6 +65,8 @@ class PromotionListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final promotionsAsync = ref.watch(promotionListStreamProvider);
+    final canManagePromotions =
+        ref.watch(hasPermissionProvider(AppPermissions.managePromotions));
 
     return Scaffold(
       appBar: AppBar(
@@ -72,21 +75,25 @@ class PromotionListScreen extends ConsumerWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Buat Promo Baru',
-            onPressed: () => PromotionFormDialog.show(context),
-          ),
-          const SizedBox(width: 8),
+          if (canManagePromotions) ...[
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Buat Promo Baru',
+              onPressed: () => PromotionFormDialog.show(context),
+            ),
+            const SizedBox(width: 8),
+          ],
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        onPressed: () => PromotionFormDialog.show(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Promo Baru'),
-      ),
+      floatingActionButton: canManagePromotions
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              onPressed: () => PromotionFormDialog.show(context),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Promo Baru'),
+            )
+          : null,
       body: Column(
         children: [
           // Banner Notice (PRD: Owner configuration)
@@ -213,11 +220,13 @@ class PromotionListScreen extends ConsumerWidget {
                                 Switch(
                                   value: promo.active,
                                   activeThumbColor: AppColors.primary,
-                                  onChanged: (val) {
-                                    ref
-                                        .read(promotionRepositoryProvider)
-                                        .togglePromotionActive(promo.id, val);
-                                  },
+                                  onChanged: canManagePromotions
+                                      ? (val) {
+                                          ref
+                                              .read(promotionRepositoryProvider)
+                                              .togglePromotionActive(promo.id, val);
+                                        }
+                                      : null,
                                 ),
                               ],
                             ),
@@ -307,35 +316,36 @@ class PromotionListScreen extends ConsumerWidget {
                                 ),
                               ),
 
-                            const Divider(height: 20),
-
-                            // Action buttons
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton.icon(
-                                  onPressed: () => PromotionFormDialog.show(
-                                    context,
-                                    promotion: promo,
+                            // Action buttons (Only if user has permission)
+                            if (canManagePromotions) ...[
+                              const Divider(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () => PromotionFormDialog.show(
+                                      context,
+                                      promotion: promo,
+                                    ),
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 16),
+                                    label: const Text('Ubah'),
                                   ),
-                                  icon: const Icon(Icons.edit_outlined,
-                                      size: 16),
-                                  label: const Text('Ubah'),
-                                ),
-                                const SizedBox(width: 8),
-                                TextButton.icon(
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.danger,
+                                  const SizedBox(width: 8),
+                                  TextButton.icon(
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.danger,
+                                    ),
+                                    onPressed: () =>
+                                        _confirmDelete(context, ref, promo),
+                                    icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 16),
+                                    label: const Text('Hapus'),
                                   ),
-                                  onPressed: () =>
-                                      _confirmDelete(context, ref, promo),
-                                  icon: const Icon(
-                                      Icons.delete_outline_rounded,
-                                      size: 16),
-                                  label: const Text('Hapus'),
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),

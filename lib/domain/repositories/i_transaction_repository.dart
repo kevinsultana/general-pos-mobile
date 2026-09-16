@@ -31,7 +31,7 @@ abstract class ITransactionRepository {
   /// Atomically cancels a completed transaction:
   /// 1. Updates transaction status to 'CANCELLED' with cancelledAt and reason
   /// 2. Reverses product/variant stock
-  /// 3. Records StockMovements ledger rows (type: 'CANCEL', quantityDelta: +quantity * 1000)
+  /// 3. Records StockMovements ledger rows (type: 'CANCEL_REVERSAL', quantityDelta: +quantity * 1000)
   Future<void> cancelTransaction({
     required String transactionId,
     required String reason,
@@ -40,7 +40,7 @@ abstract class ITransactionRepository {
   /// Atomically processes a refund:
   /// 1. Inserts Refunds and RefundItems records
   /// 2. Reverses product/variant stock for the refunded items
-  /// 3. Records StockMovements ledger rows (type: 'REFUND', quantityDelta: +quantity * 1000)
+  /// 3. Records StockMovements ledger rows (type: 'REFUND_REVERSAL', quantityDelta: +quantity * 1000)
   /// 4. Updates transaction status to 'PARTIALLY_REFUNDED' or 'REFUNDED'
   Future<String> refundTransaction({
     required String transactionId,

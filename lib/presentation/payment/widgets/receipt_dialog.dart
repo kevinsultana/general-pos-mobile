@@ -55,7 +55,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         return ReceiptItem(
           productName: it.productNameSnapshot,
           variantName: it.variantNameSnapshot,
-          quantity: it.quantity / 1000.0,
+          quantity: it.quantity.toDouble(),
           unitPrice: it.unitPrice,
           subtotal: it.subtotal,
           discountAmount: it.discountAmount,
@@ -116,7 +116,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         return ReceiptItem(
           productName: it.productNameSnapshot,
           variantName: it.variantNameSnapshot,
-          quantity: it.quantity / 1000.0,
+          quantity: it.quantity.toDouble(),
           unitPrice: it.unitPrice,
           subtotal: it.subtotal,
           discountAmount: it.discountAmount,
@@ -379,7 +379,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                                           ),
                                         ),
                                       Text(
-                                        '${(item.quantity / 1000).toStringAsFixed(item.quantity % 1000 == 0 ? 0 : 2)} x ${CurrencyFormatter.format(item.unitPrice)}',
+                                        '${item.quantity.toString()} x ${CurrencyFormatter.format(item.unitPrice)}',
                                         style: const TextStyle(
                                           fontSize: 11,
                                           color: AppColors.textSecondaryLight,

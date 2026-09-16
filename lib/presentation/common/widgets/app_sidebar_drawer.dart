@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/cloud_providers.dart';
 import '../../../core/providers/database_providers.dart';
+import '../../../core/providers/permission_provider.dart';
 import '../../../core/theme/app_colors.dart';
 
 class AppSidebarDrawer extends ConsumerWidget {
@@ -12,8 +13,34 @@ class AppSidebarDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isCloud = ref.watch(isCloudModeProvider);
+    final cloudUser = ref.watch(cloudAuthProvider).valueOrNull;
     final storeAsync = ref.watch(currentStoreStreamProvider);
-    final storeName = storeAsync.value?.name ?? 'General POS';
+    final storeName = isCloud && (cloudUser?.storeName.isNotEmpty ?? false)
+        ? cloudUser!.storeName
+        : (storeAsync.value?.name ?? 'General POS');
+
+    final canCreateTransaction =
+        ref.watch(hasPermissionProvider(AppPermissions.createTransaction));
+    final canManageProducts = ref.watch(hasAnyPermissionProvider([
+      AppPermissions.manageProducts,
+      AppPermissions.manageInventory,
+      'view_products',
+    ]));
+    final canViewTransactions = ref.watch(hasAnyPermissionProvider([
+      AppPermissions.createTransaction,
+      AppPermissions.viewReports,
+      AppPermissions.refundTransaction,
+    ]));
+    final canManageCustomers = ref.watch(hasAnyPermissionProvider([
+      AppPermissions.manageCustomers,
+      AppPermissions.createTransaction,
+    ]));
+    final canManagePromotions =
+        ref.watch(hasPermissionProvider(AppPermissions.managePromotions));
+    final canViewReports =
+        ref.watch(hasPermissionProvider(AppPermissions.viewReports));
+    final canManageSettings =
+        ref.watch(hasPermissionProvider(AppPermissions.manageSettings));
 
     return Drawer(
       backgroundColor: Colors.white,
@@ -87,7 +114,9 @@ class AppSidebarDrawer extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     isCloud
-                        ? 'Multi-Kasir • Sinkronisasi Aktif'
+                        ? (cloudUser != null
+                            ? '${cloudUser.displayName} • ${cloudUser.permissions.contains('*') ? 'Super Admin' : 'Cloud Operator'}'
+                            : 'Multi-Kasir • Sinkronisasi Aktif')
                         : 'Kasir Mandiri • Offline Database',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
@@ -112,61 +141,67 @@ class AppSidebarDrawer extends ConsumerWidget {
                       context.go('/');
                     },
                   ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.point_of_sale_rounded,
-                    title: 'Kasir POS',
-                    highlight: true,
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/pos');
-                    },
-                  ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Riwayat Transaksi',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/transactions');
-                    },
-                  ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.inventory_2_rounded,
-                    title: 'Katalog Produk & Varian',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/products');
-                    },
-                  ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.people_alt_rounded,
-                    title: 'Daftar Pelanggan',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/customers');
-                    },
-                  ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.local_offer_rounded,
-                    title: 'Promosi & Diskon',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/promotions');
-                    },
-                  ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.insights_rounded,
-                    title: 'Laporan & Analisis',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/reports');
-                    },
-                  ),
+                  if (canCreateTransaction)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.point_of_sale_rounded,
+                      title: 'Kasir POS',
+                      highlight: true,
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/pos');
+                      },
+                    ),
+                  if (canViewTransactions)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.receipt_long_rounded,
+                      title: 'Riwayat Transaksi',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/transactions');
+                      },
+                    ),
+                  if (canManageProducts)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.inventory_2_rounded,
+                      title: 'Katalog Produk & Varian',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/products');
+                      },
+                    ),
+                  if (canManageCustomers)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.people_alt_rounded,
+                      title: 'Daftar Pelanggan',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/customers');
+                      },
+                    ),
+                  if (canManagePromotions)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.local_offer_rounded,
+                      title: 'Promosi & Diskon',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/promotions');
+                      },
+                    ),
+                  if (canViewReports)
+                    _buildNavTile(
+                      context,
+                      icon: Icons.insights_rounded,
+                      title: 'Laporan & Analisis',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/reports');
+                      },
+                    ),
                   _buildNavTile(
                     context,
                     icon: Icons.print_rounded,
@@ -203,25 +238,27 @@ class AppSidebarDrawer extends ConsumerWidget {
                     ),
                   ],
 
-                  const Divider(height: 24),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.backup_rounded,
-                    title: 'Cadangkan & Pulihkan',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/backup');
-                    },
-                  ),
-                  _buildNavTile(
-                    context,
-                    icon: Icons.settings_rounded,
-                    title: 'Pengaturan Toko',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/settings');
-                    },
-                  ),
+                  if (canManageSettings) ...[
+                    const Divider(height: 24),
+                    _buildNavTile(
+                      context,
+                      icon: Icons.backup_rounded,
+                      title: 'Cadangkan & Pulihkan',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/backup');
+                      },
+                    ),
+                    _buildNavTile(
+                      context,
+                      icon: Icons.settings_rounded,
+                      title: 'Pengaturan Toko',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/settings');
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

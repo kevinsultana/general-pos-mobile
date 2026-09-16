@@ -142,6 +142,19 @@ void main() {
         expect(zero.roundedAmount, equals(0));
         expect(zero.roundingAmount, equals(0));
       });
+
+      test('Non-cash payment types (QRIS, TRANSFER, CARD) strictly return zero rounding', () {
+        for (final nonCash in ['QRIS', 'TRANSFER', 'CARD', 'DEBIT', 'CREDIT']) {
+          final res = calculator.calculate(
+            amount: 9997,
+            mode: CashRoundingMode.roundNearest,
+            increment: 1000,
+            paymentType: nonCash,
+          );
+          expect(res.roundedAmount, equals(9997), reason: 'Failed for $nonCash');
+          expect(res.roundingAmount, equals(0), reason: 'Failed for $nonCash');
+        }
+      });
     });
   });
 }

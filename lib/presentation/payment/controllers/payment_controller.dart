@@ -35,9 +35,19 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
         throw Exception('Keranjang belanja kosong');
       }
 
-      // Calculate total rounding amount from cash payments
-      final roundingAmount =
-          payments.fold<int>(0, (sum, p) => sum + p.roundingAmount);
+      // Validate PRD Bab 21 & INV-013: Non-cash payments cannot have rounding
+      for (final p in payments) {
+        if (p.paymentType != 'CASH' && p.roundingAmount != 0) {
+          throw ArgumentError(
+            'Cash rounding hanya berlaku untuk metode pembayaran CASH, namun tipe ${p.paymentType} memiliki roundingAmount: ${p.roundingAmount}',
+          );
+        }
+      }
+
+      // Calculate total rounding amount strictly from cash payments
+      final roundingAmount = payments
+          .where((p) => p.paymentType == 'CASH')
+          .fold<int>(0, (sum, p) => sum + p.roundingAmount);
 
       final totalPayable = cartState.grandTotal + roundingAmount;
 

@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show Value;
 import '../local/daos/cloud_sync_event_dao.dart';
 import '../local/cloud_database.dart' show SyncEvent, SyncEventsCompanion;
 import '../local/app_database.dart' hide SyncEvent, SyncEventsCompanion;
+import '../../core/constants/scale_constants.dart';
 import 'api_client.dart';
 
 /// Result of a push operation.
@@ -154,7 +155,8 @@ class CloudSyncService {
 
     // Update cursor
     if (events.isNotEmpty) {
-      await _dao.updateCursor(storeId, deviceId, int.tryParse(nextCursor) ?? 0);
+      await _dao.updateCursor(
+          storeId, deviceId, BigInt.tryParse(nextCursor) ?? BigInt.zero);
     }
 
     return events.length;
@@ -218,12 +220,20 @@ class CloudSyncService {
       case 'CANCEL_TRANSACTION':
         await _handleCancelTransaction(storeId, payload);
         break;
+      case 'REFUND_TRANSACTION':
+        await _handleRefundTransaction(storeId, payload);
+        break;
       case 'ADJUST_STOCK':
         await _handleAdjustStock(storeId, payload);
         break;
       case 'CREATE_PRODUCT':
       case 'UPDATE_PRODUCT':
         await _handleProductUpsert(storeId, payload);
+        break;
+      case 'CREATE_PROMOTION':
+      case 'UPDATE_PROMOTION':
+      case 'UPSERT_PROMOTION':
+        await _handlePromotionUpsert(storeId, payload);
         break;
       default:
         break;
@@ -259,6 +269,8 @@ class CloudSyncService {
         final newStock = prod.stock - quantity;
         await db.productDao.updateStock(productId, newStock);
 
+        // quantityDelta is stored with stockScale (1000) in Drift ledger.
+        // Server payload sends raw unit quantity, so we scale it by stockScale.
         await db.stockMovementDao.recordMovement(
           StockMovementsCompanion.insert(
             id: const Uuid().v4(),
@@ -266,7 +278,7 @@ class CloudSyncService {
             productId: productId,
             variantId: Value(itemRaw['variantId'] as String?),
             type: 'SALE',
-            quantityDelta: -quantity * 1000,
+            quantityDelta: -toScaled(quantity.toDouble(), stockScale),
             referenceType: const Value('TRANSACTION'),
             referenceId: Value(trxId),
             reason: const Value('Remote Sync: Sale'),
@@ -301,8 +313,8 @@ class CloudSyncService {
               storeId: storeId,
               productId: item.productId,
               variantId: Value(item.variantId),
-              type: 'CANCEL',
-              quantityDelta: item.quantity * 1000,
+              type: 'CANCEL_REVERSAL',
+              quantityDelta: toScaled(item.quantity.toDouble(), stockScale), // Scaled by 1000 in Drift ledger
               referenceType: const Value('TRANSACTION'),
               referenceId: Value(transactionId),
               reason: Value(reason),
@@ -313,6 +325,53 @@ class CloudSyncService {
       }
       await db.transactionDao.updateTransactionStatus(transactionId, 'CANCELLED');
     }
+  }
+
+  Future<void> _handleRefundTransaction(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final transactionId = payload['transactionId'] as String? ?? payload['id'] as String?;
+    final reason = payload['reason'] as String? ?? 'Remote Sync: Refund';
+    final refundedAt = DateTime.tryParse(payload['refundedAt'] as String? ?? '') ?? DateTime.now();
+    final items = payload['items'] as List<dynamic>?;
+    if (transactionId == null) return;
+
+    if (items != null && items.isNotEmpty) {
+      for (final itemRaw in items) {
+        if (itemRaw is! Map<String, dynamic>) continue;
+        final productId = itemRaw['productId'] as String?;
+        final quantity = (itemRaw['quantity'] as num?)?.toInt() ?? 0;
+        if (productId == null || quantity <= 0) continue;
+
+        final prod = await db.productDao.getProductById(productId);
+        if (prod != null) {
+          final newStock = prod.stock + quantity;
+          await db.productDao.updateStock(productId, newStock);
+
+          await db.stockMovementDao.recordMovement(
+            StockMovementsCompanion.insert(
+              id: const Uuid().v4(),
+              storeId: storeId,
+              productId: productId,
+              variantId: Value(itemRaw['variantId'] as String?),
+              type: 'REFUND_REVERSAL',
+              quantityDelta: toScaled(quantity.toDouble(), stockScale),
+              referenceType: const Value('TRANSACTION'),
+              referenceId: Value(transactionId),
+              reason: Value(reason),
+              createdAt: refundedAt,
+            ),
+          );
+        }
+      }
+    }
+
+    final isFullRefund = payload['isFullRefund'] as bool? ?? (payload['status'] == 'REFUNDED');
+    final newStatus = isFullRefund ? 'REFUNDED' : 'PARTIALLY_REFUNDED';
+    await db.transactionDao.updateTransactionRefunded(transactionId, newStatus, refundedAt);
   }
 
   Future<void> _handleAdjustStock(
@@ -326,25 +385,25 @@ class CloudSyncService {
     final reason = payload['reason'] as String? ?? 'Remote Sync: Stock Adjustment';
     if (productId == null || deltaNum == null) return;
 
-    final delta = deltaNum.toInt();
-    final prod = await db.productDao.getProductById(productId);
-    if (prod != null) {
-      final newStock = prod.stock + delta;
-      await db.productDao.updateStock(productId, newStock);
+      final delta = deltaNum.toInt();
+      final prod = await db.productDao.getProductById(productId);
+      if (prod != null) {
+        final newStock = prod.stock + delta;
+        await db.productDao.updateStock(productId, newStock);
 
-      await db.stockMovementDao.recordMovement(
-        StockMovementsCompanion.insert(
-          id: const Uuid().v4(),
-          storeId: storeId,
-          productId: productId,
-          type: 'ADJUSTMENT',
-          quantityDelta: delta * 1000,
-          referenceType: const Value('ADJUSTMENT'),
-          reason: Value(reason),
-          createdAt: DateTime.now(),
-        ),
-      );
-    }
+        await db.stockMovementDao.recordMovement(
+          StockMovementsCompanion.insert(
+            id: const Uuid().v4(),
+            storeId: storeId,
+            productId: productId,
+            type: 'ADJUSTMENT',
+            quantityDelta: toScaled(delta.toDouble(), stockScale), // Scaled by 1000 in Drift ledger
+            referenceType: const Value('ADJUSTMENT'),
+            reason: Value(reason),
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
   }
 
   Future<void> _handleProductUpsert(
@@ -382,6 +441,57 @@ class CloudSyncService {
     );
   }
 
+  Future<void> _handlePromotionUpsert(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+
+    final id = payload['id'] as String?;
+    final name = payload['name'] as String?;
+    if (id == null || name == null) return;
+
+    final code = payload['code'] as String?;
+    final rawType = payload['type'] ?? payload['discountType'] ?? 'PERCENTAGE';
+    final discountType = rawType.toString().trim().toUpperCase() == 'FIXED'
+        ? 'FIXED_AMOUNT'
+        : rawType.toString().trim().toUpperCase();
+
+    // Scale is 1:1 IDR whole Rupiah (no multiplying or dividing by 100/1000)
+    final rawVal = payload['value'] ?? payload['discountValue'] ?? 0;
+    final discountValue = (rawVal is num ? rawVal : num.tryParse(rawVal.toString()) ?? 0).round();
+
+    final rawMin = payload['minimumPurchase'] ?? payload['minSpend'] ?? 0;
+    final minSpend = (rawMin is num ? rawMin : num.tryParse(rawMin.toString()) ?? 0).round();
+
+    final startDateStr = payload['startAt'] ?? payload['startDate'];
+    final startDate = startDateStr != null ? DateTime.tryParse(startDateStr.toString()) : null;
+
+    final endDateStr = payload['endAt'] ?? payload['endDate'];
+    final endDate = endDateStr != null ? DateTime.tryParse(endDateStr.toString()) : null;
+
+    final productId = payload['productId'] as String?;
+    final active = (payload['active'] as bool?) ?? true;
+
+    await db.promotionDao.insertPromotion(
+      PromotionsCompanion(
+        id: Value(id),
+        storeId: Value(storeId),
+        name: Value(name),
+        code: Value(code?.toUpperCase()),
+        discountType: Value(discountType),
+        discountValue: Value(discountValue),
+        minSpend: Value(minSpend),
+        startDate: Value(startDate),
+        endDate: Value(endDate),
+        productId: Value(productId),
+        active: Value(active),
+        createdAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 
   // ──────────────── Get Failed ────────────────
 
@@ -415,9 +525,14 @@ class CloudSyncService {
     switch (operation) {
       case 'COMPLETE_TRANSACTION':
       case 'CANCEL_TRANSACTION':
+      case 'REFUND_TRANSACTION':
         return 'Transaction';
       case 'ADJUST_STOCK':
         return 'StockMovement';
+      case 'CREATE_PROMOTION':
+      case 'UPDATE_PROMOTION':
+      case 'UPSERT_PROMOTION':
+        return 'Promotion';
       default:
         return 'Unknown';
     }

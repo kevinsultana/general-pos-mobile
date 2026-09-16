@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
+import '../../../core/providers/permission_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/app_database.dart';
 
@@ -53,7 +54,9 @@ class _PromotionFormDialogState extends ConsumerState<PromotionFormDialog> {
           ? widget.promotion!.minSpend.toString()
           : '',
     );
-    _discountType = widget.promotion?.discountType ?? 'PERCENTAGE';
+    _discountType = widget.promotion?.discountType == 'FIXED' || widget.promotion?.discountType == 'FIXED_AMOUNT'
+        ? 'FIXED_AMOUNT'
+        : (widget.promotion?.discountType ?? 'PERCENTAGE');
     _active = widget.promotion?.active ?? true;
   }
 
@@ -124,6 +127,9 @@ class _PromotionFormDialogState extends ConsumerState<PromotionFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final canManagePromotions =
+        ref.watch(hasPermissionProvider(AppPermissions.managePromotions));
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
@@ -184,7 +190,7 @@ class _PromotionFormDialogState extends ConsumerState<PromotionFormDialog> {
                     icon: Icon(Icons.percent_rounded),
                   ),
                   ButtonSegment(
-                    value: 'FIXED',
+                    value: 'FIXED_AMOUNT',
                     label: Text('Nominal (Rp)'),
                     icon: Icon(Icons.attach_money_rounded),
                   ),
@@ -277,7 +283,7 @@ class _PromotionFormDialogState extends ConsumerState<PromotionFormDialog> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          onPressed: _isLoading ? null : _submit,
+          onPressed: _isLoading || !canManagePromotions ? null : _submit,
           child: _isLoading
               ? const SizedBox(
                   width: 16,

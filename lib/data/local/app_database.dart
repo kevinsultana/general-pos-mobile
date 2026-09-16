@@ -16,6 +16,8 @@ import 'tables/promotion_tables.dart';
 import 'tables/printer_tables.dart';
 import 'tables/sync_tables.dart';
 
+export '../../domain/models/promotion_ext.dart';
+
 import 'daos/store_dao.dart';
 import 'daos/category_dao.dart';
 import 'daos/product_dao.dart';
@@ -77,7 +79,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.connection);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -104,11 +106,21 @@ class AppDatabase extends _$AppDatabase {
               );
             ''');
           }
+          if (from < 3) {
+            try {
+              await m.addColumn(transactions, transactions.refundedAt);
+            } catch (_) {}
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
           await customStatement('PRAGMA journal_mode = WAL');
           await customStatement('PRAGMA synchronous = NORMAL');
+
+          // Self-healing: ensure refunded_at column exists in transactions
+          try {
+            await customStatement('ALTER TABLE "transactions" ADD COLUMN "refunded_at" INTEGER;');
+          } catch (_) {}
 
           // Self-healing: ensure tables exist even if migration was skipped
           await customStatement('''

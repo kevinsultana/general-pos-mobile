@@ -45,6 +45,9 @@ void main() {
     expect(byCode?.id, equals(promoId));
     expect(byCode?.code, equals('GAJIAN10'));
     expect(byCode?.minSpend, equals(50000));
+    expect(byCode?.minimumPurchase, equals(50000)); // PromotionExt alias
+    expect(byCode?.type, equals('PERCENTAGE')); // PromotionExt alias
+    expect(byCode?.value, equals(10)); // PromotionExt alias
     expect(byCode?.active, isTrue);
 
     // 3. Toggle active
@@ -60,5 +63,24 @@ void main() {
     await promoRepo.deletePromotion(promoId);
     final deleted = await promoRepo.getPromotionById(promoId);
     expect(deleted, isNull);
+  });
+
+  test('Promotion creation with minimumPurchase alias and FIXED normalization works', () async {
+    final promoId = await promoRepo.createPromotion(
+      storeId: storeId,
+      name: 'Voucher Potongan Rp 15.000',
+      code: 'HEMAT15',
+      discountType: 'FIXED', // legacy FIXED should normalize to FIXED_AMOUNT
+      discountValue: 15000,
+      minimumPurchase: 75000, // minimumPurchase alias for minSpend
+    );
+
+    final promo = await promoRepo.getPromotionById(promoId);
+    expect(promo, isNotNull);
+    expect(promo?.discountType, equals('FIXED_AMOUNT'));
+    expect(promo?.minSpend, equals(75000));
+    expect(promo?.minimumPurchase, equals(75000));
+    expect(promo?.discountValue, equals(15000));
+    expect(promo?.value, equals(15000));
   });
 }

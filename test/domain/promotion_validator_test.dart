@@ -133,6 +133,34 @@ void main() {
       expect(result.discountAmount, equals(10000));
     });
 
+    test('Valid FIXED_AMOUNT promotion calculates correct discount', () {
+      final result = validator.validate(
+        active: true,
+        minimumPurchase: 40000, // using minimumPurchase alias
+        discountType: 'FIXED_AMOUNT',
+        discountValue: 12000,
+        cartSubtotal: testSubtotal,
+        cartItems: testItems,
+      );
+
+      expect(result.isValid, isTrue);
+      expect(result.discountAmount, equals(12000));
+    });
+
+    test('Subtotal below minimumPurchase alias returns invalid with 1:1 IDR formatting', () {
+      final result = validator.validate(
+        active: true,
+        minimumPurchase: 60000, // 50000 < 60000
+        discountType: 'FIXED_AMOUNT',
+        discountValue: 10000,
+        cartSubtotal: testSubtotal,
+        cartItems: testItems,
+      );
+
+      expect(result.isValid, isFalse);
+      expect(result.errorMessage, contains('Rp 60.000'));
+    });
+
     test('Fixed discount exceeding subtotal is clamped to subtotal', () {
       final result = validator.validate(
         active: true,

@@ -15,9 +15,10 @@ abstract class IPromotionRepository {
     required String storeId,
     required String name,
     String? code,
-    required String discountType, // 'PERCENTAGE' or 'FIXED'
+    required String discountType, // 'PERCENTAGE' or 'FIXED_AMOUNT'
     required int discountValue,
     int minSpend = 0,
+    int? minimumPurchase,
     DateTime? startDate,
     DateTime? endDate,
     String? productId,
@@ -32,6 +33,7 @@ abstract class IPromotionRepository {
     required String discountType,
     required int discountValue,
     int minSpend = 0,
+    int? minimumPurchase,
     DateTime? startDate,
     DateTime? endDate,
     String? productId,

@@ -53,7 +53,9 @@ class _DiscountDialogState extends State<DiscountDialog> {
   @override
   void initState() {
     super.initState();
-    _discountType = widget.initialType ?? 'PERCENTAGE';
+    _discountType = widget.initialType == 'FIXED' || widget.initialType == 'FIXED_AMOUNT'
+        ? 'FIXED_AMOUNT'
+        : (widget.initialType ?? 'PERCENTAGE');
     _valueController = TextEditingController(
       text: widget.initialValue != null && widget.initialValue! > 0
           ? widget.initialValue.toString()
@@ -115,7 +117,7 @@ class _DiscountDialogState extends State<DiscountDialog> {
                   icon: Icon(Icons.percent_rounded),
                 ),
                 ButtonSegment(
-                  value: 'FIXED',
+                  value: 'FIXED_AMOUNT',
                   label: Text('Nominal (Rp)'),
                   icon: Icon(Icons.money_rounded),
                 ),
@@ -140,7 +142,7 @@ class _DiscountDialogState extends State<DiscountDialog> {
                 labelText: _discountType == 'PERCENTAGE'
                     ? 'Persentase Diskon (0 - 100%)'
                     : 'Nominal Diskon (Rp)',
-                prefixText: _discountType == 'FIXED' ? 'Rp ' : null,
+                prefixText: _discountType == 'PERCENTAGE' ? null : 'Rp ',
                 suffixText: _discountType == 'PERCENTAGE' ? '%' : null,
               ),
               onChanged: (_) => setState(() {}),

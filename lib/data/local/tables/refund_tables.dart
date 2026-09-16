@@ -5,7 +5,7 @@ class Refunds extends Table {
   TextColumn get transactionId => text()();
   IntColumn get amount => integer()();
   TextColumn get reason => text()();
-  // Status: COMPLETED, CANCELLED
+  // Status: COMPLETED, VOIDED
   TextColumn get status => text()();
   TextColumn get createdById => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();

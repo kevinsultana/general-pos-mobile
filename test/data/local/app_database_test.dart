@@ -44,8 +44,8 @@ void main() {
     expect(store.cashRoundingMode, equals('ROUND_NEAREST'));
   });
 
-  test('AppDatabase has schemaVersion 2 and promotions/customers tables are queryable', () async {
-    expect(db.schemaVersion, equals(2));
+  test('AppDatabase has schemaVersion 3 and promotions/customers tables are queryable', () async {
+    expect(db.schemaVersion, equals(3));
 
     // Ensure self-healing DDL can execute idempotently
     await db.promotionDao.ensureTableExists();

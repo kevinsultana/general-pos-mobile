@@ -748,6 +748,7 @@ class _PaymentSheetState extends ConsumerState<PaymentSheet> {
         paymentMethodId: 'pm-qris',
         paymentType: 'QRIS',
         amount: rawGrandTotal,
+        roundingAmount: 0,
         referenceNumber: 'QRIS-${DateTime.now().millisecondsSinceEpoch}',
       ));
     } else if (_selectedMethod == 'TRANSFER') {
@@ -755,6 +756,7 @@ class _PaymentSheetState extends ConsumerState<PaymentSheet> {
         paymentMethodId: 'pm-transfer',
         paymentType: 'TRANSFER',
         amount: rawGrandTotal,
+        roundingAmount: 0,
         referenceNumber: 'TRF-${DateTime.now().millisecondsSinceEpoch}',
       ));
     } else if (_selectedMethod == 'CARD') {
@@ -762,6 +764,7 @@ class _PaymentSheetState extends ConsumerState<PaymentSheet> {
         paymentMethodId: 'pm-card',
         paymentType: 'CARD',
         amount: rawGrandTotal,
+        roundingAmount: 0,
         referenceNumber: _cardApprovalController.text.trim().isNotEmpty
             ? _cardApprovalController.text.trim()
             : null,
@@ -780,17 +783,26 @@ class _PaymentSheetState extends ConsumerState<PaymentSheet> {
         return;
       }
 
+      // Calculate cash rounding on the cash component
+      final cashRounding = await ref
+          .read(paymentControllerProvider.notifier)
+          .calculateCashRounding(cashPart);
+
       payments.add(PaymentInput(
         paymentMethodId: 'pm-cash',
         paymentType: 'CASH',
         amount: cashPart,
-        roundingAmount: 0,
+        roundingAmount: cashRounding.roundingAmount,
+        tenderedAmount: cashRounding.roundedAmount,
+        changeAmount: 0,
       ));
 
+      // Non-cash component strictly pays exact amount with 0 rounding
       payments.add(PaymentInput(
         paymentMethodId: 'pm-qris',
         paymentType: 'QRIS',
         amount: nonCashPart,
+        roundingAmount: 0,
       ));
     }
 

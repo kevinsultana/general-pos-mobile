@@ -88,7 +88,7 @@ class CloudSyncEventDao extends DatabaseAccessor<CloudDatabase>
   }
 
   Future<void> updateCursor(
-      String storeId, String deviceId, int cursor) async {
+      String storeId, String deviceId, BigInt cursor) async {
     final id = '${storeId}_$deviceId';
     await into(syncCursors).insertOnConflictUpdate(
       SyncCursorsCompanion.insert(

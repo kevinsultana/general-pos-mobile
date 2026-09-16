@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/permission_provider.dart';
 import '../../../data/local/app_database.dart';
 import '../controllers/category_controller.dart';
 import '../controllers/product_controller.dart';
@@ -147,6 +148,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   Widget build(BuildContext context) {
     final isEditing = widget.productToEdit != null;
     final categoriesAsync = ref.watch(categoryListStreamProvider);
+    final canManageProducts =
+        ref.watch(hasPermissionProvider(AppPermissions.manageProducts));
 
     return Scaffold(
       appBar: AppBar(
@@ -481,11 +484,37 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
               const SizedBox(height: 32),
 
+              if (!canManageProducts)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.warning),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.lock_outline, color: AppColors.warning, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Anda tidak memiliki izin untuk mengelola atau menyimpan produk.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textPrimaryLight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Save Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveProduct,
+                  onPressed: _isLoading || !canManageProducts ? null : _saveProduct,
                   child: _isLoading
                       ? const SizedBox(
                           width: 20,

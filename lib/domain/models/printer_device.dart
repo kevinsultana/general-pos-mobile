@@ -59,14 +59,20 @@ enum PrinterPaperSize {
   const PrinterPaperSize(this.maxCharsPerLine);
 
   static PrinterPaperSize fromString(String? value) {
-    if (value == '80mm' || value == 'mm80') {
+    if (value == null) return PrinterPaperSize.mm58;
+    final normalized = value.trim().toUpperCase();
+    if (normalized == 'PAPER_80MM' ||
+        normalized == '80MM' ||
+        normalized == 'MM80' ||
+        normalized == '80') {
       return PrinterPaperSize.mm80;
     }
     return PrinterPaperSize.mm58;
   }
 
+  String toDbString() => this == mm80 ? 'PAPER_80MM' : 'PAPER_58MM';
+  String toConfigString() => toDbString();
   String get displayName => this == mm58 ? '58mm (Standar)' : '80mm (Lebar)';
-  String toConfigString() => this == mm58 ? '58mm' : '80mm';
 }
 
 enum PrinterState {

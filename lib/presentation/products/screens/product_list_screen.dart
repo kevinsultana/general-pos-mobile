@@ -12,6 +12,7 @@ import '../controllers/category_controller.dart';
 import '../controllers/product_controller.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
+import '../../../core/providers/permission_provider.dart';
 import '../../../data/services/barcode_label_service.dart';
 import '../../common/widgets/barcode_label_dialog.dart';
 import 'product_form_screen.dart';
@@ -25,6 +26,7 @@ class ProductListScreen extends ConsumerWidget {
     final productsAsync = ref.watch(productListStreamProvider);
     final categoriesAsync = ref.watch(categoryListStreamProvider);
     final selectedCategory = ref.watch(selectedCategoryFilterProvider);
+    final canManageProducts = ref.watch(hasPermissionProvider(AppPermissions.manageProducts));
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -41,15 +43,17 @@ class ProductListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Tambah Produk'),
-        onPressed: () {
-          context.push('/products/new');
-        },
-      ),
+      floatingActionButton: canManageProducts
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Tambah Produk'),
+              onPressed: () {
+                context.push('/products/new');
+              },
+            )
+          : null,
       body: Column(
         children: [
           // Search & Filter Header
@@ -230,6 +234,9 @@ class _ProductCard extends ConsumerWidget {
       stockText = '${product.stock} unit (Menipis)';
     }
 
+    final canManageProducts = ref.watch(hasPermissionProvider(AppPermissions.manageProducts));
+    final canManageInventory = ref.watch(hasPermissionProvider(AppPermissions.manageInventory));
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -361,38 +368,40 @@ class _ProductCard extends ConsumerWidget {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      side: const BorderSide(color: AppColors.accent),
-                      foregroundColor: AppColors.accent,
+                  if (canManageInventory) ...[
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        side: const BorderSide(color: AppColors.accent),
+                        foregroundColor: AppColors.accent,
+                      ),
+                      icon: const Icon(Icons.add_shopping_cart_rounded, size: 16),
+                      label: const Text('Stock In'),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => StockInDialog(product: product),
+                        );
+                      },
                     ),
-                    icon: const Icon(Icons.add_shopping_cart_rounded, size: 16),
-                    label: const Text('Stock In'),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => StockInDialog(product: product),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                      ),
+                      icon: const Icon(Icons.tune_rounded, size: 16),
+                      label: const Text('Sesuaikan'),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => StockAdjustmentDialog(product: product),
+                        );
+                      },
                     ),
-                    icon: const Icon(Icons.tune_rounded, size: 16),
-                    label: const Text('Sesuaikan'),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => StockAdjustmentDialog(product: product),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 8),
+                  ],
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -434,19 +443,21 @@ class _ProductCard extends ConsumerWidget {
                       }
                     },
                   ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    tooltip: 'Edit Produk',
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ProductFormScreen(productToEdit: product),
-                        ),
-                      );
-                    },
-                  ),
+                  if (canManageProducts) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      tooltip: 'Edit Produk',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProductFormScreen(productToEdit: product),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -56,6 +56,20 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  Future<void> updateTransactionRefunded(
+    String transactionId,
+    String status,
+    DateTime refundedAt,
+  ) {
+    return (update(transactions)..where((tbl) => tbl.id.equals(transactionId))).write(
+      TransactionsCompanion(
+        status: Value(status),
+        refundedAt: Value(refundedAt),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   Future<void> replaceTransactionWithItems({
     required TransactionsCompanion transaction,
     required List<TransactionItemsCompanion> items,

@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_pos/data/local/app_database.dart';
@@ -431,9 +431,80 @@ void main() {
       prod = await cloudDb.productDao.getProductById(prodId);
       expect(prod?.stock, 9);
 
-      // Status should be PARTIALLY_REFUNDED
+      // Status should be PARTIALLY_REFUNDED and refundedAt should be recorded
       final updatedTrx = await trxRepo.getTransaction(trxId);
       expect(updatedTrx?.status, 'PARTIALLY_REFUNDED');
+      expect(updatedTrx?.refundedAt, isNotNull);
+    });
+
+    // ──────────────── 7. Inbound Sync Refund ────────────────
+
+    test('Inbound Sync: Remote REFUND_TRANSACTION updates status, sets refundedAt, and restores stock', () async {
+      const prodId = 'prod-inbound-refund';
+      await cloudDb.into(cloudDb.products).insert(
+            ProductsCompanion.insert(
+              id: prodId,
+              storeId: storeId,
+              categoryId: categoryId,
+              name: 'Matcha Latte Inbound',
+              cost: 6000,
+              sellingPrice: 18000,
+              stock: 10,
+              lowStockThreshold: const Value(2),
+              active: const Value(true),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+
+      const trxId = 'trx-inbound-refund-01';
+      await cloudDb.into(cloudDb.transactions).insert(
+            TransactionsCompanion.insert(
+              id: trxId,
+              storeId: storeId,
+              transactionNumber: 'TRX-REFUND-001',
+              status: 'COMPLETED',
+              subtotal: 18000,
+              total: 18000,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+
+      final tokenStorage = TokenStorage(const FlutterSecureStorage());
+      final apiClient = ApiClient(tokenStorage);
+      final cloudSyncDb = CloudDatabase.forTesting(DatabaseConnection(NativeDatabase.memory()));
+      final syncService = CloudSyncService(
+        cloudSyncDb.cloudSyncEventDao,
+        apiClient,
+        tokenStorage,
+        cloudDb,
+      );
+
+      final refundDate = DateTime(2026, 9, 16, 12, 0);
+      await syncService.dispatchOperationForTesting(
+        storeId,
+        'REFUND_TRANSACTION',
+        {
+          'transactionId': trxId,
+          'status': 'REFUNDED',
+          'isFullRefund': true,
+          'refundedAt': refundDate.toIso8601String(),
+          'reason': 'Remote refund from dashboard',
+          'items': [
+            {'productId': prodId, 'quantity': 1},
+          ],
+        },
+      );
+
+      final updatedTrx = await cloudDb.transactionDao.getTransactionById(trxId);
+      expect(updatedTrx?.status, 'REFUNDED');
+      expect(updatedTrx?.refundedAt, isNotNull);
+
+      final prod = await cloudDb.productDao.getProductById(prodId);
+      expect(prod?.stock, 11); // 10 + 1 restored
+
+      await cloudSyncDb.close();
     });
   });
 }

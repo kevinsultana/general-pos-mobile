@@ -6,12 +6,14 @@ class Transactions extends Table {
   TextColumn get transactionNumber => text()();
   TextColumn get customerId => text().nullable()();
 
-  // Status: DRAFT, COMPLETED, CANCELLED
+  // Status: DRAFT, COMPLETED, CANCELLED, PARTIALLY_REFUNDED, REFUNDED
   TextColumn get status => text()();
+  // OrderType: DINE_IN, TAKEAWAY
   TextColumn get orderType => text().nullable()();
   TextColumn get queueNumber => text().nullable()();
 
   IntColumn get subtotal => integer()();
+  // DiscountType: PERCENTAGE, FIXED_AMOUNT
   TextColumn get discountType => text().nullable()();
   IntColumn get discountValue => integer().nullable()();
   IntColumn get discountTotal => integer().withDefault(const Constant(0))();
@@ -28,6 +30,7 @@ class Transactions extends Table {
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   DateTimeColumn get cancelledAt => dateTime().nullable()();
+  DateTimeColumn get refundedAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
@@ -55,6 +58,7 @@ class TransactionItems extends Table {
   IntColumn get unitPrice => integer()();
   IntColumn get unitCostSnapshot => integer()(); // Critical for accurate gross profit
 
+  // DiscountType: PERCENTAGE, FIXED_AMOUNT
   TextColumn get discountType => text().nullable()();
   IntColumn get discountValue => integer().nullable()();
   IntColumn get discountAmount => integer().withDefault(const Constant(0))();

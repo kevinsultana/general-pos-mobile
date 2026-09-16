@@ -70,7 +70,7 @@ class InventoryRepositoryImpl implements IInventoryRepository {
           storeId: Value(storeId),
           productId: Value(productId),
           variantId: Value(variantId),
-          type: const Value('IN'),
+          type: const Value('STOCK_IN'),
           quantityDelta: Value(addedQty * 1000), // Scale 1000
           unitCost: Value(unitCost),
           reason: Value(reason ?? 'Stock In Purchase'),

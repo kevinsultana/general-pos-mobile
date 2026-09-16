@@ -6,7 +6,7 @@ class CartState {
   final String orderType; // 'DINE_IN' or 'TAKEAWAY'
   final String? queueNumber;
   final String? customerId;
-  final String? orderDiscountType; // 'PERCENTAGE' or 'FIXED'
+  final String? orderDiscountType; // 'PERCENTAGE' or 'FIXED_AMOUNT'
   final int? orderDiscountValue;
   final String? loadedDraftId;
   final String? promotionId;
