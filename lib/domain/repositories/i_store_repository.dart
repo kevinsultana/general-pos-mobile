@@ -13,6 +13,12 @@ abstract class IStoreRepository {
     required int increment,
     required String mode,
   });
+  Future<void> updateSubscription({
+    required String storeId,
+    required String plan,
+    required String status,
+    DateTime? expiresAt,
+  });
   Future<Store> ensureDefaultStore();
 }
 

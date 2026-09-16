@@ -45,7 +45,7 @@ class _RefundDialogState extends ConsumerState<RefundDialog> {
   void initState() {
     super.initState();
     _refundQuantities = {
-      for (final item in widget.items) item.id: item.quantity,
+      for (final item in widget.items) item.id: item.quantity.round(),
     };
   }
 
@@ -70,7 +70,7 @@ class _RefundDialogState extends ConsumerState<RefundDialog> {
 
   bool get _isEffectivelyFull {
     final originalTotalQty =
-        widget.items.fold<int>(0, (sum, i) => sum + i.quantity);
+        widget.items.fold<int>(0, (sum, i) => sum + i.quantity.round());
     return _totalRefundQty >= originalTotalQty;
   }
 
@@ -80,7 +80,7 @@ class _RefundDialogState extends ConsumerState<RefundDialog> {
       if (full) {
         // Reset all to max quantity
         _refundQuantities = {
-          for (final item in widget.items) item.id: item.quantity,
+          for (final item in widget.items) item.id: item.quantity.round(),
         };
       }
     });
@@ -337,7 +337,7 @@ class _RefundDialogState extends ConsumerState<RefundDialog> {
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                                   onPressed: currentRefundQty > 0
-                                      ? () => _changeItemQty(item.id, -1, item.quantity)
+                                      ? () => _changeItemQty(item.id, -1, item.quantity.round())
                                       : null,
                                 ),
                                 Container(
@@ -353,8 +353,8 @@ class _RefundDialogState extends ConsumerState<RefundDialog> {
                                   color: currentRefundQty < item.quantity ? Colors.purple.shade700 : Colors.grey.shade300,
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                  onPressed: currentRefundQty < item.quantity
-                                      ? () => _changeItemQty(item.id, 1, item.quantity)
+                                  onPressed: currentRefundQty < item.quantity.round()
+                                      ? () => _changeItemQty(item.id, 1, item.quantity.round())
                                       : null,
                                 ),
                               ],

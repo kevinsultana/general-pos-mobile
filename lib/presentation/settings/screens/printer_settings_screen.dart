@@ -360,6 +360,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
         kitchenCopies: kitchenCopies,
         autoPrint: autoPrint,
         active: true,
+        customConfiguration: existingPrinter?.customConfiguration ?? const {},
         createdAt: existingPrinter?.createdAt ?? now,
         updatedAt: now,
       );

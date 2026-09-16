@@ -39,7 +39,7 @@ class CartState {
   int get grandTotal => calculation.grandTotal;
   int get totalCost => calculation.totalCost;
   int get grossProfit => calculation.grossProfit;
-  int get totalItemCount => calculation.totalItemCount;
+  int get totalItemCount => calculation.totalItemCount.round();
 
   bool get isEmpty => items.isEmpty;
   bool get isNotEmpty => items.isNotEmpty;

@@ -139,51 +139,55 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
             color: AppColors.backgroundLight,
             child: Column(
               children: [
-                Row(
-                  children: [
-                    // Order Type Selector
-                    Expanded(
-                      flex: 3,
-                      child: SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(
-                            value: 'DINE_IN',
-                            label: Text('Dine In', style: TextStyle(fontSize: 12)),
-                            icon: Icon(Icons.restaurant_rounded, size: 16),
-                          ),
-                          ButtonSegment(
-                            value: 'TAKEAWAY',
-                            label: Text('Takeaway', style: TextStyle(fontSize: 12)),
-                            icon: Icon(Icons.takeout_dining_rounded, size: 16),
-                          ),
-                        ],
-                        selected: {cartState.orderType},
-                        onSelectionChanged: (val) {
-                          cartNotifier.setOrderType(val.first);
-                        },
+                // Order Type Selector
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: 'DINE_IN',
+                        label: Text('Dine In', style: TextStyle(fontSize: 11)),
+                        icon: Icon(Icons.restaurant_rounded, size: 14),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      ButtonSegment(
+                        value: 'TAKEAWAY',
+                        label: Text('Takeaway', style: TextStyle(fontSize: 11)),
+                        icon: Icon(Icons.takeout_dining_rounded, size: 14),
+                      ),
+                      ButtonSegment(
+                        value: 'DELIVERY',
+                        label: Text('Delivery', style: TextStyle(fontSize: 11)),
+                        icon: Icon(Icons.delivery_dining_rounded, size: 14),
+                      ),
+                      ButtonSegment(
+                        value: 'ONLINE',
+                        label: Text('Online', style: TextStyle(fontSize: 11)),
+                        icon: Icon(Icons.public_rounded, size: 14),
+                      ),
+                    ],
+                    selected: {cartState.orderType},
+                    onSelectionChanged: (val) {
+                      cartNotifier.setOrderType(val.first);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
 
-                    // Queue Number Input
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: _queueController,
-                        decoration: const InputDecoration(
-                          hintText: 'No. Antrian (cth: #05)',
-                          prefixIcon: Icon(Icons.confirmation_number_outlined,
-                              size: 18),
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          isDense: true,
-                        ),
-                        onChanged: (val) {
-                          cartNotifier.setQueueNumber(val);
-                        },
-                      ),
-                    ),
-                  ],
+                // Queue Number Input
+                TextField(
+                  controller: _queueController,
+                  decoration: const InputDecoration(
+                    hintText: 'No. Antrian (cth: #05)',
+                    prefixIcon: Icon(Icons.confirmation_number_outlined,
+                        size: 18),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    isDense: true,
+                  ),
+                  onChanged: (val) {
+                    cartNotifier.setQueueNumber(val);
+                  },
                 ),
 
                 // Customer Selector (PRD 26: Only if customerEnabled)

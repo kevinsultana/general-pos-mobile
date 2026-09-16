@@ -41,6 +41,20 @@ class StoreRepositoryImpl implements IStoreRepository {
       );
 
   @override
+  Future<void> updateSubscription({
+    required String storeId,
+    required String plan,
+    required String status,
+    DateTime? expiresAt,
+  }) =>
+      _storeDao.updateSubscription(
+        storeId: storeId,
+        plan: plan,
+        status: status,
+        expiresAt: expiresAt,
+      );
+
+  @override
   Future<Store> ensureDefaultStore() => _storeDao.ensureDefaultStore();
 }
 

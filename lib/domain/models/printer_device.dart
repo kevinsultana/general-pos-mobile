@@ -108,6 +108,7 @@ class PrinterDevice {
   final bool autoPrint;
   final bool active;
   final PrinterState state;
+  final Map<String, dynamic> customConfiguration;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -124,6 +125,7 @@ class PrinterDevice {
     this.autoPrint = false,
     this.active = true,
     this.state = PrinterState.disconnected,
+    this.customConfiguration = const {},
     required this.createdAt,
     required this.updatedAt,
   });
@@ -141,6 +143,7 @@ class PrinterDevice {
     bool? autoPrint,
     bool? active,
     PrinterState? state,
+    Map<String, dynamic>? customConfiguration,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -157,26 +160,53 @@ class PrinterDevice {
       autoPrint: autoPrint ?? this.autoPrint,
       active: active ?? this.active,
       state: state ?? this.state,
+      customConfiguration: customConfiguration ?? this.customConfiguration,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   String encodeConfiguration() {
-    return jsonEncode({
-      'paperSize': paperSize.toConfigString(),
-    });
+    final map = Map<String, dynamic>.from(customConfiguration);
+    map['paperSize'] = paperSize.toConfigString();
+    return jsonEncode(map);
   }
 
-  static PrinterPaperSize decodePaperSize(String? configJson) {
-    if (configJson == null || configJson.isEmpty) {
-      return PrinterPaperSize.mm58;
+  static Map<String, dynamic> decodeConfiguration(dynamic config) {
+    if (config == null) return {};
+    if (config is Map<String, dynamic>) return Map<String, dynamic>.from(config);
+    if (config is Map) {
+      return config.map((key, value) => MapEntry(key.toString(), value));
     }
-    try {
-      final map = jsonDecode(configJson) as Map<String, dynamic>;
-      return PrinterPaperSize.fromString(map['paperSize'] as String?);
-    } catch (_) {
-      return PrinterPaperSize.mm58;
+    if (config is String) {
+      final trimmed = config.trim();
+      if (trimmed.isEmpty) return {};
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map) {
+          return decoded.map((key, value) => MapEntry(key.toString(), value));
+        }
+      } catch (_) {}
     }
+    return {};
+  }
+
+  static PrinterPaperSize decodePaperSize(dynamic config) {
+    if (config == null) return PrinterPaperSize.mm58;
+    if (config is Map) {
+      return PrinterPaperSize.fromString(config['paperSize']?.toString());
+    }
+    if (config is String) {
+      final trimmed = config.trim();
+      if (trimmed.isEmpty) return PrinterPaperSize.mm58;
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map) {
+          return PrinterPaperSize.fromString(decoded['paperSize']?.toString());
+        }
+      } catch (_) {}
+      return PrinterPaperSize.fromString(trimmed);
+    }
+    return PrinterPaperSize.mm58;
   }
 }

@@ -22,7 +22,7 @@ class CartController extends StateNotifier<CartState> {
       : super(const CartState());
 
   /// Adds a product to the cart. If the product/variant already exists, increments quantity.
-  void addProduct(Product product, {ProductVariant? variant, int quantity = 1}) {
+  void addProduct(Product product, {ProductVariant? variant, double quantity = 1}) {
     if (quantity <= 0) return;
 
     final key = variant != null ? '${product.id}:${variant.id}' : product.id;
@@ -85,7 +85,7 @@ class CartController extends StateNotifier<CartState> {
 
     final newItems = state.items.map((item) {
       if (item.uniqueKey == key) {
-        return item.copyWith(quantity: newQuantity);
+        return item.copyWith(quantity: newQuantity.toDouble());
       }
       return item;
     }).toList();
@@ -96,13 +96,13 @@ class CartController extends StateNotifier<CartState> {
   void incrementQuantity(String key) {
     final item = state.items.firstWhere((i) => i.uniqueKey == key,
         orElse: () => throw Exception('Item not found'));
-    updateQuantity(key, item.quantity + 1);
+    updateQuantity(key, item.quantity.round() + 1);
   }
 
   void decrementQuantity(String key) {
     final item = state.items.firstWhere((i) => i.uniqueKey == key,
         orElse: () => throw Exception('Item not found'));
-    updateQuantity(key, item.quantity - 1);
+    updateQuantity(key, item.quantity.round() - 1);
   }
 
   /// Removes a single item from the cart

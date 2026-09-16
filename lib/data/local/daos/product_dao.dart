@@ -69,4 +69,9 @@ class ProductDao extends DatabaseAccessor<AppDatabase> with _$ProductDaoMixin {
           ..where((tbl) => tbl.barcode.equals(barcode) & tbl.active.equals(true)))
         .getSingleOrNull();
   }
+
+  Future<int> deleteProduct(String id) async {
+    await (delete(productVariants)..where((tbl) => tbl.productId.equals(id))).go();
+    return (delete(products)..where((tbl) => tbl.id.equals(id))).go();
+  }
 }

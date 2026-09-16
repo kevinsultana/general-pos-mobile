@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers/cloud_providers.dart';
+import '../../../core/providers/database_providers.dart';
 import '../../../data/services/cloud_sync_service.dart';
 import '../../../data/services/api_client.dart';
+import '../../../data/local/cloud_database.dart' show SyncEvent;
 
 /// Cloud Sync management page — shows connection status, pending events,
 /// allows manual sync trigger, and shows failed events with retry option.
@@ -39,6 +41,21 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
         final res = await apiClient.get('/api/v1/subscription');
         final data = res['data'] as Map<String, dynamic>?;
         plan = data?['plan'] as String?;
+        final status = data?['status'] as String? ?? 'ACTIVE';
+        final storeRepo = ref.read(storeRepositoryProvider);
+        final currentStore = await storeRepo.getCurrentStore();
+        if (currentStore != null && plan != null) {
+          await storeRepo.updateSubscription(
+            storeId: currentStore.id,
+            plan: plan,
+            status: status,
+          );
+        }
+      } catch (_) {}
+    } else {
+      try {
+        final currentStore = await ref.read(storeRepositoryProvider).getCurrentStore();
+        plan = currentStore?.subscriptionPlan;
       } catch (_) {}
     }
     if (mounted) {
@@ -105,6 +122,17 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
   Future<void> _retryFailed() async {
     final syncRepo = ref.read(syncRepositoryProvider);
     final result = await syncRepo.retryFailed();
+    if (mounted) {
+      setState(() {
+        _lastResult = result;
+        _lastSyncTime = DateTime.now();
+      });
+    }
+  }
+
+  Future<void> _retryConflicts() async {
+    final syncRepo = ref.read(syncRepositoryProvider);
+    final result = await syncRepo.retryConflicts();
     if (mounted) {
       setState(() {
         _lastResult = result;
@@ -193,7 +221,12 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
             syncStatus: syncStatus,
             onSyncNow: _doSync,
             onRetryFailed: _retryFailed,
+            onRetryConflicts: _retryConflicts,
           ),
+          const SizedBox(height: 12),
+
+          // ── Conflict Events ──
+          _ConflictEventsCard(onRetryConflicts: _retryConflicts),
           const SizedBox(height: 12),
 
           // ── Info ──
@@ -409,11 +442,13 @@ class _SyncActionsCard extends StatelessWidget {
   final SyncStatus syncStatus;
   final VoidCallback onSyncNow;
   final VoidCallback onRetryFailed;
+  final VoidCallback onRetryConflicts;
 
   const _SyncActionsCard({
     required this.syncStatus,
     required this.onSyncNow,
     required this.onRetryFailed,
+    required this.onRetryConflicts,
   });
 
   @override
@@ -448,6 +483,94 @@ class _SyncActionsCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Displays CONFLICT events (data conflicts detected by server) and provides a retry button.
+class _ConflictEventsCard extends ConsumerWidget {
+  final VoidCallback onRetryConflicts;
+  const _ConflictEventsCard({required this.onRetryConflicts});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+
+    return FutureBuilder<List<SyncEvent>>(
+      future: ref.read(syncRepositoryProvider).getConflictEvents(),
+      builder: (context, snap) {
+        final conflicts = snap.data ?? [];
+        if (conflicts.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.orange.shade300),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${conflicts.length} Event Konflik Terdeteksi',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 6),
+              Text(
+                'Server mendeteksi konflik data. Tekan tombol di bawah untuk mengirim ulang — server akan menjadi sumber kebenaran.',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...conflicts.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(children: [
+                  Icon(Icons.error_outline, size: 14, color: Colors.orange.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${e.operation} · ${e.entityType} · ${e.entityId.length > 8 ? e.entityId.substring(0, 8) : e.entityId}...',
+                      style: GoogleFonts.inter(fontSize: 12, color: cs.onSurface),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ]),
+              )),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onRetryConflicts,
+                  icon: const Icon(Icons.autorenew_rounded, size: 16),
+                  label: Text(
+                    'Kirim Ulang Event Konflik',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange.shade800,
+                    side: BorderSide(color: Colors.orange.shade400),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

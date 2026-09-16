@@ -265,6 +265,41 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
     requiredDuringInsert: false,
     defaultValue: const Constant('ROUND_NEAREST'),
   );
+  static const VerificationMeta _subscriptionPlanMeta = const VerificationMeta(
+    'subscriptionPlan',
+  );
+  @override
+  late final GeneratedColumn<String> subscriptionPlan = GeneratedColumn<String>(
+    'subscription_plan',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('PRO'),
+  );
+  static const VerificationMeta _subscriptionStatusMeta =
+      const VerificationMeta('subscriptionStatus');
+  @override
+  late final GeneratedColumn<String> subscriptionStatus =
+      GeneratedColumn<String>(
+        'subscription_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('ACTIVE'),
+      );
+  static const VerificationMeta _subscriptionExpiresAtMeta =
+      const VerificationMeta('subscriptionExpiresAt');
+  @override
+  late final GeneratedColumn<DateTime> subscriptionExpiresAt =
+      GeneratedColumn<DateTime>(
+        'subscription_expires_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -310,6 +345,9 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
     cashRoundingEnabled,
     cashRoundingIncrement,
     cashRoundingMode,
+    subscriptionPlan,
+    subscriptionStatus,
+    subscriptionExpiresAt,
     createdAt,
     updatedAt,
   ];
@@ -488,6 +526,33 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
         ),
       );
     }
+    if (data.containsKey('subscription_plan')) {
+      context.handle(
+        _subscriptionPlanMeta,
+        subscriptionPlan.isAcceptableOrUnknown(
+          data['subscription_plan']!,
+          _subscriptionPlanMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subscription_status')) {
+      context.handle(
+        _subscriptionStatusMeta,
+        subscriptionStatus.isAcceptableOrUnknown(
+          data['subscription_status']!,
+          _subscriptionStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subscription_expires_at')) {
+      context.handle(
+        _subscriptionExpiresAtMeta,
+        subscriptionExpiresAt.isAcceptableOrUnknown(
+          data['subscription_expires_at']!,
+          _subscriptionExpiresAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -597,6 +662,18 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
         DriftSqlType.string,
         data['${effectivePrefix}cash_rounding_mode'],
       )!,
+      subscriptionPlan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subscription_plan'],
+      )!,
+      subscriptionStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subscription_status'],
+      )!,
+      subscriptionExpiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}subscription_expires_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -636,6 +713,9 @@ class Store extends DataClass implements Insertable<Store> {
   final bool cashRoundingEnabled;
   final int cashRoundingIncrement;
   final String cashRoundingMode;
+  final String subscriptionPlan;
+  final String subscriptionStatus;
+  final DateTime? subscriptionExpiresAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Store({
@@ -660,6 +740,9 @@ class Store extends DataClass implements Insertable<Store> {
     required this.cashRoundingEnabled,
     required this.cashRoundingIncrement,
     required this.cashRoundingMode,
+    required this.subscriptionPlan,
+    required this.subscriptionStatus,
+    this.subscriptionExpiresAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -697,6 +780,13 @@ class Store extends DataClass implements Insertable<Store> {
     map['cash_rounding_enabled'] = Variable<bool>(cashRoundingEnabled);
     map['cash_rounding_increment'] = Variable<int>(cashRoundingIncrement);
     map['cash_rounding_mode'] = Variable<String>(cashRoundingMode);
+    map['subscription_plan'] = Variable<String>(subscriptionPlan);
+    map['subscription_status'] = Variable<String>(subscriptionStatus);
+    if (!nullToAbsent || subscriptionExpiresAt != null) {
+      map['subscription_expires_at'] = Variable<DateTime>(
+        subscriptionExpiresAt,
+      );
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -735,6 +825,11 @@ class Store extends DataClass implements Insertable<Store> {
       cashRoundingEnabled: Value(cashRoundingEnabled),
       cashRoundingIncrement: Value(cashRoundingIncrement),
       cashRoundingMode: Value(cashRoundingMode),
+      subscriptionPlan: Value(subscriptionPlan),
+      subscriptionStatus: Value(subscriptionStatus),
+      subscriptionExpiresAt: subscriptionExpiresAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subscriptionExpiresAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -777,6 +872,13 @@ class Store extends DataClass implements Insertable<Store> {
         json['cashRoundingIncrement'],
       ),
       cashRoundingMode: serializer.fromJson<String>(json['cashRoundingMode']),
+      subscriptionPlan: serializer.fromJson<String>(json['subscriptionPlan']),
+      subscriptionStatus: serializer.fromJson<String>(
+        json['subscriptionStatus'],
+      ),
+      subscriptionExpiresAt: serializer.fromJson<DateTime?>(
+        json['subscriptionExpiresAt'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -806,6 +908,11 @@ class Store extends DataClass implements Insertable<Store> {
       'cashRoundingEnabled': serializer.toJson<bool>(cashRoundingEnabled),
       'cashRoundingIncrement': serializer.toJson<int>(cashRoundingIncrement),
       'cashRoundingMode': serializer.toJson<String>(cashRoundingMode),
+      'subscriptionPlan': serializer.toJson<String>(subscriptionPlan),
+      'subscriptionStatus': serializer.toJson<String>(subscriptionStatus),
+      'subscriptionExpiresAt': serializer.toJson<DateTime?>(
+        subscriptionExpiresAt,
+      ),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -833,6 +940,9 @@ class Store extends DataClass implements Insertable<Store> {
     bool? cashRoundingEnabled,
     int? cashRoundingIncrement,
     String? cashRoundingMode,
+    String? subscriptionPlan,
+    String? subscriptionStatus,
+    Value<DateTime?> subscriptionExpiresAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Store(
@@ -860,6 +970,11 @@ class Store extends DataClass implements Insertable<Store> {
     cashRoundingEnabled: cashRoundingEnabled ?? this.cashRoundingEnabled,
     cashRoundingIncrement: cashRoundingIncrement ?? this.cashRoundingIncrement,
     cashRoundingMode: cashRoundingMode ?? this.cashRoundingMode,
+    subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
+    subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
+    subscriptionExpiresAt: subscriptionExpiresAt.present
+        ? subscriptionExpiresAt.value
+        : this.subscriptionExpiresAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -910,6 +1025,15 @@ class Store extends DataClass implements Insertable<Store> {
       cashRoundingMode: data.cashRoundingMode.present
           ? data.cashRoundingMode.value
           : this.cashRoundingMode,
+      subscriptionPlan: data.subscriptionPlan.present
+          ? data.subscriptionPlan.value
+          : this.subscriptionPlan,
+      subscriptionStatus: data.subscriptionStatus.present
+          ? data.subscriptionStatus.value
+          : this.subscriptionStatus,
+      subscriptionExpiresAt: data.subscriptionExpiresAt.present
+          ? data.subscriptionExpiresAt.value
+          : this.subscriptionExpiresAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -939,6 +1063,9 @@ class Store extends DataClass implements Insertable<Store> {
           ..write('cashRoundingEnabled: $cashRoundingEnabled, ')
           ..write('cashRoundingIncrement: $cashRoundingIncrement, ')
           ..write('cashRoundingMode: $cashRoundingMode, ')
+          ..write('subscriptionPlan: $subscriptionPlan, ')
+          ..write('subscriptionStatus: $subscriptionStatus, ')
+          ..write('subscriptionExpiresAt: $subscriptionExpiresAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -968,6 +1095,9 @@ class Store extends DataClass implements Insertable<Store> {
     cashRoundingEnabled,
     cashRoundingIncrement,
     cashRoundingMode,
+    subscriptionPlan,
+    subscriptionStatus,
+    subscriptionExpiresAt,
     createdAt,
     updatedAt,
   ]);
@@ -996,6 +1126,9 @@ class Store extends DataClass implements Insertable<Store> {
           other.cashRoundingEnabled == this.cashRoundingEnabled &&
           other.cashRoundingIncrement == this.cashRoundingIncrement &&
           other.cashRoundingMode == this.cashRoundingMode &&
+          other.subscriptionPlan == this.subscriptionPlan &&
+          other.subscriptionStatus == this.subscriptionStatus &&
+          other.subscriptionExpiresAt == this.subscriptionExpiresAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1022,6 +1155,9 @@ class StoresCompanion extends UpdateCompanion<Store> {
   final Value<bool> cashRoundingEnabled;
   final Value<int> cashRoundingIncrement;
   final Value<String> cashRoundingMode;
+  final Value<String> subscriptionPlan;
+  final Value<String> subscriptionStatus;
+  final Value<DateTime?> subscriptionExpiresAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1047,6 +1183,9 @@ class StoresCompanion extends UpdateCompanion<Store> {
     this.cashRoundingEnabled = const Value.absent(),
     this.cashRoundingIncrement = const Value.absent(),
     this.cashRoundingMode = const Value.absent(),
+    this.subscriptionPlan = const Value.absent(),
+    this.subscriptionStatus = const Value.absent(),
+    this.subscriptionExpiresAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1073,6 +1212,9 @@ class StoresCompanion extends UpdateCompanion<Store> {
     this.cashRoundingEnabled = const Value.absent(),
     this.cashRoundingIncrement = const Value.absent(),
     this.cashRoundingMode = const Value.absent(),
+    this.subscriptionPlan = const Value.absent(),
+    this.subscriptionStatus = const Value.absent(),
+    this.subscriptionExpiresAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1102,6 +1244,9 @@ class StoresCompanion extends UpdateCompanion<Store> {
     Expression<bool>? cashRoundingEnabled,
     Expression<int>? cashRoundingIncrement,
     Expression<String>? cashRoundingMode,
+    Expression<String>? subscriptionPlan,
+    Expression<String>? subscriptionStatus,
+    Expression<DateTime>? subscriptionExpiresAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1133,6 +1278,10 @@ class StoresCompanion extends UpdateCompanion<Store> {
       if (cashRoundingIncrement != null)
         'cash_rounding_increment': cashRoundingIncrement,
       if (cashRoundingMode != null) 'cash_rounding_mode': cashRoundingMode,
+      if (subscriptionPlan != null) 'subscription_plan': subscriptionPlan,
+      if (subscriptionStatus != null) 'subscription_status': subscriptionStatus,
+      if (subscriptionExpiresAt != null)
+        'subscription_expires_at': subscriptionExpiresAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1161,6 +1310,9 @@ class StoresCompanion extends UpdateCompanion<Store> {
     Value<bool>? cashRoundingEnabled,
     Value<int>? cashRoundingIncrement,
     Value<String>? cashRoundingMode,
+    Value<String>? subscriptionPlan,
+    Value<String>? subscriptionStatus,
+    Value<DateTime?>? subscriptionExpiresAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1189,6 +1341,10 @@ class StoresCompanion extends UpdateCompanion<Store> {
       cashRoundingIncrement:
           cashRoundingIncrement ?? this.cashRoundingIncrement,
       cashRoundingMode: cashRoundingMode ?? this.cashRoundingMode,
+      subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
+      subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
+      subscriptionExpiresAt:
+          subscriptionExpiresAt ?? this.subscriptionExpiresAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1267,6 +1423,17 @@ class StoresCompanion extends UpdateCompanion<Store> {
     if (cashRoundingMode.present) {
       map['cash_rounding_mode'] = Variable<String>(cashRoundingMode.value);
     }
+    if (subscriptionPlan.present) {
+      map['subscription_plan'] = Variable<String>(subscriptionPlan.value);
+    }
+    if (subscriptionStatus.present) {
+      map['subscription_status'] = Variable<String>(subscriptionStatus.value);
+    }
+    if (subscriptionExpiresAt.present) {
+      map['subscription_expires_at'] = Variable<DateTime>(
+        subscriptionExpiresAt.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1303,6 +1470,9 @@ class StoresCompanion extends UpdateCompanion<Store> {
           ..write('cashRoundingEnabled: $cashRoundingEnabled, ')
           ..write('cashRoundingIncrement: $cashRoundingIncrement, ')
           ..write('cashRoundingMode: $cashRoundingMode, ')
+          ..write('subscriptionPlan: $subscriptionPlan, ')
+          ..write('subscriptionStatus: $subscriptionStatus, ')
+          ..write('subscriptionExpiresAt: $subscriptionExpiresAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -6587,11 +6757,11 @@ class $TransactionItemsTable extends TransactionItems
     'quantity',
   );
   @override
-  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
     'quantity',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _unitPriceMeta = const VerificationMeta(
@@ -6901,7 +7071,7 @@ class $TransactionItemsTable extends TransactionItems
         data['${effectivePrefix}barcode_snapshot'],
       ),
       quantity: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.double,
         data['${effectivePrefix}quantity'],
       )!,
       unitPrice: attachedDatabase.typeMapping.read(
@@ -6954,7 +7124,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
   final String? variantNameSnapshot;
   final String? skuSnapshot;
   final String? barcodeSnapshot;
-  final int quantity;
+  final double quantity;
   final int unitPrice;
   final int unitCostSnapshot;
   final String? discountType;
@@ -7001,7 +7171,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     if (!nullToAbsent || barcodeSnapshot != null) {
       map['barcode_snapshot'] = Variable<String>(barcodeSnapshot);
     }
-    map['quantity'] = Variable<int>(quantity);
+    map['quantity'] = Variable<double>(quantity);
     map['unit_price'] = Variable<int>(unitPrice);
     map['unit_cost_snapshot'] = Variable<int>(unitCostSnapshot);
     if (!nullToAbsent || discountType != null) {
@@ -7069,7 +7239,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       ),
       skuSnapshot: serializer.fromJson<String?>(json['skuSnapshot']),
       barcodeSnapshot: serializer.fromJson<String?>(json['barcodeSnapshot']),
-      quantity: serializer.fromJson<int>(json['quantity']),
+      quantity: serializer.fromJson<double>(json['quantity']),
       unitPrice: serializer.fromJson<int>(json['unitPrice']),
       unitCostSnapshot: serializer.fromJson<int>(json['unitCostSnapshot']),
       discountType: serializer.fromJson<String?>(json['discountType']),
@@ -7092,7 +7262,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       'variantNameSnapshot': serializer.toJson<String?>(variantNameSnapshot),
       'skuSnapshot': serializer.toJson<String?>(skuSnapshot),
       'barcodeSnapshot': serializer.toJson<String?>(barcodeSnapshot),
-      'quantity': serializer.toJson<int>(quantity),
+      'quantity': serializer.toJson<double>(quantity),
       'unitPrice': serializer.toJson<int>(unitPrice),
       'unitCostSnapshot': serializer.toJson<int>(unitCostSnapshot),
       'discountType': serializer.toJson<String?>(discountType),
@@ -7113,7 +7283,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     Value<String?> variantNameSnapshot = const Value.absent(),
     Value<String?> skuSnapshot = const Value.absent(),
     Value<String?> barcodeSnapshot = const Value.absent(),
-    int? quantity,
+    double? quantity,
     int? unitPrice,
     int? unitCostSnapshot,
     Value<String?> discountType = const Value.absent(),
@@ -7263,7 +7433,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
   final Value<String?> variantNameSnapshot;
   final Value<String?> skuSnapshot;
   final Value<String?> barcodeSnapshot;
-  final Value<int> quantity;
+  final Value<double> quantity;
   final Value<int> unitPrice;
   final Value<int> unitCostSnapshot;
   final Value<String?> discountType;
@@ -7302,7 +7472,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     this.variantNameSnapshot = const Value.absent(),
     this.skuSnapshot = const Value.absent(),
     this.barcodeSnapshot = const Value.absent(),
-    required int quantity,
+    required double quantity,
     required int unitPrice,
     required int unitCostSnapshot,
     this.discountType = const Value.absent(),
@@ -7331,7 +7501,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     Expression<String>? variantNameSnapshot,
     Expression<String>? skuSnapshot,
     Expression<String>? barcodeSnapshot,
-    Expression<int>? quantity,
+    Expression<double>? quantity,
     Expression<int>? unitPrice,
     Expression<int>? unitCostSnapshot,
     Expression<String>? discountType,
@@ -7375,7 +7545,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     Value<String?>? variantNameSnapshot,
     Value<String?>? skuSnapshot,
     Value<String?>? barcodeSnapshot,
-    Value<int>? quantity,
+    Value<double>? quantity,
     Value<int>? unitPrice,
     Value<int>? unitCostSnapshot,
     Value<String?>? discountType,
@@ -7440,7 +7610,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
       map['barcode_snapshot'] = Variable<String>(barcodeSnapshot.value);
     }
     if (quantity.present) {
-      map['quantity'] = Variable<int>(quantity.value);
+      map['quantity'] = Variable<double>(quantity.value);
     }
     if (unitPrice.present) {
       map['unit_price'] = Variable<int>(unitPrice.value);
@@ -11402,6 +11572,9 @@ typedef $$StoresTableCreateCompanionBuilder = StoresCompanion Function({
   Value<bool> cashRoundingEnabled,
   Value<int> cashRoundingIncrement,
   Value<String> cashRoundingMode,
+  Value<String> subscriptionPlan,
+  Value<String> subscriptionStatus,
+  Value<DateTime?> subscriptionExpiresAt,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -11428,6 +11601,9 @@ typedef $$StoresTableUpdateCompanionBuilder = StoresCompanion Function({
   Value<bool> cashRoundingEnabled,
   Value<int> cashRoundingIncrement,
   Value<String> cashRoundingMode,
+  Value<String> subscriptionPlan,
+  Value<String> subscriptionStatus,
+  Value<DateTime?> subscriptionExpiresAt,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -11544,6 +11720,21 @@ class $$StoresTableFilterComposer
 
   ColumnFilters<String> get cashRoundingMode => $composableBuilder(
     column: $table.cashRoundingMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subscriptionPlan => $composableBuilder(
+    column: $table.subscriptionPlan,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subscriptionStatus => $composableBuilder(
+    column: $table.subscriptionStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get subscriptionExpiresAt => $composableBuilder(
+    column: $table.subscriptionExpiresAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11672,6 +11863,21 @@ class $$StoresTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get subscriptionPlan => $composableBuilder(
+    column: $table.subscriptionPlan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subscriptionStatus => $composableBuilder(
+    column: $table.subscriptionStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get subscriptionExpiresAt => $composableBuilder(
+    column: $table.subscriptionExpiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -11779,6 +11985,21 @@ class $$StoresTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get subscriptionPlan => $composableBuilder(
+    column: $table.subscriptionPlan,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get subscriptionStatus => $composableBuilder(
+    column: $table.subscriptionStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get subscriptionExpiresAt => $composableBuilder(
+    column: $table.subscriptionExpiresAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -11835,6 +12056,9 @@ class $$StoresTableTableManager
                 Value<bool> cashRoundingEnabled = const Value.absent(),
                 Value<int> cashRoundingIncrement = const Value.absent(),
                 Value<String> cashRoundingMode = const Value.absent(),
+                Value<String> subscriptionPlan = const Value.absent(),
+                Value<String> subscriptionStatus = const Value.absent(),
+                Value<DateTime?> subscriptionExpiresAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -11860,6 +12084,9 @@ class $$StoresTableTableManager
                 cashRoundingEnabled: cashRoundingEnabled,
                 cashRoundingIncrement: cashRoundingIncrement,
                 cashRoundingMode: cashRoundingMode,
+                subscriptionPlan: subscriptionPlan,
+                subscriptionStatus: subscriptionStatus,
+                subscriptionExpiresAt: subscriptionExpiresAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -11887,6 +12114,9 @@ class $$StoresTableTableManager
                 Value<bool> cashRoundingEnabled = const Value.absent(),
                 Value<int> cashRoundingIncrement = const Value.absent(),
                 Value<String> cashRoundingMode = const Value.absent(),
+                Value<String> subscriptionPlan = const Value.absent(),
+                Value<String> subscriptionStatus = const Value.absent(),
+                Value<DateTime?> subscriptionExpiresAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -11912,6 +12142,9 @@ class $$StoresTableTableManager
                 cashRoundingEnabled: cashRoundingEnabled,
                 cashRoundingIncrement: cashRoundingIncrement,
                 cashRoundingMode: cashRoundingMode,
+                subscriptionPlan: subscriptionPlan,
+                subscriptionStatus: subscriptionStatus,
+                subscriptionExpiresAt: subscriptionExpiresAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -14439,7 +14672,7 @@ typedef $$TransactionItemsTableCreateCompanionBuilder =
       Value<String?> variantNameSnapshot,
       Value<String?> skuSnapshot,
       Value<String?> barcodeSnapshot,
-      required int quantity,
+      required double quantity,
       required int unitPrice,
       required int unitCostSnapshot,
       Value<String?> discountType,
@@ -14460,7 +14693,7 @@ typedef $$TransactionItemsTableUpdateCompanionBuilder =
       Value<String?> variantNameSnapshot,
       Value<String?> skuSnapshot,
       Value<String?> barcodeSnapshot,
-      Value<int> quantity,
+      Value<double> quantity,
       Value<int> unitPrice,
       Value<int> unitCostSnapshot,
       Value<String?> discountType,
@@ -14521,7 +14754,7 @@ class $$TransactionItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get quantity => $composableBuilder(
+  ColumnFilters<double> get quantity => $composableBuilder(
     column: $table.quantity,
     builder: (column) => ColumnFilters(column),
   );
@@ -14616,7 +14849,7 @@ class $$TransactionItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get quantity => $composableBuilder(
+  ColumnOrderings<double> get quantity => $composableBuilder(
     column: $table.quantity,
     builder: (column) => ColumnOrderings(column),
   );
@@ -14705,7 +14938,7 @@ class $$TransactionItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get quantity =>
+  GeneratedColumn<double> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
 
   GeneratedColumn<int> get unitPrice =>
@@ -14786,7 +15019,7 @@ class $$TransactionItemsTableTableManager
                 Value<String?> variantNameSnapshot = const Value.absent(),
                 Value<String?> skuSnapshot = const Value.absent(),
                 Value<String?> barcodeSnapshot = const Value.absent(),
-                Value<int> quantity = const Value.absent(),
+                Value<double> quantity = const Value.absent(),
                 Value<int> unitPrice = const Value.absent(),
                 Value<int> unitCostSnapshot = const Value.absent(),
                 Value<String?> discountType = const Value.absent(),
@@ -14826,7 +15059,7 @@ class $$TransactionItemsTableTableManager
                 Value<String?> variantNameSnapshot = const Value.absent(),
                 Value<String?> skuSnapshot = const Value.absent(),
                 Value<String?> barcodeSnapshot = const Value.absent(),
-                required int quantity,
+                required double quantity,
                 required int unitPrice,
                 required int unitCostSnapshot,
                 Value<String?> discountType = const Value.absent(),

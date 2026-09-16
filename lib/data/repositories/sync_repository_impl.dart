@@ -45,6 +45,16 @@ class SyncRepositoryImpl implements ISyncRepository {
   Future<SyncPushResult> retryFailed() => _syncService.retryFailed();
 
   @override
+  Future<List<SyncEvent>> getConflictEvents() async {
+    final storeId = await _tokenStorage.getStoreId();
+    if (storeId == null) return [];
+    return _syncService.getConflictEvents(storeId);
+  }
+
+  @override
+  Future<SyncPushResult> retryConflicts() => _syncService.retryConflicts();
+
+  @override
   Stream<int> watchPendingCount(String storeId) =>
       _syncService.watchPendingCount(storeId);
 }

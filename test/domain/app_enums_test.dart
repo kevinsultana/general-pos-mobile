@@ -54,10 +54,19 @@ void main() {
     test('OrderType serialization and parsing', () {
       expect(OrderType.dineIn.toDbString(), equals('DINE_IN'));
       expect(OrderType.takeaway.toDbString(), equals('TAKEAWAY'));
+      expect(OrderType.delivery.toDbString(), equals('DELIVERY'));
+      expect(OrderType.online.toDbString(), equals('ONLINE'));
+
+      expect(OrderType.dineIn.displayName, equals('Dine In'));
+      expect(OrderType.takeaway.displayName, equals('Takeaway'));
+      expect(OrderType.delivery.displayName, equals('Delivery'));
+      expect(OrderType.online.displayName, equals('Online'));
 
       expect(OrderType.fromString('DINE_IN'), equals(OrderType.dineIn));
       expect(OrderType.fromString('TAKEAWAY'), equals(OrderType.takeaway));
       expect(OrderType.fromString('TAKE_AWAY'), equals(OrderType.takeaway));
+      expect(OrderType.fromString('DELIVERY'), equals(OrderType.delivery));
+      expect(OrderType.fromString('ONLINE'), equals(OrderType.online));
       expect(OrderType.fromString(null), equals(OrderType.dineIn));
     });
 

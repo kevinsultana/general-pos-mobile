@@ -89,7 +89,7 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
 
       for (final item in items) {
         final revenue = item.subtotal;
-        final cost = item.quantity * item.unitCostSnapshot;
+        final cost = (item.quantity * item.unitCostSnapshot).round();
         estimatedGrossProfit += (revenue - cost);
       }
     }
@@ -210,7 +210,7 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
       );
       agg.quantity += itm.quantity;
       agg.revenue += itm.subtotal;
-      agg.cost += (itm.quantity * itm.unitCostSnapshot);
+      agg.cost += (itm.quantity * itm.unitCostSnapshot).round();
     }
 
     // Get category names
@@ -251,7 +251,7 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
     }).toList()
       ..sort((a, b) => b.quantitySold.compareTo(a.quantitySold));
 
-    int totalQty = 0;
+    double totalQty = 0;
     int totalRev = 0;
     int totalCost = 0;
     int totalProfit = 0;
@@ -375,7 +375,8 @@ class _DailyAgg {
 class _ProductAgg {
   final String productId;
   final String productName;
-  int quantity = 0;
+  // DECIMAL(18,3) — fractional quantity
+  double quantity = 0;
   int revenue = 0;
   int cost = 0;
 

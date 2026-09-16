@@ -97,6 +97,8 @@ enum TransactionStatus {
 }
 
 /// Status of an individual payment attempt or record.
+/// Canonical backend values (Prisma PaymentStatus): PENDING, COMPLETED, VOIDED.
+/// Legacy aliases mapped to voided: FAILED, REFUNDED.
 enum PaymentStatus {
   pending,
   completed,
@@ -141,6 +143,8 @@ enum PaymentStatus {
 }
 
 /// Status of a processed refund.
+/// Canonical backend values (Prisma RefundStatus): COMPLETED, VOIDED.
+/// Legacy alias mapped to voided: CANCELLED.
 enum RefundStatus {
   completed,
   voided;
@@ -179,7 +183,9 @@ enum RefundStatus {
 /// Fulfillment / serving type of an order.
 enum OrderType {
   dineIn,
-  takeaway;
+  takeaway,
+  delivery,
+  online;
 
   static OrderType fromString(String? value) {
     if (value == null) return OrderType.dineIn;
@@ -187,6 +193,10 @@ enum OrderType {
       case 'TAKEAWAY':
       case 'TAKE_AWAY':
         return OrderType.takeaway;
+      case 'DELIVERY':
+        return OrderType.delivery;
+      case 'ONLINE':
+        return OrderType.online;
       case 'DINE_IN':
       default:
         return OrderType.dineIn;
@@ -199,6 +209,10 @@ enum OrderType {
         return 'DINE_IN';
       case OrderType.takeaway:
         return 'TAKEAWAY';
+      case OrderType.delivery:
+        return 'DELIVERY';
+      case OrderType.online:
+        return 'ONLINE';
     }
   }
 
@@ -208,6 +222,10 @@ enum OrderType {
         return 'Dine In';
       case OrderType.takeaway:
         return 'Takeaway';
+      case OrderType.delivery:
+        return 'Delivery';
+      case OrderType.online:
+        return 'Online';
     }
   }
 }

@@ -123,7 +123,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
               .getSingleOrNull();
 
           if (variant != null) {
-            final newVariantStock = variant.stock - item.quantity;
+            final newVariantStock = variant.stock - item.quantity.round();
             await (_db.update(_db.productVariants)
                   ..where((tbl) => tbl.id.equals(variant.id)))
                 .write(ProductVariantsCompanion(
@@ -139,7 +139,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
             .getSingleOrNull();
 
         if (product != null) {
-          final newStock = product.stock - item.quantity;
+          final newStock = product.stock - item.quantity.round();
           await (_db.update(_db.products)
                 ..where((tbl) => tbl.id.equals(product.id)))
               .write(ProductsCompanion(
@@ -156,7 +156,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
                 productId: Value(item.productId),
                 variantId: Value(item.variantId),
                 type: const Value('SALE'),
-                quantityDelta: Value(-item.quantity * 1000),
+                quantityDelta: Value(-(item.quantity * 1000).round()),
                 unitCost: Value(item.unitCostSnapshot),
                 referenceType: const Value('TRANSACTION'),
                 referenceId: Value(transactionId),
@@ -290,7 +290,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
             await (_db.update(_db.productVariants)
                   ..where((tbl) => tbl.id.equals(variant.id)))
                 .write(ProductVariantsCompanion(
-              stock: Value(variant.stock + item.quantity),
+              stock: Value(variant.stock + item.quantity.round()),
               updatedAt: Value(now),
             ));
           }
@@ -303,7 +303,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
           await (_db.update(_db.products)
                 ..where((tbl) => tbl.id.equals(product.id)))
               .write(ProductsCompanion(
-            stock: Value(product.stock + item.quantity),
+            stock: Value(product.stock + item.quantity.round()),
             updatedAt: Value(now),
           ));
         }
@@ -316,7 +316,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
                 productId: Value(item.productId),
                 variantId: Value(item.variantId),
                 type: const Value('CANCEL_REVERSAL'),
-                quantityDelta: Value(item.quantity * 1000), // Positive reversal
+                quantityDelta: Value((item.quantity * 1000).round()), // Positive reversal
                 unitCost: Value(item.unitCostSnapshot),
                 referenceType: const Value('TRANSACTION'),
                 referenceId: Value(transactionId),
@@ -440,7 +440,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
       final originalItems =
           await _db.transactionDao.getItemsByTransactionId(transactionId);
       final originalTotalQty =
-          originalItems.fold<int>(0, (sum, i) => sum + i.quantity);
+          originalItems.fold<double>(0.0, (sum, i) => sum + i.quantity);
 
       final newStatus = totalRefundedQty >= originalTotalQty
           ? 'REFUNDED'

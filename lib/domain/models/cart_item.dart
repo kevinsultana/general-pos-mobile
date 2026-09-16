@@ -5,7 +5,8 @@ class CartItem {
   final String? variantName;
   final String? sku;
   final String? barcode;
-  final int quantity;
+  // DECIMAL(18,3) — supports fractional quantities (e.g. 0.5 kg, 1.5 L)
+  final double quantity;
   final int unitPrice;
   final int unitCostSnapshot;
   final String? discountType; // 'PERCENTAGE' or 'FIXED_AMOUNT'
@@ -32,8 +33,8 @@ class CartItem {
       ? '$productName - $variantName'
       : productName;
 
-  /// Subtotal before line discount (quantity * unitPrice)
-  int get subtotal => quantity * unitPrice;
+  /// Subtotal before line discount (quantity * unitPrice), rounded to nearest integer Rupiah.
+  int get subtotal => (quantity * unitPrice).round();
 
   /// Line discount amount in Rupiah (clamped to not exceed subtotal)
   int get discountAmount {
@@ -52,8 +53,8 @@ class CartItem {
   /// Total after line discount
   int get total => subtotal - discountAmount;
 
-  /// Total cost (quantity * unitCostSnapshot)
-  int get costTotal => quantity * unitCostSnapshot;
+  /// Total cost (quantity * unitCostSnapshot), rounded to nearest integer Rupiah.
+  int get costTotal => (quantity * unitCostSnapshot).round();
 
   /// Gross profit (total revenue - total cost)
   int get grossProfit => total - costTotal;
@@ -65,7 +66,7 @@ class CartItem {
     String? variantName,
     String? sku,
     String? barcode,
-    int? quantity,
+    double? quantity,
     int? unitPrice,
     int? unitCostSnapshot,
     String? discountType,

@@ -44,6 +44,9 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
       cashRoundingEnabled: const Value(true),
       cashRoundingIncrement: const Value(100),
       cashRoundingMode: const Value('ROUND_NEAREST'),
+      subscriptionPlan: const Value('PRO'),
+      subscriptionStatus: const Value('ACTIVE'),
+      subscriptionExpiresAt: const Value(null),
       createdAt: now,
       updatedAt: now,
     );
@@ -79,6 +82,22 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
         cashRoundingEnabled: Value(enabled),
         cashRoundingIncrement: Value(increment),
         cashRoundingMode: Value(mode),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> updateSubscription({
+    required String storeId,
+    required String plan,
+    required String status,
+    DateTime? expiresAt,
+  }) {
+    return (update(stores)..where((tbl) => tbl.id.equals(storeId))).write(
+      StoresCompanion(
+        subscriptionPlan: Value(plan),
+        subscriptionStatus: Value(status),
+        subscriptionExpiresAt: Value(expiresAt),
         updatedAt: Value(DateTime.now()),
       ),
     );

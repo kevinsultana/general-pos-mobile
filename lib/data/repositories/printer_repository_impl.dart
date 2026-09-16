@@ -22,6 +22,7 @@ class PrinterRepositoryImpl implements IPrinterRepository {
       kitchenCopies: row.kitchenCopies,
       autoPrint: row.autoPrint,
       active: row.active,
+      customConfiguration: PrinterDevice.decodeConfiguration(row.configuration),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );

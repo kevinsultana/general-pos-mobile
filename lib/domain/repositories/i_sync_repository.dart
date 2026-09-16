@@ -21,6 +21,12 @@ abstract class ISyncRepository {
   /// Retry all failed events.
   Future<SyncPushResult> retryFailed();
 
+  /// Get all conflict events.
+  Future<List<SyncEvent>> getConflictEvents();
+
+  /// Retry all conflict events (re-send to server).
+  Future<SyncPushResult> retryConflicts();
+
   /// Stream of pending event count.
   Stream<int> watchPendingCount(String storeId);
 }

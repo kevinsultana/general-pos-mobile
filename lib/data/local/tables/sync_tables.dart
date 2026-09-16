@@ -8,7 +8,7 @@ class SyncEvents extends Table {
   TextColumn get entityId => text()();
   TextColumn get operation => text()();
   TextColumn get payload => text()(); // JSON string
-  TextColumn get status => text()(); // PENDING, SYNCED, FAILED
+  TextColumn get status => text()(); // PENDING, PROCESSING, SYNCED, FAILED, CONFLICT
   IntColumn get attemptCount => integer().withDefault(const Constant(0))();
   DateTimeColumn get lastAttemptAt => dateTime().nullable()();
   DateTimeColumn get syncedAt => dateTime().nullable()();

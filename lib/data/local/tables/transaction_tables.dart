@@ -8,7 +8,7 @@ class Transactions extends Table {
 
   // Status: DRAFT, COMPLETED, CANCELLED, PARTIALLY_REFUNDED, REFUNDED
   TextColumn get status => text()();
-  // OrderType: DINE_IN, TAKEAWAY
+  // OrderType: DINE_IN, TAKEAWAY, DELIVERY, ONLINE
   TextColumn get orderType => text().nullable()();
   TextColumn get queueNumber => text().nullable()();
 
@@ -54,7 +54,8 @@ class TransactionItems extends Table {
   TextColumn get skuSnapshot => text().nullable()();
   TextColumn get barcodeSnapshot => text().nullable()();
 
-  IntColumn get quantity => integer()();
+  // DECIMAL(18,3) — supports fractional quantities (e.g. 0.5 kg, 1.5 L)
+  RealColumn get quantity => real()();
   IntColumn get unitPrice => integer()();
   IntColumn get unitCostSnapshot => integer()(); // Critical for accurate gross profit
 

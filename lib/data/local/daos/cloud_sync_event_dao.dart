@@ -78,6 +78,48 @@ class CloudSyncEventDao extends DatabaseAccessor<CloudDatabase>
     );
   }
 
+  /// Mark event as CONFLICT (server-side conflict detected).
+  Future<void> markConflict(String id) {
+    return (update(syncEvents)..where((e) => e.id.equals(id))).write(
+      SyncEventsCompanion(
+        status: const Value('CONFLICT'),
+        lastAttemptAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Get all CONFLICT events for a store.
+  Future<List<SyncEvent>> getConflictEvents(String storeId) {
+    return (select(syncEvents)
+          ..where((e) =>
+              e.storeId.equals(storeId) & e.status.equals('CONFLICT'))
+          ..orderBy([(e) => OrderingTerm.asc(e.createdAt)]))
+        .get();
+  }
+
+  /// Get all events currently marked PROCESSING for a store.
+  Future<List<SyncEvent>> getProcessingEvents(String storeId) {
+    return (select(syncEvents)
+          ..where((e) =>
+              e.storeId.equals(storeId) & e.status.equals('PROCESSING'))
+          ..orderBy([(e) => OrderingTerm.asc(e.createdAt)]))
+        .get();
+  }
+
+  /// Reset stale PROCESSING events back to PENDING for crash/network-abort recovery.
+  Future<int> resetStaleProcessing(
+    String storeId, {
+    Duration staleThreshold = const Duration(minutes: 5),
+  }) async {
+    final cutoff = DateTime.now().subtract(staleThreshold);
+    return (update(syncEvents)
+          ..where((e) =>
+              e.storeId.equals(storeId) &
+              e.status.equals('PROCESSING') &
+              e.lastAttemptAt.isSmallerOrEqualValue(cutoff)))
+        .write(SyncEventsCompanion(status: const Value('PENDING')));
+  }
+
   // ──────────────── SyncCursors ────────────────
 
   Future<SyncCursor?> getCursor(String storeId, String deviceId) {

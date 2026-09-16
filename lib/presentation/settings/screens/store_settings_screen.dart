@@ -98,12 +98,43 @@ class StoreSettingsScreen extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              'Mata Uang: ${store.currency} | Mode: Local First',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondaryLight,
-                              ),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              children: [
+                                Text(
+                                  'Mata Uang: ${store.currency} | Mode: Local First',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondaryLight,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: store.subscriptionPlan == 'PRO'
+                                        ? Colors.amber.shade50
+                                        : Colors.indigo.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: store.subscriptionPlan == 'PRO'
+                                          ? Colors.amber.shade300
+                                          : Colors.indigo.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Paket ${store.subscriptionPlan}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: store.subscriptionPlan == 'PRO'
+                                          ? Colors.amber.shade900
+                                          : Colors.indigo.shade900,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),

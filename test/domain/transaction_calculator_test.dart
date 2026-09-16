@@ -125,5 +125,55 @@ void main() {
       expect(result.grossProfit, equals(0));
       expect(result.totalItemCount, equals(0));
     });
+
+    test('P3.3: Fractional quantity (0.5 kg) calculates subtotal and cost correctly', () {
+      // 0.5 kg × Rp 20.000/kg = Rp 10.000 subtotal
+      // 0.5 kg × Rp 12.000/kg cost = Rp 6.000 cost
+      final items = [
+        const CartItem(
+          productId: 'prod-bulk',
+          productName: 'Beras Premium',
+          quantity: 0.5, // DECIMAL(18,3)
+          unitPrice: 20000,
+          unitCostSnapshot: 12000,
+        ),
+      ];
+
+      final result = calculator.calculate(items: items);
+
+      expect(result.rawSubtotal, equals(10000)); // (0.5 × 20000).round()
+      expect(result.totalCost, equals(6000)); // (0.5 × 12000).round()
+      expect(result.grossProfit, equals(4000)); // 10000 - 6000
+      expect(result.totalItemCount, equals(0.5));
+    });
+
+    test('P3.3: Mixed integer and fractional quantities aggregate correctly', () {
+      final items = [
+        const CartItem(
+          productId: 'prod-a',
+          productName: 'Kopi',
+          quantity: 2, // integer qty
+          unitPrice: 15000,
+          unitCostSnapshot: 8000,
+        ),
+        const CartItem(
+          productId: 'prod-b',
+          productName: 'Gula',
+          quantity: 0.5, // fractional qty (0.5 kg)
+          unitPrice: 14000,
+          unitCostSnapshot: 10000,
+        ),
+      ];
+
+      // item-a: subtotal=30000, cost=16000
+      // item-b: subtotal=(0.5*14000).round()=7000, cost=(0.5*10000).round()=5000
+      final result = calculator.calculate(items: items);
+
+      expect(result.rawSubtotal, equals(37000));
+      expect(result.totalCost, equals(21000));
+      expect(result.grandTotal, equals(37000));
+      expect(result.totalItemCount, equals(2.5));
+    });
   });
 }
+

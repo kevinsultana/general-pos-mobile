@@ -6,6 +6,7 @@ import '../local/daos/cloud_sync_event_dao.dart';
 import '../local/cloud_database.dart' show SyncEvent, SyncEventsCompanion;
 import '../local/app_database.dart' hide SyncEvent, SyncEventsCompanion;
 import '../../core/constants/scale_constants.dart';
+import '../../domain/models/printer_device.dart';
 import 'api_client.dart';
 
 /// Result of a push operation.
@@ -75,6 +76,9 @@ class CloudSyncService {
     final deviceId = await _tokenStorage.getDeviceId();
     if (storeId == null || deviceId == null) return SyncPushResult.empty();
 
+    // 0. Recover stale PROCESSING events (stuck from a prior crash/abort)
+    await _dao.resetStaleProcessing(storeId);
+
     final pending = await _dao.getPendingEvents(storeId, limit: 50);
     if (pending.isEmpty) return SyncPushResult.empty();
 
@@ -98,13 +102,17 @@ class CloudSyncService {
       final data = response['data'] as Map<String, dynamic>;
       final results = (data['results'] as List<dynamic>?) ?? [];
 
-      // Update status for each event
+      // Update status for each event based on server response.
+      // CONFLICT = the event was rejected because the server detected
+      // a data conflict (e.g. another device concurrently mutated the same entity).
       for (final r in results) {
         final eventId = r['eventId'] as String;
         final status = r['status'] as String;
 
         if (status == 'SYNCED' || status == 'SKIPPED') {
           await _dao.markSynced(eventId);
+        } else if (status == 'CONFLICT') {
+          await _dao.markConflict(eventId);
         } else {
           await _dao.markFailed(eventId);
         }
@@ -228,13 +236,63 @@ class CloudSyncService {
         break;
       case 'CREATE_PRODUCT':
       case 'UPDATE_PRODUCT':
+      case 'UPSERT_PRODUCT':
         await _handleProductUpsert(storeId, payload);
+        break;
+      case 'DELETE_PRODUCT':
+        await _handleProductDelete(storeId, payload);
+        break;
+      case 'CREATE_CUSTOMER':
+      case 'UPDATE_CUSTOMER':
+      case 'UPSERT_CUSTOMER':
+        await _handleCustomerUpsert(storeId, payload);
+        break;
+      case 'DELETE_CUSTOMER':
+        await _handleCustomerDelete(storeId, payload);
         break;
       case 'CREATE_PROMOTION':
       case 'UPDATE_PROMOTION':
       case 'UPSERT_PROMOTION':
         await _handlePromotionUpsert(storeId, payload);
         break;
+      case 'DELETE_PROMOTION':
+        await _handlePromotionDelete(storeId, payload);
+        break;
+      case 'CREATE_PRINTER':
+      case 'UPDATE_PRINTER':
+      case 'UPSERT_PRINTER':
+        await _handlePrinterUpsert(storeId, payload);
+        break;
+      case 'DELETE_PRINTER':
+        await _handlePrinterDelete(storeId, payload);
+        break;
+      case 'CREATE':
+      case 'UPDATE': {
+        final entityType = payload['entityType'] as String?;
+        if (entityType == 'Product') {
+          await _handleProductUpsert(storeId, payload);
+        } else if (entityType == 'Promotion') {
+          await _handlePromotionUpsert(storeId, payload);
+        } else if (entityType == 'Customer') {
+          await _handleCustomerUpsert(storeId, payload);
+        } else if (entityType == 'Printer') {
+          await _handlePrinterUpsert(storeId, payload);
+        }
+        break;
+      }
+      case 'DELETE': {
+        final entityType = payload['entityType'] as String?;
+        if (entityType == 'Product') {
+          await _handleProductDelete(storeId, payload);
+        } else if (entityType == 'Promotion') {
+          await _handlePromotionDelete(storeId, payload);
+        } else if (entityType == 'Customer') {
+          await _handleCustomerDelete(storeId, payload);
+        } else if (entityType == 'Printer') {
+          await _handlePrinterDelete(storeId, payload);
+        }
+        break;
+      }
       default:
         break;
     }
@@ -261,12 +319,12 @@ class CloudSyncService {
     for (final itemRaw in items) {
       if (itemRaw is! Map<String, dynamic>) continue;
       final productId = itemRaw['productId'] as String?;
-      final quantity = (itemRaw['quantity'] as num?)?.toInt() ?? 0;
+      final quantity = (itemRaw['quantity'] as num?)?.toDouble() ?? 0.0;
       if (productId == null || quantity <= 0) continue;
 
       final prod = await db.productDao.getProductById(productId);
       if (prod != null) {
-        final newStock = prod.stock - quantity;
+        final newStock = prod.stock - quantity.round();
         await db.productDao.updateStock(productId, newStock);
 
         // quantityDelta is stored with stockScale (1000) in Drift ledger.
@@ -278,7 +336,7 @@ class CloudSyncService {
             productId: productId,
             variantId: Value(itemRaw['variantId'] as String?),
             type: 'SALE',
-            quantityDelta: -toScaled(quantity.toDouble(), stockScale),
+            quantityDelta: -toScaled(quantity, stockScale),
             referenceType: const Value('TRANSACTION'),
             referenceId: Value(trxId),
             reason: const Value('Remote Sync: Sale'),
@@ -304,7 +362,7 @@ class CloudSyncService {
       for (final item in items) {
         final prod = await db.productDao.getProductById(item.productId);
         if (prod != null) {
-          final newStock = prod.stock + item.quantity;
+          final newStock = prod.stock + item.quantity.round();
           await db.productDao.updateStock(item.productId, newStock);
 
           await db.stockMovementDao.recordMovement(
@@ -314,7 +372,7 @@ class CloudSyncService {
               productId: item.productId,
               variantId: Value(item.variantId),
               type: 'CANCEL_REVERSAL',
-              quantityDelta: toScaled(item.quantity.toDouble(), stockScale), // Scaled by 1000 in Drift ledger
+              quantityDelta: toScaled(item.quantity, stockScale), // Scaled by 1000 in Drift ledger
               referenceType: const Value('TRANSACTION'),
               referenceId: Value(transactionId),
               reason: Value(reason),
@@ -343,12 +401,12 @@ class CloudSyncService {
       for (final itemRaw in items) {
         if (itemRaw is! Map<String, dynamic>) continue;
         final productId = itemRaw['productId'] as String?;
-        final quantity = (itemRaw['quantity'] as num?)?.toInt() ?? 0;
+        final quantity = (itemRaw['quantity'] as num?)?.toDouble() ?? 0.0;
         if (productId == null || quantity <= 0) continue;
 
         final prod = await db.productDao.getProductById(productId);
         if (prod != null) {
-          final newStock = prod.stock + quantity;
+          final newStock = prod.stock + quantity.round();
           await db.productDao.updateStock(productId, newStock);
 
           await db.stockMovementDao.recordMovement(
@@ -358,7 +416,7 @@ class CloudSyncService {
               productId: productId,
               variantId: Value(itemRaw['variantId'] as String?),
               type: 'REFUND_REVERSAL',
-              quantityDelta: toScaled(quantity.toDouble(), stockScale),
+              quantityDelta: toScaled(quantity, stockScale),
               referenceType: const Value('TRANSACTION'),
               referenceId: Value(transactionId),
               reason: Value(reason),
@@ -493,11 +551,128 @@ class CloudSyncService {
     );
   }
 
-  // ──────────────── Get Failed ────────────────
+  Future<void> _handleProductDelete(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String? ?? payload['productId'] as String? ?? payload['entityId'] as String?;
+    if (id == null) return;
+    await db.productDao.deleteProduct(id);
+  }
+
+  Future<void> _handlePromotionDelete(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String? ?? payload['promotionId'] as String? ?? payload['entityId'] as String?;
+    if (id == null) return;
+    await db.promotionDao.deletePromotion(id);
+  }
+
+  Future<void> _handleCustomerUpsert(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String?;
+    final name = payload['name'] as String?;
+    if (id == null || name == null) return;
+
+    final phone = payload['phone'] as String?;
+    final email = payload['email'] as String?;
+    final notes = payload['notes'] as String?;
+    final createdAt = DateTime.tryParse(payload['createdAt'] as String? ?? '') ?? DateTime.now();
+    final updatedAt = DateTime.tryParse(payload['updatedAt'] as String? ?? '') ?? DateTime.now();
+
+    await db.customerDao.insertCustomer(
+      CustomersCompanion.insert(
+        id: id,
+        storeId: storeId,
+        name: name,
+        phone: Value(phone),
+        email: Value(email),
+        notes: Value(notes),
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      ),
+    );
+  }
+
+  Future<void> _handleCustomerDelete(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String? ?? payload['customerId'] as String? ?? payload['entityId'] as String?;
+    if (id == null) return;
+    await db.customerDao.deleteCustomer(id);
+  }
+
+  Future<void> _handlePrinterUpsert(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String?;
+    final name = payload['name'] as String?;
+    if (id == null || name == null) return;
+
+    final configRaw = payload['configuration'];
+    final configMap = PrinterDevice.decodeConfiguration(configRaw);
+    final paperSizeStr = payload['paperSize'] as String? ??
+        PrinterDevice.decodePaperSize(configRaw).toDbString();
+    configMap['paperSize'] =
+        PrinterPaperSize.fromString(paperSizeStr).toConfigString();
+
+    await db.printerDao.upsertPrinter(
+      PrintersCompanion(
+        id: Value(id),
+        storeId: Value(storeId),
+        name: Value(name),
+        connectionType:
+            Value(payload['connectionType']?.toString() ?? 'BLUETOOTH'),
+        addressReference: Value(payload['addressReference']?.toString()),
+        role: Value(payload['role']?.toString() ?? 'RECEIPT'),
+        receiptCopies: Value((payload['receiptCopies'] as num?)?.toInt() ?? 1),
+        kitchenCopies: Value((payload['kitchenCopies'] as num?)?.toInt() ?? 1),
+        autoPrint: Value(payload['autoPrint'] as bool? ?? false),
+        active: Value(payload['active'] as bool? ?? true),
+        configuration: Value(jsonEncode(configMap)),
+        createdAt: Value(DateTime.tryParse(payload['createdAt']?.toString() ?? '') ??
+            DateTime.now()),
+        updatedAt: Value(DateTime.tryParse(payload['updatedAt']?.toString() ?? '') ??
+            DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> _handlePrinterDelete(
+    String storeId,
+    Map<String, dynamic> payload,
+  ) async {
+    final db = _db;
+    if (db == null) return;
+    final id = payload['id'] as String? ?? payload['printerId'] as String?;
+    if (id == null) return;
+    await db.printerDao.deletePrinter(id);
+  }
+
+  // ──────────────── Get Failed / Conflict ────────────────
 
   /// Get all failed events for this store.
   Future<List<SyncEvent>> getFailedEvents(String storeId) =>
       _dao.getFailedEvents(storeId);
+
+  /// Get all conflict events for this store.
+  Future<List<SyncEvent>> getConflictEvents(String storeId) =>
+      _dao.getConflictEvents(storeId);
 
   // ──────────────── Retry ────────────────
 
@@ -513,6 +688,28 @@ class CloudSyncService {
     return pushPendingEvents();
   }
 
+  /// Retry all CONFLICT events by resetting them to PENDING.
+  /// The server is authoritative — conflicts are resolved by re-sending
+  /// and accepting whatever the server returns.
+  Future<SyncPushResult> retryConflicts() async {
+    final storeId = await _tokenStorage.getStoreId();
+    if (storeId == null) return SyncPushResult.empty();
+
+    final conflicts = await _dao.getConflictEvents(storeId);
+    for (final e in conflicts) {
+      await _dao.retryFailed(e.id); // retryFailed resets to PENDING
+    }
+    return pushPendingEvents();
+  }
+
+  /// Reset stale PROCESSING events (stuck > threshold) back to PENDING.
+  /// Safe to call on app startup to recover from crash/network abort.
+  Future<int> resetStaleProcessing({Duration staleThreshold = const Duration(minutes: 5)}) async {
+    final storeId = await _tokenStorage.getStoreId();
+    if (storeId == null) return 0;
+    return _dao.resetStaleProcessing(storeId, staleThreshold: staleThreshold);
+  }
+
   // ──────────────── Streams ────────────────
 
   /// Stream of pending event count for this store.
@@ -521,21 +718,16 @@ class CloudSyncService {
 
   // ──────────────── Helpers ────────────────
 
+  String entityTypeFor(String operation) => _entityTypeFor(operation);
+
   String _entityTypeFor(String operation) {
-    switch (operation) {
-      case 'COMPLETE_TRANSACTION':
-      case 'CANCEL_TRANSACTION':
-      case 'REFUND_TRANSACTION':
-        return 'Transaction';
-      case 'ADJUST_STOCK':
-        return 'StockMovement';
-      case 'CREATE_PROMOTION':
-      case 'UPDATE_PROMOTION':
-      case 'UPSERT_PROMOTION':
-        return 'Promotion';
-      default:
-        return 'Unknown';
-    }
+    if (operation.contains('TRANSACTION')) return 'Transaction';
+    if (operation.contains('STOCK')) return 'StockMovement';
+    if (operation.contains('PRODUCT')) return 'Product';
+    if (operation.contains('CUSTOMER')) return 'Customer';
+    if (operation.contains('PROMOTION')) return 'Promotion';
+    if (operation.contains('PRINTER')) return 'Printer';
+    return 'Unknown';
   }
 
   /// Returns the retry delay for the given attempt count (0-indexed) with full jitter

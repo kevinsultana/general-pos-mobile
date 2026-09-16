@@ -9,7 +9,8 @@ class TransactionCalculationResult {
   final int grandTotal; // Final payable amount
   final int totalCost; // Total cost (COGS) based on unitCostSnapshot
   final int grossProfit; // grandTotal - totalCost
-  final int totalItemCount; // Total physical items (sum of quantities)
+  // DECIMAL(18,3) — total physical quantity (sum of all item quantities, may be fractional)
+  final double totalItemCount;
 
   const TransactionCalculationResult({
     required this.rawSubtotal,
@@ -61,7 +62,7 @@ class TransactionCalculator {
     int itemDiscountsTotal = 0;
     int orderSubtotal = 0;
     int totalCost = 0;
-    int totalItemCount = 0;
+    double totalItemCount = 0;
 
     for (final item in items) {
       rawSubtotal += item.subtotal;

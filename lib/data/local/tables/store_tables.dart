@@ -28,6 +28,11 @@ class Stores extends Table {
   IntColumn get cashRoundingIncrement => integer().withDefault(const Constant(100))();
   TextColumn get cashRoundingMode => text().withDefault(const Constant('ROUND_NEAREST'))();
 
+  // Subscription Plan & Status (matching Prisma Store model)
+  TextColumn get subscriptionPlan => text().withDefault(const Constant('PRO'))();
+  TextColumn get subscriptionStatus => text().withDefault(const Constant('ACTIVE'))();
+  DateTimeColumn get subscriptionExpiresAt => dateTime().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

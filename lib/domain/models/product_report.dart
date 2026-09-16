@@ -2,7 +2,8 @@ class ProductReportItem {
   final String productId;
   final String productName;
   final String? categoryName;
-  final int quantitySold;
+  // DECIMAL(18,3) — matches TransactionItem.quantity
+  final double quantitySold;
   final int revenue;
   final int cost;
   final int grossProfit;
@@ -25,7 +26,8 @@ class ProductSalesReport {
   final DateTime startDate;
   final DateTime endDate;
   final List<ProductReportItem> items;
-  final int totalQuantitySold;
+  // DECIMAL(18,3) — sum of all fractional quantities sold
+  final double totalQuantitySold;
   final int totalRevenue;
   final int totalCost;
   final int totalProfit;
