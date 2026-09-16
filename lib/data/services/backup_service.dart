@@ -15,6 +15,40 @@ class BackupService {
 
   BackupService(this._db, {this.customBackupDir});
 
+  String normalizeDirectoryPath(String rawPath) {
+    var path = rawPath.trim();
+    if (path.isEmpty) return path;
+
+    if ((path.startsWith('"') && path.endsWith('"')) ||
+        (path.startsWith("'") && path.endsWith("'"))) {
+      path = path.substring(1, path.length - 1).trim();
+    }
+
+    if (path.startsWith('content://') || path.contains('/tree/')) {
+      final decoded = Uri.decodeFull(path);
+      if (decoded.contains('primary:')) {
+        final subPath = decoded.split('primary:').last;
+        final cleanSub = subPath.startsWith('/') || subPath.startsWith('\\')
+            ? subPath.substring(1)
+            : subPath;
+        path = p.posix.join('/storage/emulated/0', cleanSub);
+      } else if (decoded.contains('raw:')) {
+        path = decoded.split('raw:').last;
+      }
+    }
+
+    if (Platform.isAndroid && path.startsWith('/storage/emulated/0/')) {
+      final relative = path.substring('/storage/emulated/0/'.length);
+      final firstPart = relative.split('/').first.toLowerCase();
+      const allowedTopLevels = {'download', 'documents', 'android', 'dcim', 'pictures', 'movies', 'music'};
+      if (relative.isNotEmpty && !allowedTopLevels.contains(firstPart)) {
+        return p.posix.join('/storage/emulated/0/Download', relative);
+      }
+    }
+
+    return path;
+  }
+
   Future<Directory> getBackupDirectory() async {
     if (customBackupDir != null) {
       if (!await customBackupDir!.exists()) {
@@ -142,26 +176,51 @@ class BackupService {
     };
 
     // 4. Save to target directory
-    final Directory backupDir;
-    if (targetDirectoryPath != null && targetDirectoryPath.trim().isNotEmpty) {
-      backupDir = Directory(targetDirectoryPath.trim());
-      if (!await backupDir.exists()) {
-        await backupDir.create(recursive: true);
-      }
-    } else {
-      backupDir = await getBackupDirectory();
-    }
-
+    final defaultBackupDir = await getBackupDirectory();
+    final jsonContent = jsonEncode(envelope);
     final timestamp =
         '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
     final fileName = 'pos_backup_$timestamp.posbak';
-    final file = File(p.join(backupDir.path, fileName));
 
-    await file.writeAsString(jsonEncode(envelope));
-    final size = await file.length();
+    // Always save to default app backup directory to guarantee safety
+    final defaultFile = File(p.join(defaultBackupDir.path, fileName));
+    await defaultFile.writeAsString(jsonContent);
+    File savedFile = defaultFile;
+
+    // If target directory is specified, attempt to copy/save to custom directory as well
+    if (targetDirectoryPath != null && targetDirectoryPath.trim().isNotEmpty) {
+      final normalizedPath = normalizeDirectoryPath(targetDirectoryPath);
+      final customDir = Directory(normalizedPath);
+      if (customDir.path != defaultBackupDir.path) {
+        try {
+          if (!await customDir.exists()) {
+            await customDir.create(recursive: true);
+          }
+          final customFile = File(p.join(customDir.path, fileName));
+          await customFile.writeAsString(jsonContent);
+          savedFile = customFile; // Prefer custom path if writing succeeded
+        } catch (e) {
+          // If custom directory fails due to Scoped Storage/OS permissions,
+          // fallback write to public Download folder on Android so it appears in File Manager!
+          if (Platform.isAndroid) {
+            try {
+              final dlDir = Directory('/storage/emulated/0/Download');
+              if (!await dlDir.exists()) {
+                await dlDir.create(recursive: true);
+              }
+              final dlFile = File(p.join(dlDir.path, fileName));
+              await dlFile.writeAsString(jsonContent);
+              savedFile = dlFile;
+            } catch (_) {}
+          }
+        }
+      }
+    }
+
+    final size = await savedFile.length();
 
     return BackupFileInfo(
-      filePath: file.path,
+      filePath: savedFile.path,
       fileName: fileName,
       createdAt: now,
       fileSizeBytes: size,
@@ -174,27 +233,53 @@ class BackupService {
   }
 
   Future<List<BackupFileInfo>> listBackups({String? directoryPath}) async {
-    final Directory backupDir;
+    final dirsToScan = <Directory>[];
+
+    try {
+      final defaultDir = await getBackupDirectory();
+      dirsToScan.add(defaultDir);
+    } catch (_) {}
+
     if (directoryPath != null && directoryPath.trim().isNotEmpty) {
-      backupDir = Directory(directoryPath.trim());
-    } else {
-      backupDir = await getBackupDirectory();
+      final custom = Directory(normalizeDirectoryPath(directoryPath));
+      if (!dirsToScan.any((d) => d.path == custom.path)) {
+        dirsToScan.add(custom);
+      }
     }
 
-    if (!await backupDir.exists()) return [];
-
-    final entities = backupDir.listSync();
-    final files = entities
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.posbak'))
-        .toList();
+    try {
+      final suggested = await getSuggestedBackupDirectories();
+      for (final path in suggested) {
+        final d = Directory(normalizeDirectoryPath(path));
+        if (!dirsToScan.any((existing) => existing.path == d.path)) {
+          dirsToScan.add(d);
+        }
+      }
+    } catch (_) {}
 
     final result = <BackupFileInfo>[];
+    final seenPaths = <String>{};
 
-    for (final file in files) {
-      final info = await inspectBackupFile(file.path);
-      if (info != null) {
-        result.add(info);
+    for (final backupDir in dirsToScan) {
+      try {
+        if (!await backupDir.exists()) continue;
+        final entities = backupDir.listSync();
+        final files = entities
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.posbak'))
+            .toList();
+
+        for (final file in files) {
+          if (seenPaths.contains(file.path)) continue;
+          seenPaths.add(file.path);
+
+          final info = await inspectBackupFile(file.path);
+          if (info != null) {
+            result.add(info);
+          }
+        }
+      } catch (_) {
+        // Skip inaccessible directories (e.g. Scoped Storage)
       }
     }
 

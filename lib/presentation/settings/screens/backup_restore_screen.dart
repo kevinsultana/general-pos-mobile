@@ -21,6 +21,28 @@ class BackupRestoreScreen extends ConsumerStatefulWidget {
 class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   bool _isLoading = false;
 
+  Future<String?> _pickDirectoryHelper() async {
+    try {
+      final selectedDir = await FilePicker.getDirectoryPath(
+        dialogTitle: 'Pilih Folder Penyimpanan Cadangan',
+      );
+      if (selectedDir != null && selectedDir.isNotEmpty) {
+        final service = ref.read(backupServiceProvider);
+        return service.normalizeDirectoryPath(selectedDir);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memilih folder: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+    return null;
+  }
+
   Future<void> _showCreateBackupDialog() async {
     final backupRepo = ref.read(backupRepositoryProvider);
     final suggestedDirs = await backupRepo.getSuggestedBackupDirectories();
@@ -78,25 +100,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                           color: AppColors.primary),
                       tooltip: 'Pilih Folder dari File Manager',
                       onPressed: () async {
-                        try {
-                          final selectedDir =
-                              await FilePicker.getDirectoryPath(
-                            dialogTitle: 'Pilih Folder Penyimpanan Cadangan',
-                          );
-                          if (selectedDir != null && selectedDir.isNotEmpty) {
-                            setDialogState(() {
-                              pathController.text = selectedDir;
-                            });
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Gagal memilih folder: $e'),
-                                backgroundColor: AppColors.danger,
-                              ),
-                            );
-                          }
+                        final dir = await _pickDirectoryHelper();
+                        if (dir != null) {
+                          setDialogState(() {
+                            pathController.text = dir;
+                          });
                         }
                       },
                     ),
@@ -125,25 +133,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     onPressed: () async {
-                      try {
-                        final selectedDir =
-                            await FilePicker.getDirectoryPath(
-                          dialogTitle: 'Pilih Folder Penyimpanan Cadangan',
-                        );
-                        if (selectedDir != null && selectedDir.isNotEmpty) {
-                          setDialogState(() {
-                            pathController.text = selectedDir;
-                          });
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Gagal memilih folder: $e'),
-                              backgroundColor: AppColors.danger,
-                            ),
-                          );
-                        }
+                      final dir = await _pickDirectoryHelper();
+                      if (dir != null) {
+                        setDialogState(() {
+                          pathController.text = dir;
+                        });
                       }
                     },
                   ),

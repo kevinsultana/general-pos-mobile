@@ -194,4 +194,22 @@ void main() {
     expect(stores.first.name, equals('Toko UMKM POS'));
     expect(stores.first.customerEnabled, isFalse);
   });
+
+  test('Backup normalizes SAF content URI paths and handles inaccessible custom directories gracefully', () async {
+    // 1. SAF URI normalization
+    const safUri = 'content://com.android.externalstorage.documents/tree/primary%3ADownload%2FMyBackups';
+    final normalized = backupService.normalizeDirectoryPath(safUri);
+    expect(normalized, equals('/storage/emulated/0/Download/MyBackups'));
+
+    // 2. Fallback when custom directory write fails or throws OS error
+    const invalidPath = '/invalid_system_path_non_existent_123456';
+    final backup = await backupRepo.createBackup(
+      storeId: storeId,
+      targetDirectoryPath: invalidPath,
+    );
+
+    // Backup is still created safely in defaultBackupDir
+    expect(File(backup.filePath).existsSync(), isTrue);
+    expect(backup.fileName.endsWith('.posbak'), isTrue);
+  });
 }
