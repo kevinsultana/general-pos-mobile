@@ -77,6 +77,10 @@ final activeStoreIdProvider = Provider<String>((ref) {
       return cloudUser.storeId;
     }
   }
+  final currentStore = ref.watch(currentStoreStreamProvider).valueOrNull;
+  if (currentStore != null && currentStore.id.isNotEmpty) {
+    return currentStore.id;
+  }
   return AppConstants.defaultStoreId;
 });
 
@@ -113,9 +117,15 @@ final currentStoreStreamProvider = StreamProvider.autoDispose<Store?>((ref) asyn
     }
     yield* storeRepo.watchStore(cloudUser.storeId);
   } else {
-    try {
-      await storeRepo.ensureDefaultStore();
-    } catch (_) {}
+    final isRegistered = await storeRepo.isStoreRegistered();
+    if (!isRegistered) {
+      final existing = await storeRepo.getCurrentStore();
+      if (existing == null) {
+        try {
+          await storeRepo.ensureDefaultStore();
+        } catch (_) {}
+      }
+    }
     yield* storeRepo.watchCurrentStore();
   }
 });

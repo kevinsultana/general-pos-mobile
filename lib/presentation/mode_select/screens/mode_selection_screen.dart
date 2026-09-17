@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/cloud_providers.dart';
+import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 
 class ModeSelectionScreen extends ConsumerStatefulWidget {
@@ -28,8 +29,20 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
         // Fallback for headless widget testing where secure storage channel is not mocked
       }
 
+      bool isRegistered = false;
+      try {
+        final storeRepo = ref.read(storeRepositoryProvider);
+        isRegistered = await storeRepo.isStoreRegistered();
+      } catch (_) {
+        isRegistered = false;
+      }
+
       if (mounted) {
-        context.go('/');
+        if (!isRegistered) {
+          context.push('/local-register');
+        } else {
+          context.go('/');
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

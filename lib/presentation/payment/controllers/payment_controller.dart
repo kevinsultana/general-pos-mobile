@@ -25,15 +25,14 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
   final Ref _ref;
   final ITransactionRepository _trxRepo;
   final IStoreRepository _storeRepo;
-  final AppDatabase? _db;
+  final AppDatabase? db;
 
   PaymentController(
     this._ref,
     this._trxRepo,
     this._storeRepo, {
-    AppDatabase? db,
-  })  : _db = db,
-        super(const AsyncValue.data(null));
+    this.db,
+  }) : super(const AsyncValue.data(null));
 
   /// Completes a transaction with one or more payments
   Future<String> completePayment({
@@ -48,7 +47,7 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
       }
 
       // Final stock check against local database before transaction execution
-      final AppDatabase db = _db ?? _ref.read(appDatabaseProvider);
+      final AppDatabase effectiveDb = db ?? _ref.read(appDatabaseProvider);
 
       final Map<String, double> variantQuantities = {};
       final Map<String, double> productQuantities = {};
@@ -73,7 +72,7 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
         final requestedQty = entry.value;
         final item = itemByVariant[variantId]!;
 
-        final variant = await (db.select(db.productVariants)
+        final variant = await (effectiveDb.select(effectiveDb.productVariants)
               ..where((tbl) => tbl.id.equals(variantId)))
             .getSingleOrNull();
 
@@ -95,7 +94,7 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
         final requestedQty = entry.value;
         final item = itemByProduct[productId]!;
 
-        final product = await (db.select(db.products)
+        final product = await (effectiveDb.select(effectiveDb.products)
               ..where((tbl) => tbl.id.equals(productId)))
             .getSingleOrNull();
 

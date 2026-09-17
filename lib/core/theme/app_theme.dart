@@ -40,6 +40,12 @@ class AppTheme {
         selectedColor: AppColors.primary,
         backgroundColor: Colors.white,
         labelStyle: const TextStyle(
+          color: AppColors.textPrimaryLight,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),

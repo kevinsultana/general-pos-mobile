@@ -26,7 +26,9 @@ class ProductListScreen extends ConsumerWidget {
     final productsAsync = ref.watch(productListStreamProvider);
     final categoriesAsync = ref.watch(categoryListStreamProvider);
     final selectedCategory = ref.watch(selectedCategoryFilterProvider);
-    final canManageProducts = ref.watch(hasPermissionProvider(AppPermissions.manageProducts));
+    final canManageProducts = ref.watch(
+      hasPermissionProvider(AppPermissions.manageProducts),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -71,7 +73,10 @@ class ProductListScreen extends ConsumerWidget {
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 20),
                             onPressed: () {
-                              ref.read(productSearchQueryProvider.notifier).state = '';
+                              ref
+                                      .read(productSearchQueryProvider.notifier)
+                                      .state =
+                                  '';
                             },
                           )
                         : null,
@@ -96,11 +101,16 @@ class ProductListScreen extends ConsumerWidget {
                           ChoiceChip(
                             label: const Text('Semua Kategori'),
                             selected: selectedCategory == null,
+
                             onSelected: (selected) {
                               if (selected) {
                                 ref
-                                    .read(selectedCategoryFilterProvider.notifier)
-                                    .state = null;
+                                        .read(
+                                          selectedCategoryFilterProvider
+                                              .notifier,
+                                        )
+                                        .state =
+                                    null;
                               }
                             },
                           ),
@@ -114,8 +124,12 @@ class ProductListScreen extends ConsumerWidget {
                                 selected: isSelected,
                                 onSelected: (selected) {
                                   ref
-                                      .read(selectedCategoryFilterProvider.notifier)
-                                      .state = selected ? c.id : null;
+                                      .read(
+                                        selectedCategoryFilterProvider.notifier,
+                                      )
+                                      .state = selected
+                                      ? c.id
+                                      : null;
                                 },
                               ),
                             );
@@ -147,7 +161,9 @@ class ProductListScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: AppColors.accentContainer.withValues(alpha: 0.5),
+                              color: AppColors.accentContainer.withValues(
+                                alpha: 0.5,
+                              ),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -234,8 +250,12 @@ class _ProductCard extends ConsumerWidget {
       stockText = '${product.stock} unit (Menipis)';
     }
 
-    final canManageProducts = ref.watch(hasPermissionProvider(AppPermissions.manageProducts));
-    final canManageInventory = ref.watch(hasPermissionProvider(AppPermissions.manageInventory));
+    final canManageProducts = ref.watch(
+      hasPermissionProvider(AppPermissions.manageProducts),
+    );
+    final canManageInventory = ref.watch(
+      hasPermissionProvider(AppPermissions.manageInventory),
+    );
     final variantsAsync = ref.watch(productVariantsStreamProvider(product.id));
 
     return Card(
@@ -260,8 +280,10 @@ class _ProductCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: stockBg,
                     borderRadius: BorderRadius.circular(20),
@@ -270,8 +292,11 @@ class _ProductCard extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isNegative || isLowStock || isOutOfStock) ...[
-                        Icon(Icons.warning_amber_rounded,
-                            size: 14, color: stockColor),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 14,
+                          color: stockColor,
+                        ),
                         const SizedBox(width: 4),
                       ],
                       Text(
@@ -387,7 +412,9 @@ class _ProductCard extends ConsumerWidget {
                           final isVarNegative = v.stock < 0;
                           final isVarEmpty = v.stock == 0;
                           Color vColor = AppColors.accent;
-                          Color vBg = AppColors.accentContainer.withValues(alpha: 0.3);
+                          Color vBg = AppColors.accentContainer.withValues(
+                            alpha: 0.3,
+                          );
 
                           if (isVarNegative) {
                             vColor = AppColors.danger;
@@ -398,12 +425,17 @@ class _ProductCard extends ConsumerWidget {
                           }
 
                           return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: vBg,
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: isVarNegative ? AppColors.danger.withValues(alpha: 0.5) : Colors.transparent,
+                                color: isVarNegative
+                                    ? AppColors.danger.withValues(alpha: 0.5)
+                                    : Colors.transparent,
                               ),
                             ),
                             child: Text(
@@ -435,11 +467,16 @@ class _ProductCard extends ConsumerWidget {
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         side: const BorderSide(color: AppColors.accent),
                         foregroundColor: AppColors.accent,
                       ),
-                      icon: const Icon(Icons.add_shopping_cart_rounded, size: 16),
+                      icon: const Icon(
+                        Icons.add_shopping_cart_rounded,
+                        size: 16,
+                      ),
                       label: const Text('Stock In'),
                       onPressed: () {
                         showDialog(
@@ -452,14 +489,17 @@ class _ProductCard extends ConsumerWidget {
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                       icon: const Icon(Icons.tune_rounded, size: 16),
                       label: const Text('Sesuaikan'),
                       onPressed: () {
                         showDialog(
                           context: context,
-                          builder: (_) => StockAdjustmentDialog(product: product),
+                          builder: (_) =>
+                              StockAdjustmentDialog(product: product),
                         );
                       },
                     ),
@@ -468,7 +508,9 @@ class _ProductCard extends ConsumerWidget {
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     icon: const Icon(Icons.history_rounded, size: 16),
                     label: const Text('Histori'),
@@ -488,12 +530,13 @@ class _ProductCard extends ConsumerWidget {
                           .read(storeRepositoryProvider)
                           .getStore(AppConstants.defaultStoreId);
                       if (context.mounted) {
-                        final barcodeVal = product.barcode != null &&
+                        final barcodeVal =
+                            product.barcode != null &&
                                 product.barcode!.isNotEmpty
                             ? product.barcode!
                             : (product.sku != null && product.sku!.isNotEmpty
-                                ? product.sku!
-                                : product.name);
+                                  ? product.sku!
+                                  : product.name);
                         BarcodeLabelDialog.show(
                           context,
                           BarcodeLabelData(

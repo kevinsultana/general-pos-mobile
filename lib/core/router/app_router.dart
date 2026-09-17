@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../../presentation/mode_select/screens/mode_selection_screen.dart';
+import '../../presentation/mode_select/screens/local_register_screen.dart';
 import '../../presentation/home/home_screen.dart';
 import '../../presentation/products/screens/product_list_screen.dart';
 import '../../presentation/products/screens/product_form_screen.dart';
@@ -20,6 +21,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/mode-select',
       builder: (context, state) => const ModeSelectionScreen(),
+    ),
+    GoRoute(
+      path: '/local-register',
+      builder: (context, state) => const LocalRegisterScreen(),
     ),
     GoRoute(
       path: '/',

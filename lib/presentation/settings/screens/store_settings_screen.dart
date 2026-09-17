@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/providers/cloud_providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/local/app_database.dart' show Store;
+import '../../../domain/repositories/i_store_repository.dart';
 
 class StoreSettingsScreen extends ConsumerWidget {
   const StoreSettingsScreen({super.key});
@@ -61,80 +63,287 @@ class StoreSettingsScreen extends ConsumerWidget {
 
           final storeRepo = ref.read(storeRepositoryProvider);
 
+          final isProActive = isCloud &&
+              store.subscriptionPlan == 'PRO' &&
+              store.subscriptionStatus == 'ACTIVE';
+
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Store Profile Card
+              // Store Profile Card (Clickable to Edit Details)
               Card(
                 elevation: 0.5,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(color: Colors.grey.shade200),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.1),
-                        child: const Icon(
-                          Icons.store_rounded,
-                          size: 30,
-                          color: AppColors.primary,
+                child: InkWell(
+                  key: const Key('store_profile_card_tap'),
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => _showEditStoreDialog(context, store, storeRepo),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 26,
+                              backgroundColor:
+                                  AppColors.primary.withValues(alpha: 0.1),
+                              child: const Icon(
+                                Icons.store_rounded,
+                                size: 28,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          store.name,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textPrimaryLight,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.edit_outlined,
+                                                size: 13,
+                                                color: AppColors.primary),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Edit',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (store.ownerName != null &&
+                                      store.ownerName!.trim().isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.person_outline_rounded,
+                                            size: 13,
+                                            color:
+                                                AppColors.textSecondaryLight),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Pemilik: ${store.ownerName}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color:
+                                                AppColors.textSecondaryLight,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 16),
+                        const Divider(height: 20),
+
+                        // Alamat
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.location_on_outlined,
+                                size: 16, color: AppColors.textSecondaryLight),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                (store.address != null &&
+                                        store.address!.trim().isNotEmpty)
+                                    ? store.address!
+                                    : 'Alamat belum diatur (ketuk untuk mengisi)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: (store.address != null &&
+                                          store.address!.trim().isNotEmpty)
+                                      ? AppColors.textPrimaryLight
+                                      : AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Nomor Telepon
+                        Row(
+                          children: [
+                            const Icon(Icons.phone_outlined,
+                                size: 16, color: AppColors.textSecondaryLight),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                (store.phone != null &&
+                                        store.phone!.trim().isNotEmpty)
+                                    ? store.phone!
+                                    : 'Nomor telepon belum diatur (ketuk untuk mengisi)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: (store.phone != null &&
+                                          store.phone!.trim().isNotEmpty)
+                                      ? AppColors.textPrimaryLight
+                                      : AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Metadata & Status Badges
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            Text(
+                              'Mata Uang: ${store.currency} | ${isCloud ? 'Mode Cloud' : 'Mode Lokal'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondaryLight,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isProActive
+                                    ? Colors.green.shade50
+                                    : Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isProActive
+                                      ? Colors.green.shade300
+                                      : Colors.amber.shade300,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isProActive
+                                        ? Icons.verified_rounded
+                                        : Icons.lock_clock_outlined,
+                                    size: 13,
+                                    color: isProActive
+                                        ? Colors.green.shade800
+                                        : Colors.amber.shade900,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isProActive
+                                        ? 'Paket PRO Aktif'
+                                        : 'Paket PRO Tidak Aktif',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: isProActive
+                                          ? Colors.green.shade900
+                                          : Colors.amber.shade900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Banner Penjelasan Jika Paket PRO Tidak Aktif
+              if (!isProActive) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          color: Colors.amber.shade900, size: 20),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              store.name,
-                              style: const TextStyle(
-                                fontSize: 18,
+                              'Paket PRO Tidak Aktif (Mode Lokal)',
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Colors.amber.shade900,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 8,
-                              children: [
-                                Text(
-                                  'Mata Uang: ${store.currency} | Mode: Local First',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondaryLight,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: store.subscriptionPlan == 'PRO'
-                                        ? Colors.amber.shade50
-                                        : Colors.indigo.shade50,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: store.subscriptionPlan == 'PRO'
-                                          ? Colors.amber.shade300
-                                          : Colors.indigo.shade300,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Paket ${store.subscriptionPlan}',
+                            const SizedBox(height: 3),
+                            Text(
+                              'Fitur paket PRO dan sinkronisasi multi-kasir otomatis aktif setelah Anda mendaftarkan atau menyinkronkan toko ke Cloud Server.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.amber.shade900
+                                    .withValues(alpha: 0.85),
+                                height: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () => context.push('/cloud-sync'),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Daftar / Sinkronisasi Cloud Sekarang',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: store.subscriptionPlan == 'PRO'
-                                          ? Colors.amber.shade900
-                                          : Colors.indigo.shade900,
+                                      color: AppColors.primary,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 4),
+                                  Icon(Icons.arrow_forward_rounded,
+                                      size: 14, color: AppColors.primary),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -142,7 +351,7 @@ class StoreSettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: 24),
 
               // SECTION: Feature Toggles (PRD 41)
@@ -472,6 +681,220 @@ class StoreSettingsScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+
+  void _showEditStoreDialog(
+    BuildContext context,
+    Store store,
+    IStoreRepository storeRepo,
+  ) {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: store.name);
+    final addressController = TextEditingController(text: store.address ?? '');
+    final phoneController = TextEditingController(text: store.phone ?? '');
+    final ownerController = TextEditingController(text: store.ownerName ?? '');
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        bool isSubmitting = false;
+
+        return StatefulBuilder(
+          builder: (builderCtx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.edit_note_rounded,
+                      color: AppColors.primary, size: 26),
+                  SizedBox(width: 10),
+                  Text(
+                    'Edit Informasi Toko',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 4),
+                        // Nama Toko
+                        TextFormField(
+                          key: const Key('edit_store_name_field'),
+                          controller: nameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: InputDecoration(
+                            labelText: 'Nama Toko *',
+                            hintText: 'Nama toko Anda',
+                            prefixIcon: const Icon(Icons.storefront_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.backgroundLight,
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Nama toko wajib diisi';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Alamat
+                        TextFormField(
+                          key: const Key('edit_store_address_field'),
+                          controller: addressController,
+                          maxLines: 2,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: InputDecoration(
+                            labelText: 'Alamat Toko *',
+                            hintText: 'Jl. Contoh No. 123',
+                            prefixIcon: const Icon(Icons.location_on_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.backgroundLight,
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Alamat toko wajib diisi';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Telepon
+                        TextFormField(
+                          key: const Key('edit_store_phone_field'),
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Nomor Telepon / WhatsApp *',
+                            hintText: '081234567890',
+                            prefixIcon: const Icon(Icons.phone_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.backgroundLight,
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Nomor telepon wajib diisi';
+                            }
+                            if (val.trim().length < 6) {
+                              return 'Nomor telepon minimal 6 digit';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Nama Pemilik
+                        TextFormField(
+                          key: const Key('edit_store_owner_field'),
+                          controller: ownerController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: InputDecoration(
+                            labelText: 'Nama Pemilik (Opsional)',
+                            hintText: 'Nama pemilik toko',
+                            prefixIcon: const Icon(Icons.person_outline),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.backgroundLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actionsPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  key: const Key('save_store_details_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            await storeRepo.updateStoreProfile(
+                              storeId: store.id,
+                              name: nameController.text.trim(),
+                              address: addressController.text.trim(),
+                              phone: phoneController.text.trim(),
+                              ownerName: ownerController.text.trim().isNotEmpty
+                                  ? ownerController.text.trim()
+                                  : null,
+                            );
+                            if (context.mounted) {
+                              Navigator.pop(dialogCtx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Detail toko berhasil diperbarui'),
+                                  backgroundColor: AppColors.accent,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (builderCtx.mounted) {
+                              setDialogState(() => isSubmitting = false);
+                              ScaffoldMessenger.of(builderCtx).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal memperbarui toko: $e'),
+                                  backgroundColor: AppColors.danger,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

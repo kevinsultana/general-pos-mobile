@@ -20,5 +20,25 @@ abstract class IStoreRepository {
     DateTime? expiresAt,
   });
   Future<Store> ensureDefaultStore();
+  Future<bool> isStoreRegistered();
+  Future<Store> registerLocalStore({
+    required String name,
+    required String address,
+    required String phone,
+    String? ownerName,
+    required String adminUsername,
+    required String adminPassword,
+    required String adminDisplayName,
+    String? customStoreId,
+    String? customAdminUserId,
+  });
+  Future<User?> getAdminUser([String? storeId]);
+  Future<void> updateStoreProfile({
+    required String storeId,
+    required String name,
+    required String address,
+    required String phone,
+    String? ownerName,
+  });
 }
 

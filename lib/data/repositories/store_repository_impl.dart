@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:uuid/uuid.dart';
+
 import '../../domain/repositories/i_store_repository.dart';
 import '../local/app_database.dart';
 import '../local/daos/store_dao.dart';
@@ -56,5 +60,57 @@ class StoreRepositoryImpl implements IStoreRepository {
 
   @override
   Future<Store> ensureDefaultStore() => _storeDao.ensureDefaultStore();
+
+  @override
+  Future<bool> isStoreRegistered() => _storeDao.isStoreRegistered();
+
+  @override
+  Future<Store> registerLocalStore({
+    required String name,
+    required String address,
+    required String phone,
+    String? ownerName,
+    required String adminUsername,
+    required String adminPassword,
+    required String adminDisplayName,
+    String? customStoreId,
+    String? customAdminUserId,
+  }) {
+    const uuid = Uuid();
+    final storeId = customStoreId ?? uuid.v4();
+    final adminUserId = customAdminUserId ?? uuid.v4();
+    final passwordHash = sha256.convert(utf8.encode(adminPassword)).toString();
+
+    return _storeDao.registerLocalStore(
+      storeId: storeId,
+      name: name,
+      address: address,
+      phone: phone,
+      ownerName: ownerName,
+      adminUserId: adminUserId,
+      adminUsername: adminUsername,
+      adminPasswordHash: passwordHash,
+      adminDisplayName: adminDisplayName,
+    );
+  }
+
+  @override
+  Future<User?> getAdminUser([String? storeId]) => _storeDao.getAdminUser(storeId);
+
+  @override
+  Future<void> updateStoreProfile({
+    required String storeId,
+    required String name,
+    required String address,
+    required String phone,
+    String? ownerName,
+  }) =>
+      _storeDao.updateStoreProfile(
+        storeId: storeId,
+        name: name,
+        address: address,
+        phone: phone,
+        ownerName: ownerName,
+      );
 }
 

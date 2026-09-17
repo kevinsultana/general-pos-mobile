@@ -15,6 +15,7 @@ import 'tables/refund_tables.dart';
 import 'tables/promotion_tables.dart';
 import 'tables/printer_tables.dart';
 import 'tables/sync_tables.dart';
+import 'tables/user_tables.dart';
 
 export '../../domain/models/promotion_ext.dart';
 
@@ -29,6 +30,7 @@ import 'daos/promotion_dao.dart';
 import 'daos/report_dao.dart';
 import 'daos/printer_dao.dart';
 import 'daos/sync_event_dao.dart';
+import 'daos/user_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -50,6 +52,7 @@ part 'app_database.g.dart';
     Printers,
     SyncEvents,
     SyncCursors,
+    Users,
   ],
   daos: [
     StoreDao,
@@ -63,6 +66,7 @@ part 'app_database.g.dart';
     ReportDao,
     PrinterDao,
     SyncEventDao,
+    UserDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -199,6 +203,22 @@ class AppDatabase extends _$AppDatabase {
               "phone" TEXT,
               "email" TEXT,
               "notes" TEXT,
+              "created_at" INTEGER NOT NULL,
+              "updated_at" INTEGER NOT NULL
+            );
+          ''');
+
+          await customStatement('''
+            CREATE TABLE IF NOT EXISTS "users" (
+              "id" TEXT NOT NULL PRIMARY KEY,
+              "store_id" TEXT NOT NULL,
+              "username" TEXT NOT NULL,
+              "email" TEXT,
+              "password_hash" TEXT NOT NULL,
+              "display_name" TEXT NOT NULL,
+              "role" TEXT NOT NULL DEFAULT 'ADMIN',
+              "role_id" TEXT,
+              "active" INTEGER NOT NULL DEFAULT 1 CHECK ("active" IN (0, 1)),
               "created_at" INTEGER NOT NULL,
               "updated_at" INTEGER NOT NULL
             );

@@ -111,5 +111,96 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
       ),
     );
   }
+
+  Future<bool> isStoreRegistered() async {
+    final store = await getFirstStore();
+    if (store == null) return false;
+    return db.userDao.hasAdminUser(store.id);
+  }
+
+  Future<Store> registerLocalStore({
+    required String storeId,
+    required String name,
+    required String address,
+    required String phone,
+    String? ownerName,
+    required String adminUserId,
+    required String adminUsername,
+    required String adminPasswordHash,
+    required String adminDisplayName,
+  }) async {
+    final now = DateTime.now();
+    return db.transaction(() async {
+      // Clean up any unconfigured placeholder store if no admin was assigned
+      final placeholder = await getStoreById('store-default-01');
+      if (placeholder != null) {
+        final hasAdmin = await db.userDao.hasAdminUser('store-default-01');
+        if (!hasAdmin) {
+          await (delete(stores)..where((tbl) => tbl.id.equals('store-default-01'))).go();
+        }
+      }
+
+      final storeCompanion = StoresCompanion.insert(
+        id: storeId,
+        name: name,
+        ownerName: Value(ownerName),
+        address: Value(address),
+        phone: Value(phone),
+        currency: const Value('IDR'),
+        timezone: const Value('Asia/Jakarta'),
+        language: const Value('id'),
+        businessType: const Value('GENERAL'),
+        customerEnabled: const Value(true),
+        draftEnabled: const Value(true),
+        splitPaymentEnabled: const Value(true),
+        refundEnabled: const Value(true),
+        cashRoundingEnabled: const Value(true),
+        cashRoundingIncrement: const Value(100),
+        cashRoundingMode: const Value('ROUND_NEAREST'),
+        subscriptionPlan: const Value('FREE'),
+        subscriptionStatus: const Value('INACTIVE'),
+        subscriptionExpiresAt: const Value(null),
+        createdAt: now,
+        updatedAt: now,
+      );
+      await insertStore(storeCompanion);
+
+      final userCompanion = UsersCompanion.insert(
+        id: adminUserId,
+        storeId: storeId,
+        username: adminUsername,
+        displayName: adminDisplayName,
+        passwordHash: adminPasswordHash,
+        role: const Value('ADMIN'),
+        active: const Value(true),
+        createdAt: now,
+        updatedAt: now,
+      );
+      await db.userDao.insertUser(userCompanion);
+
+      final created = await getStoreById(storeId);
+      return created!;
+    });
+  }
+
+  Future<void> updateStoreProfile({
+    required String storeId,
+    required String name,
+    required String address,
+    required String phone,
+    String? ownerName,
+  }) {
+    return (update(stores)..where((tbl) => tbl.id.equals(storeId))).write(
+      StoresCompanion(
+        name: Value(name),
+        address: Value(address),
+        phone: Value(phone),
+        ownerName: Value(ownerName),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<User?> getAdminUser([String? storeId]) => db.userDao.getAdminUser(storeId);
 }
 

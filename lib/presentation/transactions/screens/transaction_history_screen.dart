@@ -242,6 +242,18 @@ class _TransactionHistoryScreenState
       child: FilterChip(
         label: Text(label),
         selected: isSelected,
+        selectedColor: AppColors.primary,
+        backgroundColor: Colors.white,
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.borderLight,
+        ),
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : AppColors.textPrimaryLight,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          fontSize: 12,
+        ),
+        checkmarkColor: Colors.white,
+        showCheckmark: false,
         onSelected: (selected) {
           if (selected) {
             setState(() {

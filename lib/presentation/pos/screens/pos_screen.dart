@@ -205,6 +205,24 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                       child: FilterChip(
                         label: const Text('Semua'),
                         selected: _selectedCategoryId == null,
+                        selectedColor: AppColors.primary,
+                        backgroundColor: Colors.white,
+                        side: BorderSide(
+                          color: _selectedCategoryId == null
+                              ? AppColors.primary
+                              : AppColors.borderLight,
+                        ),
+                        labelStyle: TextStyle(
+                          color: _selectedCategoryId == null
+                              ? Colors.white
+                              : AppColors.textPrimaryLight,
+                          fontWeight: _selectedCategoryId == null
+                              ? FontWeight.bold
+                              : FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                        checkmarkColor: Colors.white,
+                        showCheckmark: false,
                         onSelected: (selected) {
                           if (selected) {
                             setState(() {
@@ -221,6 +239,24 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                         child: FilterChip(
                           label: Text(cat.name),
                           selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: Colors.white,
+                          side: BorderSide(
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.borderLight,
+                          ),
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textPrimaryLight,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                          checkmarkColor: Colors.white,
+                          showCheckmark: false,
                           onSelected: (selected) {
                             setState(() {
                               _selectedCategoryId = selected ? cat.id : null;

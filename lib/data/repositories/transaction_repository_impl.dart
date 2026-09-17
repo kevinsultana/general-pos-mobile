@@ -41,11 +41,7 @@ class TransactionRepositoryImpl implements ITransactionRepository {
   }) async {
     final now = DateTime.now();
     final transactionId = _uuid.v4();
-    final transactionNumber = await _db.transactionDao.generateTransactionNumber(
-      storeId: storeId,
-      deviceId: _deviceId,
-      date: now,
-    );
+    final transactionNumber = await _generateTransactionNumber(storeId, now);
 
     final expectedRounding = payments
         .where((p) => p.paymentType == 'CASH')

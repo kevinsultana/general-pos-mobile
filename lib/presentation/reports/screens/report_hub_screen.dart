@@ -604,6 +604,8 @@ class _ProductReportTab extends ConsumerWidget {
                             children: [
                               Text(
                                 item.productName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -614,6 +616,8 @@ class _ProductReportTab extends ConsumerWidget {
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
                                     item.categoryName!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: Colors.grey.shade600,
@@ -621,7 +625,10 @@ class _ProductReportTab extends ConsumerWidget {
                                   ),
                                 ),
                               const SizedBox(height: 6),
-                              Row(
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 2,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Text(
                                     'Omzet: ${CurrencyFormatter.format(item.revenue)}',
@@ -630,7 +637,6 @@ class _ProductReportTab extends ConsumerWidget {
                                       color: AppColors.textSecondaryLight,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
                                   Text(
                                     '• Laba: ${CurrencyFormatter.format(item.grossProfit)}',
                                     style: TextStyle(
@@ -644,6 +650,7 @@ class _ProductReportTab extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8),
 
                         // Quantity & Margin
                         Column(
