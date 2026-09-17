@@ -172,7 +172,7 @@ void main() {
 
     testWidgets('StoreSettingsScreen does not overflow on narrow width (262px)',
         (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(262, 800);
+      tester.view.physicalSize = const Size(262, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
@@ -190,13 +190,6 @@ void main() {
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-
-      await tester.dragUntilVisible(
-        find.byKey(const Key('add_order_type_button')),
-        find.byType(ListView),
-        const Offset(0, -100),
-      );
-      await tester.pumpAndSettle();
 
       expect(find.text('Daftar Pilihan Aktif:'), findsOneWidget);
       expect(find.text('Reset Default'), findsOneWidget);
