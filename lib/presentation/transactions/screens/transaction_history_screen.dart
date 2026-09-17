@@ -156,7 +156,7 @@ class _TransactionHistoryScreenState
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '• ${trx.orderType == 'TAKEAWAY' ? 'Takeaway' : 'Dine In'}',
+                                    '• ${_formatOrderType(trx.orderType)}',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: AppColors.textSecondaryLight,
@@ -275,6 +275,15 @@ class _TransactionHistoryScreenState
         },
       ),
     );
+  }
+
+  String _formatOrderType(String? type) {
+    if (type == null || type.isEmpty) return 'Dine In';
+    if (type == 'TAKEAWAY') return 'Takeaway';
+    if (type == 'DINE_IN') return 'Dine In';
+    if (type == 'DELIVERY') return 'Delivery';
+    if (type == 'ONLINE') return 'Online';
+    return type;
   }
 
   Widget _buildStatusBadge(String status) {

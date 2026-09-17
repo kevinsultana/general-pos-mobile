@@ -44,13 +44,13 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
   Widget build(BuildContext context) {
     final customersAsync = ref.watch(customerListStreamProvider);
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.75,
+        child: Column(
         children: [
           // Header
           Padding(
@@ -253,6 +253,7 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

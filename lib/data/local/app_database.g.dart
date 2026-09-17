@@ -300,6 +300,33 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _orderTypeEnabledMeta = const VerificationMeta(
+    'orderTypeEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> orderTypeEnabled = GeneratedColumn<bool>(
+    'order_type_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("order_type_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _orderTypesJsonMeta = const VerificationMeta(
+    'orderTypesJson',
+  );
+  @override
+  late final GeneratedColumn<String> orderTypesJson = GeneratedColumn<String>(
+    'order_types_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('["Dine In","Takeaway","Delivery","Online"]'),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -348,6 +375,8 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
     subscriptionPlan,
     subscriptionStatus,
     subscriptionExpiresAt,
+    orderTypeEnabled,
+    orderTypesJson,
     createdAt,
     updatedAt,
   ];
@@ -553,6 +582,24 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
         ),
       );
     }
+    if (data.containsKey('order_type_enabled')) {
+      context.handle(
+        _orderTypeEnabledMeta,
+        orderTypeEnabled.isAcceptableOrUnknown(
+          data['order_type_enabled']!,
+          _orderTypeEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('order_types_json')) {
+      context.handle(
+        _orderTypesJsonMeta,
+        orderTypesJson.isAcceptableOrUnknown(
+          data['order_types_json']!,
+          _orderTypesJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -674,6 +721,14 @@ class $StoresTable extends Stores with TableInfo<$StoresTable, Store> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}subscription_expires_at'],
       ),
+      orderTypeEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}order_type_enabled'],
+      )!,
+      orderTypesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}order_types_json'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -716,6 +771,8 @@ class Store extends DataClass implements Insertable<Store> {
   final String subscriptionPlan;
   final String subscriptionStatus;
   final DateTime? subscriptionExpiresAt;
+  final bool orderTypeEnabled;
+  final String orderTypesJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Store({
@@ -743,6 +800,8 @@ class Store extends DataClass implements Insertable<Store> {
     required this.subscriptionPlan,
     required this.subscriptionStatus,
     this.subscriptionExpiresAt,
+    required this.orderTypeEnabled,
+    required this.orderTypesJson,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -787,6 +846,8 @@ class Store extends DataClass implements Insertable<Store> {
         subscriptionExpiresAt,
       );
     }
+    map['order_type_enabled'] = Variable<bool>(orderTypeEnabled);
+    map['order_types_json'] = Variable<String>(orderTypesJson);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -830,6 +891,8 @@ class Store extends DataClass implements Insertable<Store> {
       subscriptionExpiresAt: subscriptionExpiresAt == null && nullToAbsent
           ? const Value.absent()
           : Value(subscriptionExpiresAt),
+      orderTypeEnabled: Value(orderTypeEnabled),
+      orderTypesJson: Value(orderTypesJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -879,6 +942,8 @@ class Store extends DataClass implements Insertable<Store> {
       subscriptionExpiresAt: serializer.fromJson<DateTime?>(
         json['subscriptionExpiresAt'],
       ),
+      orderTypeEnabled: serializer.fromJson<bool>(json['orderTypeEnabled']),
+      orderTypesJson: serializer.fromJson<String>(json['orderTypesJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -913,6 +978,8 @@ class Store extends DataClass implements Insertable<Store> {
       'subscriptionExpiresAt': serializer.toJson<DateTime?>(
         subscriptionExpiresAt,
       ),
+      'orderTypeEnabled': serializer.toJson<bool>(orderTypeEnabled),
+      'orderTypesJson': serializer.toJson<String>(orderTypesJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -943,6 +1010,8 @@ class Store extends DataClass implements Insertable<Store> {
     String? subscriptionPlan,
     String? subscriptionStatus,
     Value<DateTime?> subscriptionExpiresAt = const Value.absent(),
+    bool? orderTypeEnabled,
+    String? orderTypesJson,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Store(
@@ -975,6 +1044,8 @@ class Store extends DataClass implements Insertable<Store> {
     subscriptionExpiresAt: subscriptionExpiresAt.present
         ? subscriptionExpiresAt.value
         : this.subscriptionExpiresAt,
+    orderTypeEnabled: orderTypeEnabled ?? this.orderTypeEnabled,
+    orderTypesJson: orderTypesJson ?? this.orderTypesJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1034,6 +1105,12 @@ class Store extends DataClass implements Insertable<Store> {
       subscriptionExpiresAt: data.subscriptionExpiresAt.present
           ? data.subscriptionExpiresAt.value
           : this.subscriptionExpiresAt,
+      orderTypeEnabled: data.orderTypeEnabled.present
+          ? data.orderTypeEnabled.value
+          : this.orderTypeEnabled,
+      orderTypesJson: data.orderTypesJson.present
+          ? data.orderTypesJson.value
+          : this.orderTypesJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1066,6 +1143,8 @@ class Store extends DataClass implements Insertable<Store> {
           ..write('subscriptionPlan: $subscriptionPlan, ')
           ..write('subscriptionStatus: $subscriptionStatus, ')
           ..write('subscriptionExpiresAt: $subscriptionExpiresAt, ')
+          ..write('orderTypeEnabled: $orderTypeEnabled, ')
+          ..write('orderTypesJson: $orderTypesJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1098,6 +1177,8 @@ class Store extends DataClass implements Insertable<Store> {
     subscriptionPlan,
     subscriptionStatus,
     subscriptionExpiresAt,
+    orderTypeEnabled,
+    orderTypesJson,
     createdAt,
     updatedAt,
   ]);
@@ -1129,6 +1210,8 @@ class Store extends DataClass implements Insertable<Store> {
           other.subscriptionPlan == this.subscriptionPlan &&
           other.subscriptionStatus == this.subscriptionStatus &&
           other.subscriptionExpiresAt == this.subscriptionExpiresAt &&
+          other.orderTypeEnabled == this.orderTypeEnabled &&
+          other.orderTypesJson == this.orderTypesJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1158,6 +1241,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
   final Value<String> subscriptionPlan;
   final Value<String> subscriptionStatus;
   final Value<DateTime?> subscriptionExpiresAt;
+  final Value<bool> orderTypeEnabled;
+  final Value<String> orderTypesJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1186,6 +1271,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
     this.subscriptionPlan = const Value.absent(),
     this.subscriptionStatus = const Value.absent(),
     this.subscriptionExpiresAt = const Value.absent(),
+    this.orderTypeEnabled = const Value.absent(),
+    this.orderTypesJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1215,6 +1302,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
     this.subscriptionPlan = const Value.absent(),
     this.subscriptionStatus = const Value.absent(),
     this.subscriptionExpiresAt = const Value.absent(),
+    this.orderTypeEnabled = const Value.absent(),
+    this.orderTypesJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1247,6 +1336,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
     Expression<String>? subscriptionPlan,
     Expression<String>? subscriptionStatus,
     Expression<DateTime>? subscriptionExpiresAt,
+    Expression<bool>? orderTypeEnabled,
+    Expression<String>? orderTypesJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1282,6 +1373,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
       if (subscriptionStatus != null) 'subscription_status': subscriptionStatus,
       if (subscriptionExpiresAt != null)
         'subscription_expires_at': subscriptionExpiresAt,
+      if (orderTypeEnabled != null) 'order_type_enabled': orderTypeEnabled,
+      if (orderTypesJson != null) 'order_types_json': orderTypesJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1313,6 +1406,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
     Value<String>? subscriptionPlan,
     Value<String>? subscriptionStatus,
     Value<DateTime?>? subscriptionExpiresAt,
+    Value<bool>? orderTypeEnabled,
+    Value<String>? orderTypesJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1345,6 +1440,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
       subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
       subscriptionExpiresAt:
           subscriptionExpiresAt ?? this.subscriptionExpiresAt,
+      orderTypeEnabled: orderTypeEnabled ?? this.orderTypeEnabled,
+      orderTypesJson: orderTypesJson ?? this.orderTypesJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1434,6 +1531,12 @@ class StoresCompanion extends UpdateCompanion<Store> {
         subscriptionExpiresAt.value,
       );
     }
+    if (orderTypeEnabled.present) {
+      map['order_type_enabled'] = Variable<bool>(orderTypeEnabled.value);
+    }
+    if (orderTypesJson.present) {
+      map['order_types_json'] = Variable<String>(orderTypesJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1473,6 +1576,8 @@ class StoresCompanion extends UpdateCompanion<Store> {
           ..write('subscriptionPlan: $subscriptionPlan, ')
           ..write('subscriptionStatus: $subscriptionStatus, ')
           ..write('subscriptionExpiresAt: $subscriptionExpiresAt, ')
+          ..write('orderTypeEnabled: $orderTypeEnabled, ')
+          ..write('orderTypesJson: $orderTypesJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -12236,6 +12341,8 @@ typedef $$StoresTableCreateCompanionBuilder = StoresCompanion Function({
   Value<String> subscriptionPlan,
   Value<String> subscriptionStatus,
   Value<DateTime?> subscriptionExpiresAt,
+  Value<bool> orderTypeEnabled,
+  Value<String> orderTypesJson,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -12265,6 +12372,8 @@ typedef $$StoresTableUpdateCompanionBuilder = StoresCompanion Function({
   Value<String> subscriptionPlan,
   Value<String> subscriptionStatus,
   Value<DateTime?> subscriptionExpiresAt,
+  Value<bool> orderTypeEnabled,
+  Value<String> orderTypesJson,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -12396,6 +12505,16 @@ class $$StoresTableFilterComposer
 
   ColumnFilters<DateTime> get subscriptionExpiresAt => $composableBuilder(
     column: $table.subscriptionExpiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get orderTypeEnabled => $composableBuilder(
+    column: $table.orderTypeEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get orderTypesJson => $composableBuilder(
+    column: $table.orderTypesJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12539,6 +12658,16 @@ class $$StoresTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get orderTypeEnabled => $composableBuilder(
+    column: $table.orderTypeEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get orderTypesJson => $composableBuilder(
+    column: $table.orderTypesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -12661,6 +12790,16 @@ class $$StoresTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get orderTypeEnabled => $composableBuilder(
+    column: $table.orderTypeEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get orderTypesJson => $composableBuilder(
+    column: $table.orderTypesJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -12720,6 +12859,8 @@ class $$StoresTableTableManager
                 Value<String> subscriptionPlan = const Value.absent(),
                 Value<String> subscriptionStatus = const Value.absent(),
                 Value<DateTime?> subscriptionExpiresAt = const Value.absent(),
+                Value<bool> orderTypeEnabled = const Value.absent(),
+                Value<String> orderTypesJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -12748,6 +12889,8 @@ class $$StoresTableTableManager
                 subscriptionPlan: subscriptionPlan,
                 subscriptionStatus: subscriptionStatus,
                 subscriptionExpiresAt: subscriptionExpiresAt,
+                orderTypeEnabled: orderTypeEnabled,
+                orderTypesJson: orderTypesJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -12778,6 +12921,8 @@ class $$StoresTableTableManager
                 Value<String> subscriptionPlan = const Value.absent(),
                 Value<String> subscriptionStatus = const Value.absent(),
                 Value<DateTime?> subscriptionExpiresAt = const Value.absent(),
+                Value<bool> orderTypeEnabled = const Value.absent(),
+                Value<String> orderTypesJson = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -12806,6 +12951,8 @@ class $$StoresTableTableManager
                 subscriptionPlan: subscriptionPlan,
                 subscriptionStatus: subscriptionStatus,
                 subscriptionExpiresAt: subscriptionExpiresAt,
+                orderTypeEnabled: orderTypeEnabled,
+                orderTypesJson: orderTypesJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

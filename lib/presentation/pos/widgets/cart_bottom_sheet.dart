@@ -6,6 +6,7 @@ import '../../../core/providers/permission_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/local/app_database.dart';
+import '../../../domain/models/store_ext.dart';
 import '../controllers/cart_controller.dart';
 import '../../payment/widgets/payment_sheet.dart';
 import 'customer_picker_sheet.dart';
@@ -52,13 +53,13 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
     final canCreateTransaction =
         ref.watch(hasPermissionProvider(AppPermissions.createTransaction));
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.88,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.88,
+        child: Column(
         children: [
           // Drag handle
           Container(
@@ -148,40 +149,97 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
             color: AppColors.backgroundLight,
             child: Column(
               children: [
-                // Order Type Selector
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<String>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                        value: 'DINE_IN',
-                        label: Text('Dine In', style: TextStyle(fontSize: 11)),
-                        icon: Icon(Icons.restaurant_rounded, size: 14),
-                      ),
-                      ButtonSegment(
-                        value: 'TAKEAWAY',
-                        label: Text('Takeaway', style: TextStyle(fontSize: 11)),
-                        icon: Icon(Icons.takeout_dining_rounded, size: 14),
-                      ),
-                      ButtonSegment(
-                        value: 'DELIVERY',
-                        label: Text('Delivery', style: TextStyle(fontSize: 11)),
-                        icon: Icon(Icons.delivery_dining_rounded, size: 14),
-                      ),
-                      ButtonSegment(
-                        value: 'ONLINE',
-                        label: Text('Online', style: TextStyle(fontSize: 11)),
-                        icon: Icon(Icons.public_rounded, size: 14),
-                      ),
-                    ],
-                    selected: {cartState.orderType},
-                    onSelectionChanged: (val) {
-                      cartNotifier.setOrderType(val.first);
+                // Order Type Selector (Dynamic based on store settings, hidden if disabled)
+                if (store?.orderTypeEnabled ?? true) ...[
+                  Builder(
+                    builder: (context) {
+                      final options = store?.orderTypesList ??
+                          const ['Dine In', 'Takeaway', 'Delivery', 'Online'];
+
+                      // Normalize legacy internal names if needed
+                      String currentSelection = cartState.orderType;
+                      if (currentSelection == 'DINE_IN' &&
+                          !options.contains('DINE_IN')) {
+                        if (options.contains('Dine In')) {
+                          currentSelection = 'Dine In';
+                        }
+                      } else if (currentSelection == 'TAKEAWAY' &&
+                          !options.contains('TAKEAWAY')) {
+                        if (options.contains('Takeaway')) {
+                          currentSelection = 'Takeaway';
+                        }
+                      } else if (currentSelection == 'DELIVERY' &&
+                          !options.contains('DELIVERY')) {
+                        if (options.contains('Delivery')) {
+                          currentSelection = 'Delivery';
+                        }
+                      } else if (currentSelection == 'ONLINE' &&
+                          !options.contains('ONLINE')) {
+                        if (options.contains('Online')) {
+                          currentSelection = 'Online';
+                        }
+                      }
+
+                      if (!options.contains(currentSelection) &&
+                          options.isNotEmpty) {
+                        currentSelection = options.first;
+                      }
+
+                      if (cartState.orderType != currentSelection) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          cartNotifier.setOrderType(currentSelection);
+                        });
+                      }
+
+                      return SizedBox(
+                        width: double.infinity,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: options.map((type) {
+                              final isSelected = currentSelection == type;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    type,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.textPrimaryLight,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  selectedColor: AppColors.primary,
+                                  backgroundColor: Colors.white,
+                                  showCheckmark: false,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  onSelected: (selected) {
+                                    if (selected) {
+                                      cartNotifier.setOrderType(type);
+                                    }
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      );
                     },
                   ),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
 
                 // Queue Number Input
                 TextField(
@@ -827,6 +885,7 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
             ),
           ],
         ],
+      ),
       ),
     );
   }

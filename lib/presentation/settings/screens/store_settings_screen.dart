@@ -6,6 +6,7 @@ import '../../../core/providers/database_providers.dart';
 import '../../../core/providers/cloud_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/app_database.dart' show Store;
+import '../../../domain/models/store_ext.dart';
 import '../../../domain/repositories/i_store_repository.dart';
 
 class StoreSettingsScreen extends ConsumerWidget {
@@ -274,8 +275,9 @@ class StoreSettingsScreen extends ConsumerWidget {
                                       : Colors.amber.shade300,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                              child: Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 4,
                                 children: [
                                   Icon(
                                     isProActive
@@ -286,7 +288,6 @@ class StoreSettingsScreen extends ConsumerWidget {
                                         ? Colors.green.shade800
                                         : Colors.amber.shade900,
                                   ),
-                                  const SizedBox(width: 4),
                                   Text(
                                     isProActive
                                         ? 'Paket PRO Aktif'
@@ -355,8 +356,9 @@ class StoreSettingsScreen extends ConsumerWidget {
                             const SizedBox(height: 8),
                             InkWell(
                               onTap: () => context.push('/cloud-sync'),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
+                              child: const Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 4,
                                 children: [
                                   Text(
                                     'Daftar / Sinkronisasi Cloud Sekarang',
@@ -366,7 +368,6 @@ class StoreSettingsScreen extends ConsumerWidget {
                                       color: AppColors.primary,
                                     ),
                                   ),
-                                  SizedBox(width: 4),
                                   Icon(
                                     Icons.arrow_forward_rounded,
                                     size: 14,
@@ -442,6 +443,249 @@ class StoreSettingsScreen extends ConsumerWidget {
                         );
                       },
                     ),
+
+                    const Divider(height: 1),
+
+                    // Order Type Toggle
+                    SwitchListTile(
+                      key: const Key('order_type_switch'),
+                      secondary: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.room_service_rounded,
+                          color: Colors.teal.shade700,
+                        ),
+                      ),
+                      title: const Text(
+                        'Pilihan Tipe Pesanan',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: const Text(
+                        'Aktifkan untuk menampilkan pilihan tipe pesanan (Dine In, Takeaway, dll.) pada transaksi kasir POS.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: store.orderTypeEnabled,
+                      activeThumbColor: AppColors.primary,
+                      onChanged: (val) async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        await storeRepo.setOrderTypeEnabled(store.id, val);
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              val
+                                  ? 'Pilihan Tipe Pesanan diaktifkan'
+                                  : 'Pilihan Tipe Pesanan dinonaktifkan',
+                            ),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // Order Type Options CRUD (visible when orderTypeEnabled is true)
+                    if (store.orderTypeEnabled) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isCompact = constraints.maxWidth < 340;
+                                  if (isCompact) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Daftar Pilihan Aktif:',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: AppColors.textSecondaryLight,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          children: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  _confirmResetOrderTypes(
+                                                      context,
+                                                      store,
+                                                      storeRepo),
+                                              style: TextButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                              child: const Text('Reset Default',
+                                                  style: TextStyle(fontSize: 11)),
+                                            ),
+                                            FilledButton.tonalIcon(
+                                              key: const Key(
+                                                  'add_order_type_button'),
+                                              style: FilledButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 6),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                              onPressed: () =>
+                                                  _showAddOrderTypeDialog(
+                                                      context, store, storeRepo),
+                                              icon: const Icon(Icons.add_rounded,
+                                                  size: 14),
+                                              label: const Text('Tambah Opsi',
+                                                  style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Daftar Pilihan Aktif:',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: AppColors.textSecondaryLight,
+                                        ),
+                                      ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                _confirmResetOrderTypes(
+                                                    context, store, storeRepo),
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            child: const Text('Reset Default',
+                                                style: TextStyle(fontSize: 11)),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          FilledButton.tonalIcon(
+                                            key: const Key(
+                                                'add_order_type_button'),
+                                            style: FilledButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6),
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            onPressed: () =>
+                                                _showAddOrderTypeDialog(
+                                                    context, store, storeRepo),
+                                            icon: const Icon(Icons.add_rounded,
+                                                size: 14),
+                                            label: const Text('Tambah Opsi',
+                                                style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: store.orderTypesList.map((opt) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border:
+                                          Border.all(color: Colors.grey.shade300),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          opt,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12,
+                                            color: AppColors.textPrimaryLight,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        InkWell(
+                                          onTap: () => _showEditOrderTypeDialog(
+                                              context, store, storeRepo, opt),
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(2),
+                                            child: Icon(Icons.edit_outlined,
+                                                size: 14,
+                                                color: AppColors.primary),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        InkWell(
+                                          onTap: () => _deleteOrderType(
+                                              context, store, storeRepo, opt),
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(2),
+                                            child: Icon(Icons.close_rounded,
+                                                size: 14,
+                                                color: AppColors.danger),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -984,5 +1228,242 @@ class StoreSettingsScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<void> _showAddOrderTypeDialog(
+    BuildContext context,
+    Store store,
+    IStoreRepository storeRepo,
+  ) async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Tambah Tipe Pesanan',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Nama Tipe Pesanan *',
+                hintText: 'Cth: Ojol, Katering, Drive Thru',
+                border: OutlineInputBorder(),
+              ),
+              validator: (val) {
+                final trimmed = val?.trim() ?? '';
+                if (trimmed.isEmpty) return 'Nama tipe pesanan tidak boleh kosong';
+                final currentList = store.orderTypesList;
+                if (currentList.any((e) => e.toLowerCase() == trimmed.toLowerCase())) {
+                  return 'Tipe pesanan "$trimmed" sudah ada';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final newType = controller.text.trim();
+                final updatedList = [...store.orderTypesList, newType];
+                await storeRepo.updateOrderTypes(
+                  storeId: store.id,
+                  orderTypes: updatedList,
+                );
+                if (context.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Tipe pesanan "$newType" berhasil ditambahkan'),
+                      backgroundColor: AppColors.accent,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Tambah'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditOrderTypeDialog(
+    BuildContext context,
+    Store store,
+    IStoreRepository storeRepo,
+    String oldName,
+  ) async {
+    final controller = TextEditingController(text: oldName);
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Ubah Tipe Pesanan',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Nama Tipe Pesanan *',
+                border: OutlineInputBorder(),
+              ),
+              validator: (val) {
+                final trimmed = val?.trim() ?? '';
+                if (trimmed.isEmpty) return 'Nama tipe pesanan tidak boleh kosong';
+                if (trimmed.toLowerCase() != oldName.toLowerCase()) {
+                  final currentList = store.orderTypesList;
+                  if (currentList
+                      .any((e) => e.toLowerCase() == trimmed.toLowerCase())) {
+                    return 'Tipe pesanan "$trimmed" sudah ada';
+                  }
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final updatedName = controller.text.trim();
+                final updatedList = store.orderTypesList
+                    .map((e) => e == oldName ? updatedName : e)
+                    .toList();
+                await storeRepo.updateOrderTypes(
+                  storeId: store.id,
+                  orderTypes: updatedList,
+                );
+                if (context.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('Tipe pesanan berhasil diubah menjadi "$updatedName"'),
+                      backgroundColor: AppColors.accent,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteOrderType(
+    BuildContext context,
+    Store store,
+    IStoreRepository storeRepo,
+    String targetName,
+  ) async {
+    final currentList = store.orderTypesList;
+    if (currentList.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Minimal harus ada 1 tipe pesanan yang aktif.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
+    final updatedList = currentList.where((e) => e != targetName).toList();
+    await storeRepo.updateOrderTypes(
+      storeId: store.id,
+      orderTypes: updatedList,
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tipe pesanan "$targetName" dihapus'),
+          action: SnackBarAction(
+            label: 'Batal',
+            onPressed: () async {
+              await storeRepo.updateOrderTypes(
+                storeId: store.id,
+                orderTypes: currentList,
+              );
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmResetOrderTypes(
+    BuildContext context,
+    Store store,
+    IStoreRepository storeRepo,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reset Tipe Pesanan?'),
+        content: const Text(
+          'Kembalikan daftar pilihan tipe pesanan ke default:\n• Dine In\n• Takeaway\n• Delivery\n• Online',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await storeRepo.updateOrderTypes(
+        storeId: store.id,
+        orderTypes: const ['Dine In', 'Takeaway', 'Delivery', 'Online'],
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pilihan tipe pesanan dikembalikan ke default'),
+            backgroundColor: AppColors.accent,
+          ),
+        );
+      }
+    }
   }
 }

@@ -33,6 +33,10 @@ class Stores extends Table {
   TextColumn get subscriptionStatus => text().withDefault(const Constant('ACTIVE'))();
   DateTimeColumn get subscriptionExpiresAt => dateTime().nullable()();
 
+  // Dynamic Order Type Settings
+  BoolColumn get orderTypeEnabled => boolean().withDefault(const Constant(true))();
+  TextColumn get orderTypesJson => text().withDefault(const Constant('["Dine In","Takeaway","Delivery","Online"]'))();
+
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

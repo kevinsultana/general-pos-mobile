@@ -7,6 +7,11 @@ abstract class IStoreRepository {
   Stream<Store?> watchCurrentStore();
   Future<void> saveStore(StoresCompanion store);
   Future<void> setCustomerEnabled(String storeId, bool enabled);
+  Future<void> setOrderTypeEnabled(String storeId, bool enabled);
+  Future<void> updateOrderTypes({
+    required String storeId,
+    required List<String> orderTypes,
+  });
   Future<void> updateCashRoundingSettings({
     required String storeId,
     required bool enabled,

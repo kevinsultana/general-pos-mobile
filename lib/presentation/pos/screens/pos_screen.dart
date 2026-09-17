@@ -50,7 +50,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.primary,
-            content: Text('Produk ($scanned) berhasil ditambahkan ke keranjang'),
+            content: Text(
+              'Produk ($scanned) berhasil ditambahkan ke keranjang',
+            ),
             duration: const Duration(seconds: 1),
           ),
         );
@@ -71,7 +73,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Kasir POS', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Kasir POS',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         actions: [
           // Drafts saved badge button
           Stack(
@@ -136,8 +141,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               },
                             )
                           : null,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     onChanged: (val) {
                       setState(() {
@@ -266,11 +273,14 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 // Search query filter
                 if (_searchQuery.isNotEmpty) {
                   filtered = filtered.where((p) {
-                    final nameMatch = p.name.toLowerCase().contains(_searchQuery);
+                    final nameMatch = p.name.toLowerCase().contains(
+                      _searchQuery,
+                    );
                     final skuMatch =
                         p.sku?.toLowerCase().contains(_searchQuery) ?? false;
                     final barcodeMatch =
-                        p.barcode?.toLowerCase().contains(_searchQuery) ?? false;
+                        p.barcode?.toLowerCase().contains(_searchQuery) ??
+                        false;
                     return nameMatch || skuMatch || barcodeMatch;
                   }).toList();
                 }
@@ -280,8 +290,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off_rounded,
-                            size: 56, color: Colors.grey.shade400),
+                        Icon(
+                          Icons.search_off_rounded,
+                          size: 56,
+                          color: Colors.grey.shade400,
+                        ),
                         const SizedBox(height: 12),
                         const Text(
                           'Tidak Ada Produk Ditemukan',
@@ -325,10 +338,12 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                         borderRadius: BorderRadius.circular(16),
                         onTap: () async {
                           // Check if product has variants
-                          final productRepo =
-                              ref.read(productRepositoryProvider);
-                          final variants =
-                              await productRepo.getVariants(product.id);
+                          final productRepo = ref.read(
+                            productRepositoryProvider,
+                          );
+                          final variants = await productRepo.getVariants(
+                            product.id,
+                          );
 
                           if (variants.isNotEmpty && context.mounted) {
                             VariantPickerDialog.show(
@@ -353,8 +368,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.08),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: const Icon(
@@ -365,32 +381,37 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 7, vertical: 3),
+                                      horizontal: 7,
+                                      vertical: 3,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: isNegativeStock
-                                          ? AppColors.danger
-                                              .withValues(alpha: 0.1)
+                                          ? AppColors.danger.withValues(
+                                              alpha: 0.1,
+                                            )
                                           : isLowStock
-                                              ? AppColors.warning
-                                                  .withValues(alpha: 0.12)
-                                              : Colors.green
-                                                  .withValues(alpha: 0.12),
+                                          ? AppColors.warning.withValues(
+                                              alpha: 0.12,
+                                            )
+                                          : Colors.green.withValues(
+                                              alpha: 0.12,
+                                            ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
                                       isNegativeStock
                                           ? 'Habis (${product.stock})'
                                           : isLowStock
-                                              ? 'Sisa ${product.stock}'
-                                              : '${product.stock}',
+                                          ? 'Sisa ${product.stock}'
+                                          : '${product.stock}',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                         color: isNegativeStock
-                                          ? AppColors.danger
-                                          : isLowStock
-                                              ? AppColors.warning
-                                              : Colors.green.shade700,
+                                            ? AppColors.danger
+                                            : isLowStock
+                                            ? AppColors.warning
+                                            : Colors.green.shade700,
                                       ),
                                     ),
                                   ),
@@ -458,12 +479,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                   onTap: () => CartBottomSheet.show(context),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 14),
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
@@ -512,8 +537,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               ),
                             ),
                             SizedBox(width: 4),
-                            Icon(Icons.arrow_forward_rounded,
-                                color: Colors.white, size: 18),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ],
                         ),
                       ],

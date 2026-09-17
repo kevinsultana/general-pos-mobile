@@ -112,7 +112,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
       orderTime: trx.completedAt ?? trx.createdAt,
       tableOrCustomer: trx.queueNumber != null && trx.queueNumber!.isNotEmpty
           ? 'Antrian #${trx.queueNumber}'
-          : (customer?.name ?? (trx.orderType == 'TAKEAWAY' ? 'Takeaway' : 'Dine In')),
+          : (customer?.name ?? _formatOrderType(trx.orderType)),
       cashierName: 'Kasir',
       items: items.map((it) {
         return ReceiptItem(
@@ -372,7 +372,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                         _buildRow('Waktu', dateStr),
                         _buildRow(
                           'Tipe Pesanan',
-                          trx.orderType == 'TAKEAWAY' ? 'Takeaway' : 'Dine In',
+                          _formatOrderType(trx.orderType),
                         ),
                         if (trx.queueNumber != null &&
                             trx.queueNumber!.isNotEmpty)
@@ -737,6 +737,15 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         ],
       ),
     );
+  }
+
+  String _formatOrderType(String? type) {
+    if (type == null || type.isEmpty) return 'Dine In';
+    if (type == 'TAKEAWAY') return 'Takeaway';
+    if (type == 'DINE_IN') return 'Dine In';
+    if (type == 'DELIVERY') return 'Delivery';
+    if (type == 'ONLINE') return 'Online';
+    return type;
   }
 
   String _formatPaymentMethod(String methodId) {

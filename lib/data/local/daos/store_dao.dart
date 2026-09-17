@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../tables/store_tables.dart';
@@ -56,6 +57,8 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
       subscriptionPlan: const Value('PRO'),
       subscriptionStatus: const Value('ACTIVE'),
       subscriptionExpiresAt: const Value(null),
+      orderTypeEnabled: const Value(true),
+      orderTypesJson: const Value('["Dine In","Takeaway","Delivery","Online"]'),
       createdAt: now,
       updatedAt: now,
     );
@@ -75,6 +78,27 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
     return (update(stores)..where((tbl) => tbl.id.equals(storeId))).write(
       StoresCompanion(
         customerEnabled: Value(enabled),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> setOrderTypeEnabled(String storeId, bool enabled) {
+    return (update(stores)..where((tbl) => tbl.id.equals(storeId))).write(
+      StoresCompanion(
+        orderTypeEnabled: Value(enabled),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> updateOrderTypes({
+    required String storeId,
+    required List<String> orderTypes,
+  }) {
+    return (update(stores)..where((tbl) => tbl.id.equals(storeId))).write(
+      StoresCompanion(
+        orderTypesJson: Value(jsonEncode(orderTypes)),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -173,6 +197,8 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
         subscriptionPlan: const Value('FREE'),
         subscriptionStatus: const Value('INACTIVE'),
         subscriptionExpiresAt: const Value(null),
+        orderTypeEnabled: const Value(true),
+        orderTypesJson: const Value('["Dine In","Takeaway","Delivery","Online"]'),
         createdAt: now,
         updatedAt: now,
       );

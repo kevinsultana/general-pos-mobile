@@ -44,6 +44,20 @@ class StoreRepositoryImpl implements IStoreRepository {
       _storeDao.setCustomerEnabled(storeId, enabled);
 
   @override
+  Future<void> setOrderTypeEnabled(String storeId, bool enabled) =>
+      _storeDao.setOrderTypeEnabled(storeId, enabled);
+
+  @override
+  Future<void> updateOrderTypes({
+    required String storeId,
+    required List<String> orderTypes,
+  }) =>
+      _storeDao.updateOrderTypes(
+        storeId: storeId,
+        orderTypes: orderTypes,
+      );
+
+  @override
   Future<void> updateCashRoundingSettings({
     required String storeId,
     required bool enabled,

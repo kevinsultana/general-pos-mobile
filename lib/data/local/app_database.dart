@@ -83,7 +83,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.connection);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -130,6 +130,17 @@ class AppDatabase extends _$AppDatabase {
               } catch (_) {}
             }
           }
+          if (from < 5) {
+            final storeColumnsV5 = [
+              'ALTER TABLE "stores" ADD COLUMN "order_type_enabled" INTEGER NOT NULL DEFAULT 1;',
+              'ALTER TABLE "stores" ADD COLUMN "order_types_json" TEXT NOT NULL DEFAULT \'["Dine In","Takeaway","Delivery","Online"]\';',
+            ];
+            for (final sql in storeColumnsV5) {
+              try {
+                await customStatement(sql);
+              } catch (_) {}
+            }
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -152,6 +163,8 @@ class AppDatabase extends _$AppDatabase {
             'ALTER TABLE "stores" ADD COLUMN "subscription_plan" TEXT NOT NULL DEFAULT \'PRO\';',
             'ALTER TABLE "stores" ADD COLUMN "subscription_status" TEXT NOT NULL DEFAULT \'ACTIVE\';',
             'ALTER TABLE "stores" ADD COLUMN "subscription_expires_at" INTEGER;',
+            'ALTER TABLE "stores" ADD COLUMN "order_type_enabled" INTEGER NOT NULL DEFAULT 1;',
+            'ALTER TABLE "stores" ADD COLUMN "order_types_json" TEXT NOT NULL DEFAULT \'["Dine In","Takeaway","Delivery","Online"]\';',
           ];
           for (final sql in storeColumnAlters) {
             try {
@@ -174,6 +187,12 @@ class AppDatabase extends _$AppDatabase {
           } catch (_) {}
           try {
             await customStatement("UPDATE \"stores\" SET \"cash_rounding_mode\" = 'ROUND_NEAREST' WHERE \"cash_rounding_mode\" IS NULL;");
+          } catch (_) {}
+          try {
+            await customStatement("UPDATE \"stores\" SET \"order_type_enabled\" = 1 WHERE \"order_type_enabled\" IS NULL;");
+          } catch (_) {}
+          try {
+            await customStatement("UPDATE \"stores\" SET \"order_types_json\" = '[\"Dine In\",\"Takeaway\",\"Delivery\",\"Online\"]' WHERE \"order_types_json\" IS NULL;");
           } catch (_) {}
 
           // Self-healing: ensure tables exist even if migration was skipped
