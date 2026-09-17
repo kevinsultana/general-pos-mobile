@@ -68,6 +68,8 @@ void main() {
     expect(find.text('Auto SKU'), findsOneWidget);
     expect(find.text('Harga Beli (HPP) *'), findsOneWidget);
     expect(find.text('Harga Jual *'), findsOneWidget);
+    expect(find.text('Scan'), findsOneWidget);
+    expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
     expect(find.text('Varian Produk (Opsional)'), findsOneWidget);
     expect(find.text('Buat Produk Baru'), findsOneWidget);
 
@@ -126,4 +128,63 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 50));
   });
+
+  testWidgets(
+      'ProductFormScreen formats price and stock inputs with thousand separators',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+        ],
+        child: const MaterialApp(
+          home: ProductFormScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Input Harga Beli (HPP)
+    final hppField = find.widgetWithText(TextFormField, 'Harga Beli (HPP) *');
+    await tester.ensureVisible(hppField);
+    await tester.enterText(hppField, '1500000');
+    await tester.pumpAndSettle();
+
+    // Verify it formatted to 1.500.000
+    expect(find.text('1.500.000'), findsOneWidget);
+
+    // Input Harga Jual
+    final priceField = find.widgetWithText(TextFormField, 'Harga Jual *');
+    await tester.ensureVisible(priceField);
+    await tester.enterText(priceField, '2500000');
+    await tester.pumpAndSettle();
+
+    // Verify it formatted to 2.500.000
+    expect(find.text('2.500.000'), findsOneWidget);
+
+    // Input Stok Awal
+    final stockField = find.widgetWithText(TextFormField, 'Stok Awal *');
+    await tester.ensureVisible(stockField);
+    await tester.enterText(stockField, '1000');
+    await tester.pumpAndSettle();
+
+    // Verify it formatted to 1.000
+    expect(find.text('1.000'), findsOneWidget);
+
+    // Input Batas Stok Minimum
+    final lowStockField =
+        find.widgetWithText(TextFormField, 'Batas Stok Minimum');
+    await tester.ensureVisible(lowStockField);
+    await tester.enterText(lowStockField, '50');
+    await tester.pumpAndSettle();
+
+    expect(find.text('50'), findsOneWidget);
+
+    // Unmount and flush
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
 }
+

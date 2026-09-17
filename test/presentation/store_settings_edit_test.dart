@@ -3,7 +3,6 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile_pos/core/providers/cloud_providers.dart';
 import 'package:mobile_pos/core/providers/database_providers.dart';
 import 'package:mobile_pos/data/local/app_database.dart';
 import 'package:mobile_pos/presentation/settings/screens/store_settings_screen.dart';
@@ -36,6 +35,7 @@ void main() {
     return ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
+        currentStoreStreamProvider.overrideWith((ref) => db.storeDao.watchFirstStore()),
       ],
       child: const MaterialApp(
         home: StoreSettingsScreen(),
@@ -47,7 +47,8 @@ void main() {
     testWidgets('renders store details and shows Paket PRO Tidak Aktif in local mode',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestWidget());
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
       // Verify store details are shown
       expect(find.text('Toko Kelontong Berkah'), findsOneWidget);
@@ -59,12 +60,17 @@ void main() {
       expect(find.text('Paket PRO Tidak Aktif'), findsOneWidget);
       expect(find.text('Paket PRO Tidak Aktif (Mode Lokal)'), findsOneWidget);
       expect(find.text('Daftar / Sinkronisasi Cloud Sekarang'), findsOneWidget);
+
+      // Unmount and flush pending stream timers
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 50));
     });
 
     testWidgets('tapping store card opens edit dialog and updates store details',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestWidget());
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
       // Tap store profile card
       final cardTap = find.byKey(const Key('store_profile_card_tap'));
@@ -95,7 +101,8 @@ void main() {
       // Submit
       final saveBtn = find.byKey(const Key('save_store_details_button'));
       await tester.tap(saveBtn);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
       // Verify dialog closed and snackbar appears
       expect(find.text('Edit Informasi Toko'), findsNothing);
@@ -114,6 +121,10 @@ void main() {
       expect(storeInDb.address, equals('Jl. Mawar Indah No. 99'));
       expect(storeInDb.phone, equals('089876543210'));
       expect(storeInDb.ownerName, equals('Haji Mansur S.E.'));
+
+      // Unmount and flush pending stream timers
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 50));
     });
   });
 }

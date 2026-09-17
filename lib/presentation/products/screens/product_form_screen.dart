@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -9,7 +8,9 @@ import 'package:uuid/uuid.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/providers/permission_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/thousands_separator_input_formatter.dart';
 import '../../../data/local/app_database.dart';
+import '../../common/widgets/barcode_scanner_screen.dart';
 import '../controllers/category_controller.dart';
 import '../controllers/product_controller.dart';
 
@@ -46,10 +47,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _nameController.text = p.name;
       _skuController.text = p.sku ?? '';
       _barcodeController.text = p.barcode ?? '';
-      _costController.text = p.cost.toString();
-      _sellingPriceController.text = p.sellingPrice.toString();
-      _initialStockController.text = p.stock.toString();
-      _lowStockController.text = p.lowStockThreshold.toString();
+      _costController.text = ThousandsSeparatorInputFormatter.format(p.cost);
+      _sellingPriceController.text = ThousandsSeparatorInputFormatter.format(p.sellingPrice);
+      _initialStockController.text = ThousandsSeparatorInputFormatter.format(p.stock);
+      _lowStockController.text = ThousandsSeparatorInputFormatter.format(p.lowStockThreshold);
       _selectedCategoryId = p.categoryId;
       _loadExistingVariants(p.id);
     }
@@ -63,14 +64,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       setState(() {
         _variants.clear();
         for (final v in variants) {
-          final stockCtrl = TextEditingController(text: v.stock.toString());
+          final stockCtrl = TextEditingController(
+            text: ThousandsSeparatorInputFormatter.format(v.stock),
+          );
           stockCtrl.addListener(_syncTotalVariantStock);
           _variants.add(_VariantFormEntry(
             id: v.id,
             nameController: TextEditingController(text: v.name),
             skuController: TextEditingController(text: v.sku ?? ''),
-            costController: TextEditingController(text: v.cost.toString()),
-            priceController: TextEditingController(text: v.sellingPrice.toString()),
+            costController: TextEditingController(
+              text: ThousandsSeparatorInputFormatter.format(v.cost),
+            ),
+            priceController: TextEditingController(
+              text: ThousandsSeparatorInputFormatter.format(v.sellingPrice),
+            ),
             stockController: stockCtrl,
           ));
         }
@@ -83,9 +90,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     if (_variants.isNotEmpty) {
       final total = _variants.fold<int>(
         0,
-        (sum, v) => sum + (int.tryParse(v.stockController.text) ?? 0),
+        (sum, v) => sum + ThousandsSeparatorInputFormatter.parse(v.stockController.text),
       );
-      _initialStockController.text = total.toString();
+      _initialStockController.text = ThousandsSeparatorInputFormatter.format(total);
     }
   }
 
@@ -111,6 +118,24 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         : 'PRD';
     final cleanPrefix = prefix.length > 3 ? prefix.substring(0, 3) : prefix;
     _skuController.text = '$cleanPrefix-$rand';
+  }
+
+  Future<void> _scanBarcodeWithCamera() async {
+    final scannedCode = await BarcodeScannerScreen.scan(
+      context,
+      title: 'Pindai Barcode Produk',
+    );
+    if (scannedCode != null && scannedCode.isNotEmpty && mounted) {
+      setState(() {
+        _barcodeController.text = scannedCode;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Barcode berhasil dipindai: $scannedCode'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _addVariant() {
@@ -305,15 +330,32 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Barcode Field
-              TextFormField(
-                controller: _barcodeController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Barcode / EAN-13 (Opsional)',
-                  hintText: 'Scan atau ketik nomor barcode',
-                  prefixIcon: Icon(Icons.barcode_reader),
-                ),
+              // Barcode Field + Camera Scan Button
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _barcodeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Barcode / EAN-13 (Opsional)',
+                        hintText: 'Scan atau ketik nomor barcode',
+                        prefixIcon: Icon(Icons.barcode_reader),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 16),
+                    ),
+                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                    label: const Text('Scan'),
+                    onPressed: _scanBarcodeWithCamera,
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 
@@ -334,7 +376,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     child: TextFormField(
                       controller: _costController,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: InputDecoration(
                         labelText: _variants.isNotEmpty
                             ? 'Harga Beli (HPP) (Opsional)'
@@ -358,7 +400,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     child: TextFormField(
                       controller: _sellingPriceController,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: InputDecoration(
                         labelText: _variants.isNotEmpty
                             ? 'Harga Jual (Opsional)'
@@ -399,7 +441,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                       controller: _initialStockController,
                       enabled: !isEditing && _variants.isEmpty,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: InputDecoration(
                         labelText: isEditing ? 'Stok (Saat Ini)' : 'Stok Awal *',
                         prefixIcon: const Icon(Icons.all_inbox_rounded),
@@ -416,7 +458,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     child: TextFormField(
                       controller: _lowStockController,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Batas Stok Minimum',
                         prefixIcon: Icon(Icons.warning_amber_rounded),
@@ -508,7 +550,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                     controller: v.priceController,
                                     keyboardType: TextInputType.number,
                                     inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly
+                                      ThousandsSeparatorInputFormatter()
                                     ],
                                     decoration: const InputDecoration(
                                       labelText: 'Harga Jual *',
@@ -526,7 +568,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                     controller: v.costController,
                                     keyboardType: TextInputType.number,
                                     inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly
+                                      ThousandsSeparatorInputFormatter()
                                     ],
                                     decoration: const InputDecoration(
                                       labelText: 'HPP (Modal) *',
@@ -558,7 +600,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                     controller: v.stockController,
                                     keyboardType: TextInputType.number,
                                     inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly
+                                      ThousandsSeparatorInputFormatter()
                                     ],
                                     decoration: InputDecoration(
                                       labelText: 'Stok Varian *',
@@ -648,13 +690,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     try {
       final isEditing = widget.productToEdit != null;
-      int cost = int.tryParse(_costController.text) ?? 0;
-      int price = int.tryParse(_sellingPriceController.text) ?? 0;
+      int cost = ThousandsSeparatorInputFormatter.parse(_costController.text);
+      int price = ThousandsSeparatorInputFormatter.parse(_sellingPriceController.text);
 
       // If product has variants, fallback cost and price from variants if not set on master
       if (_variants.isNotEmpty) {
         final prices = _variants
-            .map((v) => int.tryParse(v.priceController.text) ?? 0)
+            .map((v) => ThousandsSeparatorInputFormatter.parse(v.priceController.text))
             .where((p) => p > 0)
             .toList();
         if (price == 0 && prices.isNotEmpty) {
@@ -662,7 +704,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         }
 
         final costs = _variants
-            .map((v) => int.tryParse(v.costController.text) ?? 0)
+            .map((v) => ThousandsSeparatorInputFormatter.parse(v.costController.text))
             .where((c) => c > 0)
             .toList();
         if (cost == 0 && costs.isNotEmpty) {
@@ -670,8 +712,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         }
       }
 
-      final initialStock = int.tryParse(_initialStockController.text) ?? 0;
-      final lowStock = int.tryParse(_lowStockController.text) ?? 0;
+      final initialStock = ThousandsSeparatorInputFormatter.parse(_initialStockController.text);
+      final lowStock = ThousandsSeparatorInputFormatter.parse(_lowStockController.text);
 
       final uuid = const Uuid();
       final now = DateTime.now();
@@ -690,10 +732,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               sku: Value(v.skuController.text.trim().isNotEmpty
                   ? v.skuController.text.trim()
                   : null),
-              cost: Value(int.tryParse(v.costController.text) ?? cost),
+              cost: Value(ThousandsSeparatorInputFormatter.parse(v.costController.text)),
               sellingPrice:
-                  Value(int.tryParse(v.priceController.text) ?? price),
-              stock: Value(int.tryParse(v.stockController.text) ?? 0),
+                  Value(ThousandsSeparatorInputFormatter.parse(v.priceController.text)),
+              stock: Value(ThousandsSeparatorInputFormatter.parse(v.stockController.text)),
               active: const Value(true),
               createdAt: Value(now),
               updatedAt: Value(now),

@@ -10,6 +10,7 @@ import '../controllers/cart_controller.dart';
 import '../widgets/cart_bottom_sheet.dart';
 import '../widgets/drafts_sheet.dart';
 import '../widgets/variant_picker_dialog.dart';
+import '../../common/widgets/barcode_scanner_screen.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
   const PosScreen({super.key});
@@ -44,10 +45,23 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         content: TextField(
           controller: barcodeController,
           autofocus: true,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Barcode Produk / Varian',
             hintText: 'Contoh: 899123456789',
-            prefixIcon: Icon(Icons.barcode_reader),
+            prefixIcon: const Icon(Icons.barcode_reader),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.camera_alt_outlined),
+              tooltip: 'Pindai dengan Kamera',
+              onPressed: () async {
+                final scanned = await BarcodeScannerScreen.scan(
+                  ctx,
+                  title: 'Pindai Barcode Transaksi',
+                );
+                if (scanned != null && scanned.isNotEmpty) {
+                  barcodeController.text = scanned;
+                }
+              },
+            ),
           ),
           onSubmitted: (val) async {
             final found = await ref
