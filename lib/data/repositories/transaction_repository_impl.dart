@@ -41,7 +41,11 @@ class TransactionRepositoryImpl implements ITransactionRepository {
   }) async {
     final now = DateTime.now();
     final transactionId = _uuid.v4();
-    final transactionNumber = _generateTransactionNumber(now);
+    final transactionNumber = await _db.transactionDao.generateTransactionNumber(
+      storeId: storeId,
+      deviceId: _deviceId,
+      date: now,
+    );
 
     final expectedRounding = payments
         .where((p) => p.paymentType == 'CASH')
@@ -446,30 +450,38 @@ class TransactionRepositoryImpl implements ITransactionRepository {
           ));
         }
 
-        // Ledger row for refund reversal
-        await _db.into(_db.stockMovements).insert(
-              StockMovementsCompanion(
-                id: Value(_uuid.v4()),
-                storeId: Value(trx.storeId),
-                productId: Value(refItem.productId),
-                variantId: Value(refItem.variantId),
-                type: const Value('REFUND_REVERSAL'),
-                quantityDelta: Value(refItem.quantity * 1000),
-                referenceType: const Value('REFUND'),
-                referenceId: Value(refundId),
-                reason: Value(reason),
-                createdAt: Value(now),
-              ),
-            );
+        // Ledger row for refund reversal via StockMovementDao
+        await _db.stockMovementDao.recordRefundReversal(
+          id: _uuid.v4(),
+          storeId: trx.storeId,
+          productId: refItem.productId,
+          variantId: refItem.variantId,
+          quantityDelta: refItem.quantity * 1000,
+          referenceId: refundId,
+          reason: reason,
+          createdAt: now,
+        );
       }
 
-      // 3. Update Transaction Status
+      // 3. Update Transaction Status (Atomic with cumulative check)
       final originalItems =
           await _db.transactionDao.getItemsByTransactionId(transactionId);
       final originalTotalQty =
           originalItems.fold<double>(0.0, (sum, i) => sum + i.quantity);
 
-      final newStatus = totalRefundedQty >= originalTotalQty
+      final pastRefunds = await (_db.select(_db.refunds)
+            ..where((tbl) => tbl.transactionId.equals(transactionId)))
+          .get();
+      final pastRefundIds = pastRefunds.map((r) => r.id).toSet();
+
+      final allRefundItems = await (_db.select(_db.refundItems)
+            ..where((tbl) => tbl.refundId.isIn(pastRefundIds)))
+          .get();
+
+      final cumulativeRefundedQty =
+          allRefundItems.fold<int>(0, (sum, ri) => sum + ri.quantity);
+
+      final newStatus = cumulativeRefundedQty >= originalTotalQty
           ? 'REFUNDED'
           : 'PARTIALLY_REFUNDED';
 
@@ -561,13 +573,11 @@ class TransactionRepositoryImpl implements ITransactionRepository {
         .get();
   }
 
-  String _generateTransactionNumber(DateTime date) {
-    final year = date.year.toString();
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    final timeStr =
-        '${date.hour.toString().padLeft(2, '0')}${date.minute.toString().padLeft(2, '0')}${date.second.toString().padLeft(2, '0')}';
-    final suffix = _uuid.v4().replaceAll('-', '').substring(0, 8).toUpperCase();
-    return 'TRX-$year$month$day-$timeStr-$suffix';
+  Future<String> _generateTransactionNumber(String storeId, DateTime date) {
+    return _db.transactionDao.generateTransactionNumber(
+      storeId: storeId,
+      deviceId: _deviceId,
+      date: date,
+    );
   }
 }

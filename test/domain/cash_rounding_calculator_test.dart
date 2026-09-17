@@ -44,6 +44,29 @@ void main() {
         );
         expect(result.roundedAmount, equals(10000));
         expect(result.roundingAmount, equals(50));
+        expect(result.originalAmount + result.roundingAmount, equals(result.roundedAmount));
+      });
+
+      test('Increment 100: Rp9.930 rounds down to Rp9.900 (-30)', () {
+        final result = calculator.calculate(
+          amount: 9930,
+          mode: CashRoundingMode.roundNearest,
+          increment: 100,
+        );
+        expect(result.roundedAmount, equals(9900));
+        expect(result.roundingAmount, equals(-30));
+        expect(result.originalAmount + result.roundingAmount, equals(result.roundedAmount));
+      });
+
+      test('Increment 100: Rp9.970 rounds up to Rp10.000 (+30)', () {
+        final result = calculator.calculate(
+          amount: 9970,
+          mode: CashRoundingMode.roundNearest,
+          increment: 100,
+        );
+        expect(result.roundedAmount, equals(10000));
+        expect(result.roundingAmount, equals(30));
+        expect(result.originalAmount + result.roundingAmount, equals(result.roundedAmount));
       });
 
       test('Increment 1000: Rp9.499 rounds down to Rp9.000 (-499)', () {

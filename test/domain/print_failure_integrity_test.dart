@@ -36,6 +36,36 @@ class FailingPrinterTransport implements IPrinterTransport {
   Future<bool> writeBytes(List<int> bytes) async => false;
 }
 
+class ThrowingPrinterTransport implements IPrinterTransport {
+  @override
+  Future<bool> isPermissionGranted() async =>
+      throw Exception('Bluetooth permission exception');
+
+  @override
+  Future<bool> isBluetoothEnabled() async =>
+      throw Exception('Bluetooth disabled exception');
+
+  @override
+  Future<List<BluetoothInfo>> getPairedDevices() async =>
+      throw Exception('Scan hardware error');
+
+  @override
+  Future<bool> connect(String macAddress) async =>
+      throw Exception('Hardware failure during connection');
+
+  @override
+  Future<bool> disconnect() async =>
+      throw Exception('Disconnect exception');
+
+  @override
+  Future<bool> isConnected() async =>
+      throw Exception('Hardware disconnected');
+
+  @override
+  Future<bool> writeBytes(List<int> bytes) async =>
+      throw Exception('Out of paper / Buffer full');
+}
+
 void main() {
   late AppDatabase db;
   late TransactionRepositoryImpl trxRepo;
@@ -220,5 +250,71 @@ void main() {
 
     expect(printResult, isTrue);
     expect(mockTransport.printedByteHistory, isNotEmpty);
+  });
+
+  test(
+      'Hardware / Bluetooth exceptions (paper jam, sudden disconnect) are caught gracefully',
+      () async {
+    final throwingTransport = ThrowingPrinterTransport();
+    final printerService =
+        PrinterService(printerRepo, transport: throwingTransport);
+
+    final printer = PrinterDevice(
+      id: 'printer-err-throwing',
+      storeId: storeId,
+      name: 'Throwing Thermal 58',
+      role: PrinterRole.receipt,
+      addressReference: '99:99:99:99:99:99',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await printerRepo.savePrinter(printer);
+
+    final receiptData = ReceiptData(
+      transactionId: 'trx-throwing',
+      invoiceNumber: 'INV/THROWS',
+      transactionDate: DateTime.now(),
+      storeHeader: const ReceiptHeader(storeName: 'Crash Test'),
+      items: const [],
+      subtotal: 15000,
+      grandTotal: 15000,
+      payments: const [],
+      amountPaid: 15000,
+      changeAmount: 0,
+    );
+
+    // 1. printReceipt MUST return false without throwing unhandled exception
+    final result = await printerService.printReceipt(
+      receiptData,
+      targetPrinter: printer,
+    );
+    expect(result, isFalse);
+
+    // 2. Kitchen ticket print MUST also return false gracefully
+    final kitchenTicket = KitchenTicketData(
+      orderId: 'trx-throwing',
+      invoiceNumber: 'INV/THROWS',
+      orderTime: DateTime.now(),
+      items: const [],
+    );
+    final kitchenResult = await printerService.printKitchenTicket(
+      kitchenTicket,
+      targetPrinter: printer,
+    );
+    expect(kitchenResult, isFalse);
+
+    // 3. Auto print on transaction completed MUST NOT throw
+    await expectLater(
+      printerService.handleAutoPrintOnTransactionCompleted(
+        receiptData,
+        kitchenTicket: kitchenTicket,
+      ),
+      completes,
+    );
+
+    // 4. Peripheral checks return safe defaults
+    expect(await printerService.getAvailableBluetoothDevices(), isEmpty);
+    expect(await printerService.checkPermission(), isFalse);
+    expect(await printerService.isConnected(), isFalse);
   });
 }

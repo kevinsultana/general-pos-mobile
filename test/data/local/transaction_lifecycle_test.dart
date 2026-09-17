@@ -248,6 +248,81 @@ void main() {
     expect(refMovement.quantityDelta, equals(2000));
   });
 
+  test('Full refund restores 100% stock atomically with REFUND_REVERSAL and marks status as REFUNDED',
+      () async {
+    final cartItems = [
+      const CartItem(
+        productId: 'prod-latte',
+        productName: 'Caffe Latte',
+        quantity: 5,
+        unitPrice: 20000,
+        unitCostSnapshot: 10000,
+      ),
+    ];
+
+    final payments = [
+      const PaymentInput(
+        paymentMethodId: 'pm-qris',
+        paymentType: 'QRIS',
+        amount: 100000,
+      ),
+    ];
+
+    final trxId = await trxRepo.completeTransaction(
+      storeId: 'store-default-01',
+      orderType: 'TAKEAWAY',
+      subtotal: 100000,
+      discountTotal: 0,
+      roundingAmount: 0,
+      total: 100000,
+      items: cartItems,
+      payments: payments,
+    );
+
+    // Stock should be 25 (30 - 5)
+    var prod = await (db.select(db.products)
+          ..where((tbl) => tbl.id.equals('prod-latte')))
+        .getSingle();
+    expect(prod.stock, equals(25));
+
+    final savedItems = await trxRepo.getTransactionItems(trxId);
+
+    // Full refund for all 5 units
+    final refundId = await trxRepo.refundTransaction(
+      transactionId: trxId,
+      reason: 'Barang rusak / komplain pelanggan',
+      items: [
+        RefundItemInput(
+          transactionItemId: savedItems.first.id,
+          productId: 'prod-latte',
+          quantity: 5,
+          refundAmount: 100000,
+        ),
+      ],
+      totalRefundAmount: 100000,
+    );
+
+    expect(refundId, isNotEmpty);
+
+    // 1. Transaction status must be REFUNDED (Full)
+    final updatedTrx = await trxRepo.getTransaction(trxId);
+    expect(updatedTrx!.status, equals('REFUNDED'));
+    expect(updatedTrx.refundedAt, isNotNull);
+
+    // 2. Stock must be fully restored back to 30!
+    prod = await (db.select(db.products)
+          ..where((tbl) => tbl.id.equals('prod-latte')))
+        .getSingle();
+    expect(prod.stock, equals(30));
+
+    // 3. StockMovements must record REFUND_REVERSAL with positive delta +5000
+    final refMovements = await db.stockMovementDao.getMovementsByReference(refundId);
+    expect(refMovements.length, equals(1));
+    expect(refMovements.first.type, equals('REFUND_REVERSAL'));
+    expect(refMovements.first.quantityDelta, equals(5000));
+    expect(refMovements.first.reason, equals('Barang rusak / komplain pelanggan'));
+  });
+
   test('PRD Bab 21: completeTransaction rejects mismatched roundingAmount', () async {
     final cartItems = [
       const CartItem(
@@ -334,5 +409,86 @@ void main() {
     final cashPayment = savedPayments.firstWhere((p) => p.paymentMethodId == 'pm-cash');
     expect(qrisPayment.roundingAmount, equals(0));
     expect(cashPayment.roundingAmount, equals(500));
+  });
+
+  group('Offline Conflict-Resistant Transaction Number Generator Tests', () {
+    test('generateTransactionNumber produces TRX-{STORE_PREFIX}-{DEVICE_PREFIX}-{TIMESTAMP}-{COUNTER}',
+        () async {
+      final date = DateTime(2026, 9, 17, 14, 30);
+      final trxNum = await db.transactionDao.generateTransactionNumber(
+        storeId: 'store-default-01',
+        deviceId: 'POS-DEVICE-01',
+        date: date,
+        counter: 1,
+      );
+
+      // Matches format: TRX-DEFA-POSD-20260917-0001
+      expect(trxNum, equals('TRX-DEFA-POSD-20260917-0001'));
+
+      // Strict length check for 58mm thermal receipt paper (max 32 columns)
+      expect(trxNum.length, lessThanOrEqualTo(32));
+      expect(trxNum.length, equals(27));
+    });
+
+    test('generateTransactionNumber increments counter with database records on same day',
+        () async {
+      final date = DateTime(2026, 9, 17, 10, 0);
+
+      // First transaction of the day
+      final trxNum1 = await db.transactionDao.generateTransactionNumber(
+        storeId: 'store-default-01',
+        deviceId: 'DEV-A',
+        date: date,
+      );
+      expect(trxNum1.endsWith('-0001'), isTrue);
+
+      // Insert transaction into database
+      await db.into(db.transactions).insert(
+            TransactionsCompanion.insert(
+              id: 'trx-day-001',
+              storeId: 'store-default-01',
+              transactionNumber: trxNum1,
+              status: 'COMPLETED',
+              subtotal: 20000,
+              total: 20000,
+              createdAt: date,
+              updatedAt: date,
+            ),
+          );
+
+      // Second transaction of the day should have counter 0002
+      final trxNum2 = await db.transactionDao.generateTransactionNumber(
+        storeId: 'store-default-01',
+        deviceId: 'DEV-A',
+        date: date,
+      );
+      expect(trxNum2.endsWith('-0002'), isTrue);
+      expect(trxNum2, isNot(equals(trxNum1)));
+    });
+
+    test('Two offline devices at same timestamp and counter do NOT collide',
+        () async {
+      final date = DateTime(2026, 9, 17, 12, 0);
+
+      // Device A offline transaction #1
+      final trxDeviceA = await db.transactionDao.generateTransactionNumber(
+        storeId: 'store-default-01',
+        deviceId: 'POS-01',
+        date: date,
+        counter: 1,
+      );
+
+      // Device B offline transaction #1
+      final trxDeviceB = await db.transactionDao.generateTransactionNumber(
+        storeId: 'store-default-01',
+        deviceId: 'POS-02',
+        date: date,
+        counter: 1,
+      );
+
+      expect(trxDeviceA, equals('TRX-DEFA-POS01-20260917-0001'));
+      expect(trxDeviceB, equals('TRX-DEFA-POS02-20260917-0001'));
+      expect(trxDeviceA, isNot(equals(trxDeviceB)));
+    });
   });
 }

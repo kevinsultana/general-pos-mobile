@@ -340,12 +340,11 @@ class EscPosGenerator {
     final totalLen = leftLen + rightLen;
 
     if (totalLen >= maxChars) {
-      // If combined length is too long, print on separate lines or truncate
+      // If combined length is too long, print on separate lines to avoid truncating crucial metadata (e.g. invoice numbers)
       final availableLeft = maxChars - rightLen - 1;
-      if (availableLeft > 4) {
-        final truncatedLeft = left.substring(0, availableLeft);
-        final spaces = ' ' * (maxChars - truncatedLeft.length - rightLen);
-        bytes.addAll(_encodeText('$truncatedLeft$spaces$right'));
+      if (availableLeft > 4 && leftLen <= availableLeft) {
+        final spaces = ' ' * (maxChars - leftLen - rightLen);
+        bytes.addAll(_encodeText('$left$spaces$right'));
       } else {
         bytes.addAll(_encodeText(left));
         bytes.addAll(_lineBreak());

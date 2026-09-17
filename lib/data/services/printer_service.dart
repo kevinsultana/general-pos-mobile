@@ -101,12 +101,19 @@ class PrinterService {
     IPrinterTransport? transport,
   }) : _transport = transport ?? BluetoothPrinterTransport();
 
+  /// Maximum timeout for all printer Bluetooth operations to prevent blocking the UI
+  static const Duration _printerOperationTimeout = Duration(seconds: 5);
+
   /// Scans for paired Bluetooth thermal printers
   Future<List<BluetoothInfo>> getAvailableBluetoothDevices() async {
     try {
-      final isEnabled = await _transport.isBluetoothEnabled();
+      final isEnabled = await _transport
+          .isBluetoothEnabled()
+          .timeout(_printerOperationTimeout, onTimeout: () => false);
       if (!isEnabled) return [];
-      return await _transport.getPairedDevices();
+      return await _transport
+          .getPairedDevices()
+          .timeout(_printerOperationTimeout, onTimeout: () => []);
     } catch (e) {
       debugPrint('Error getting bluetooth devices: $e');
       return [];
@@ -116,20 +123,28 @@ class PrinterService {
   /// Checks Bluetooth permission
   Future<bool> checkPermission() async {
     try {
-      return await _transport.isPermissionGranted();
+      return await _transport
+          .isPermissionGranted()
+          .timeout(_printerOperationTimeout, onTimeout: () => false);
     } catch (_) {
       return false;
     }
   }
 
-  /// Connects to a specific printer
+  /// Connects to a specific printer with a 5-second timeout
   Future<bool> connect(PrinterDevice printer) async {
     if (printer.addressReference == null || printer.addressReference!.isEmpty) {
       return false;
     }
 
     try {
-      final success = await _transport.connect(printer.addressReference!);
+      final success = await _transport
+          .connect(printer.addressReference!)
+          .timeout(_printerOperationTimeout, onTimeout: () {
+        debugPrint('Printer connection timed out after 5 seconds: ${printer.name}');
+        return false;
+      });
+
       if (success) {
         _connectedPrinter = printer.copyWith(state: PrinterState.connected);
       } else {
@@ -146,7 +161,9 @@ class PrinterService {
   /// Disconnects from current printer
   Future<void> disconnect() async {
     try {
-      await _transport.disconnect();
+      await _transport
+          .disconnect()
+          .timeout(_printerOperationTimeout, onTimeout: () => true);
     } catch (e) {
       debugPrint('Error disconnecting printer: $e');
     } finally {
@@ -157,7 +174,9 @@ class PrinterService {
   /// Checks if currently connected
   Future<bool> isConnected() async {
     try {
-      return await _transport.isConnected();
+      return await _transport
+          .isConnected()
+          .timeout(_printerOperationTimeout, onTimeout: () => false);
     } catch (_) {
       return false;
     }
@@ -178,119 +197,165 @@ class PrinterService {
   ///
   /// CRITICAL BUSINESS RULE (PRD Bab 28 & Roadmap 10.6):
   /// Printing failure NEVER rolls back or corrupts transaction financial state.
-  /// If printing fails, this returns `false` safely.
+  /// If printing fails, times out (5s), or runs out of paper, this returns `false` safely.
   Future<bool> printReceipt(
     ReceiptData receipt, {
     PrinterDevice? targetPrinter,
     String storeId = AppConstants.defaultStoreId,
   }) async {
     try {
-      // 1. Resolve printer
-      PrinterDevice? printer = targetPrinter;
-      if (printer == null) {
-        final receiptPrinters = await _printerRepository.getActivePrintersByRole(
-          storeId,
-          PrinterRole.receipt,
-        );
-        if (receiptPrinters.isEmpty) {
-          debugPrint('No active receipt printer configured');
-          return false;
-        }
-        printer = receiptPrinters.first;
-      }
-
-      // 2. Ensure connection
-      final connected = await _ensureConnected(printer);
-      if (!connected) {
-        debugPrint('Failed to connect to receipt printer: ${printer.name}');
-        return false;
-      }
-
-      // 3. Generate ESC/POS bytes
-      final bytes = EscPosGenerator.generateReceipt(
+      return await _executePrintReceipt(
         receipt,
-        paperSize: printer.paperSize,
-      );
-
-      // 4. Print configured copies
-      final copies = printer.receiptCopies.clamp(1, 5);
-      bool allSuccess = true;
-      for (int i = 0; i < copies; i++) {
-        final success = await _transport.writeBytes(bytes);
-        if (!success) allSuccess = false;
-      }
-
-      return allSuccess;
+        targetPrinter: targetPrinter,
+        storeId: storeId,
+      ).timeout(_printerOperationTimeout, onTimeout: () {
+        debugPrint('Print receipt timed out after 5 seconds');
+        return false;
+      });
     } catch (e) {
       debugPrint('Print receipt exception: $e');
       return false;
     }
   }
 
-  /// Prints a kitchen order ticket (Dapur)
+  Future<bool> _executePrintReceipt(
+    ReceiptData receipt, {
+    PrinterDevice? targetPrinter,
+    String storeId = AppConstants.defaultStoreId,
+  }) async {
+    // 1. Resolve printer
+    PrinterDevice? printer = targetPrinter;
+    if (printer == null) {
+      final receiptPrinters = await _printerRepository.getActivePrintersByRole(
+        storeId,
+        PrinterRole.receipt,
+      );
+      if (receiptPrinters.isEmpty) {
+        debugPrint('No active receipt printer configured');
+        return false;
+      }
+      printer = receiptPrinters.first;
+    }
+
+    // 2. Ensure connection
+    final connected = await _ensureConnected(printer);
+    if (!connected) {
+      debugPrint('Failed to connect to receipt printer: ${printer.name}');
+      return false;
+    }
+
+    // 3. Generate ESC/POS bytes
+    final bytes = EscPosGenerator.generateReceipt(
+      receipt,
+      paperSize: printer.paperSize,
+    );
+
+    // 4. Print configured copies
+    final copies = printer.receiptCopies.clamp(1, 5);
+    bool allSuccess = true;
+    for (int i = 0; i < copies; i++) {
+      final success = await _transport
+          .writeBytes(bytes)
+          .timeout(_printerOperationTimeout, onTimeout: () => false);
+      if (!success) allSuccess = false;
+    }
+
+    return allSuccess;
+  }
+
+  /// Prints a kitchen order ticket (Dapur) with a 5-second timeout
   Future<bool> printKitchenTicket(
     KitchenTicketData ticket, {
     PrinterDevice? targetPrinter,
     String storeId = AppConstants.defaultStoreId,
   }) async {
     try {
-      // 1. Resolve printer
-      PrinterDevice? printer = targetPrinter;
-      if (printer == null) {
-        final kitchenPrinters = await _printerRepository.getActivePrintersByRole(
-          storeId,
-          PrinterRole.kitchen,
-        );
-        if (kitchenPrinters.isEmpty) {
-          debugPrint('No active kitchen printer configured');
-          return false;
-        }
-        printer = kitchenPrinters.first;
-      }
-
-      // 2. Ensure connection
-      final connected = await _ensureConnected(printer);
-      if (!connected) {
-        debugPrint('Failed to connect to kitchen printer: ${printer.name}');
-        return false;
-      }
-
-      // 3. Generate ESC/POS bytes
-      final bytes = EscPosGenerator.generateKitchenTicket(
+      return await _executePrintKitchenTicket(
         ticket,
-        paperSize: printer.paperSize,
-      );
-
-      // 4. Print configured copies
-      final copies = printer.kitchenCopies.clamp(1, 5);
-      bool allSuccess = true;
-      for (int i = 0; i < copies; i++) {
-        final success = await _transport.writeBytes(bytes);
-        if (!success) allSuccess = false;
-      }
-
-      return allSuccess;
+        targetPrinter: targetPrinter,
+        storeId: storeId,
+      ).timeout(_printerOperationTimeout, onTimeout: () {
+        debugPrint('Print kitchen ticket timed out after 5 seconds');
+        return false;
+      });
     } catch (e) {
       debugPrint('Print kitchen ticket exception: $e');
       return false;
     }
   }
 
-  /// Prints a test slip
+  Future<bool> _executePrintKitchenTicket(
+    KitchenTicketData ticket, {
+    PrinterDevice? targetPrinter,
+    String storeId = AppConstants.defaultStoreId,
+  }) async {
+    // 1. Resolve printer
+    PrinterDevice? printer = targetPrinter;
+    if (printer == null) {
+      final kitchenPrinters = await _printerRepository.getActivePrintersByRole(
+        storeId,
+        PrinterRole.kitchen,
+      );
+      if (kitchenPrinters.isEmpty) {
+        debugPrint('No active kitchen printer configured');
+        return false;
+      }
+      printer = kitchenPrinters.first;
+    }
+
+    // 2. Ensure connection
+    final connected = await _ensureConnected(printer);
+    if (!connected) {
+      debugPrint('Failed to connect to kitchen printer: ${printer.name}');
+      return false;
+    }
+
+    // 3. Generate ESC/POS bytes
+    final bytes = EscPosGenerator.generateKitchenTicket(
+      ticket,
+      paperSize: printer.paperSize,
+    );
+
+    // 4. Print configured copies
+    final copies = printer.kitchenCopies.clamp(1, 5);
+    bool allSuccess = true;
+    for (int i = 0; i < copies; i++) {
+      final success = await _transport
+          .writeBytes(bytes)
+          .timeout(_printerOperationTimeout, onTimeout: () => false);
+      if (!success) allSuccess = false;
+    }
+
+    return allSuccess;
+  }
+
+  /// Prints a test slip with a 5-second timeout
   Future<bool> printTest(PrinterDevice printer) async {
     try {
-      final connected = await _ensureConnected(printer);
-      if (!connected) return false;
-
-      final bytes = EscPosGenerator.generateTestPrint(
-        paperSize: printer.paperSize,
+      return await _executePrintTest(printer).timeout(
+        _printerOperationTimeout,
+        onTimeout: () {
+          debugPrint('Print test timed out after 5 seconds');
+          return false;
+        },
       );
-
-      return await _transport.writeBytes(bytes);
     } catch (e) {
       debugPrint('Print test exception: $e');
       return false;
     }
+  }
+
+  Future<bool> _executePrintTest(PrinterDevice printer) async {
+    final connected = await _ensureConnected(printer);
+    if (!connected) return false;
+
+    final bytes = EscPosGenerator.generateTestPrint(
+      paperSize: printer.paperSize,
+    );
+
+    return await _transport
+        .writeBytes(bytes)
+        .timeout(_printerOperationTimeout, onTimeout: () => false);
   }
 
   /// Handles auto-print trigger when a transaction is completed
@@ -300,7 +365,9 @@ class PrinterService {
     String storeId = AppConstants.defaultStoreId,
   }) async {
     try {
-      final printers = await _printerRepository.getAllPrinters(storeId);
+      final printers = await _printerRepository
+          .getAllPrinters(storeId)
+          .timeout(_printerOperationTimeout, onTimeout: () => []);
 
       // 1. Check receipt auto-print
       for (final p in printers.where((p) => p.active && p.autoPrint)) {

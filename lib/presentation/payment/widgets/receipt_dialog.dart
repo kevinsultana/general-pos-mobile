@@ -30,6 +30,8 @@ class ReceiptDialog extends ConsumerStatefulWidget {
 class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
   bool _isPrinting = false;
   bool _autoPrintTriggered = false;
+  bool? _lastPrintSuccess;
+  String? _printErrorMessage;
 
   ReceiptData _buildReceiptData({
     required Transaction trx,
@@ -127,12 +129,23 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
   }
 
   Future<void> _handleDirectPrint(ReceiptData receiptData) async {
-    setState(() => _isPrinting = true);
+    if (_isPrinting) return;
+    setState(() {
+      _isPrinting = true;
+      _printErrorMessage = null;
+    });
     final printerService = ref.read(printerServiceProvider);
 
     try {
       final success = await printerService.printReceipt(receiptData);
       if (mounted) {
+        setState(() {
+          _lastPrintSuccess = success;
+          if (!success) {
+            _printErrorMessage =
+                'Printer thermal tidak terhubung, mati, atau kehabisan kertas.';
+          }
+        });
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -144,13 +157,27 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Tidak dapat mencetak: Printer thermal tidak terhubung. Periksa Bluetooth atau gunakan "Pratinjau Struk".',
+                'Tidak dapat mencetak: Printer thermal tidak terhubung atau kehabisan kertas.',
               ),
               backgroundColor: AppColors.danger,
               duration: Duration(seconds: 4),
             ),
           );
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _lastPrintSuccess = false;
+          _printErrorMessage = 'Kesalahan printer: $e';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kesalahan printer: $e'),
+            backgroundColor: AppColors.danger,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -460,36 +487,159 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                   const SizedBox(height: 16),
 
                   // PRINTER ACTIONS (Phase 7)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                  if (_lastPrintSuccess == false) ...[
+                    // Error Notice Banner
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.shade300),
                       ),
-                      onPressed: _isPrinting
-                          ? null
-                          : () => _handleDirectPrint(receiptData),
-                      icon: _isPrinting
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.print_rounded, size: 20),
-                      label: Text(
-                        _isPrinting ? 'Mencetak...' : 'Cetak Struk Thermal',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.amber.shade900, size: 24),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Gagal Mencetak Struk',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _printErrorMessage ??
+                                      'Printer tidak terhubung, mati, atau kehabisan kertas.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.brown.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+
+                    // Coba Cetak Ulang (Primary Action when print failed)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _isPrinting
+                            ? null
+                            : () => _handleDirectPrint(receiptData),
+                        icon: _isPrinting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.refresh_rounded, size: 20),
+                        label: Text(
+                          _isPrinting
+                              ? 'Mencetak ulang...'
+                              : 'Coba Cetak Ulang',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Lewati Struk / Selesai (Secondary Action)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.skip_next_rounded, size: 20),
+                        label: const Text(
+                          'Lewati Struk / Selesai',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Cetak Struk (Primary Action)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _isPrinting
+                            ? null
+                            : () => _handleDirectPrint(receiptData),
+                        icon: _isPrinting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.print_rounded, size: 20),
+                        label: Text(
+                          _isPrinting ? 'Mencetak...' : 'Cetak Struk',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Lewati Struk / Selesai (Secondary Action)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.check_circle_outline_rounded,
+                            size: 20),
+                        label: const Text(
+                          'Lewati Struk / Selesai',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 8),
 
                   Row(
@@ -516,34 +666,31 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   const Divider(height: 1),
                   const SizedBox(height: 12),
 
-                  // Close / New Transaction Actions
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Tutup'),
+                  // Transaksi Baru
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(Icons.add_shopping_cart_rounded,
-                              size: 18),
-                          label: const Text('Transaksi Baru'),
-                        ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(Icons.add_shopping_cart_rounded,
+                          size: 18),
+                      label: const Text(
+                        'Transaksi Baru',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -559,16 +706,21 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondaryLight,
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondaryLight,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             value,
+            textAlign: TextAlign.end,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
