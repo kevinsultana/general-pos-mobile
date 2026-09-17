@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/printer_device.dart';
@@ -77,7 +76,10 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.print_rounded, color: AppColors.primary),
+                  child: const Icon(
+                    Icons.print_rounded,
+                    color: AppColors.primary,
+                  ),
                 ),
                 title: Text(
                   d.name.isNotEmpty ? d.name : 'Unknown Device',
@@ -87,8 +89,10 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                   d.macAdress,
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-                trailing: const Icon(Icons.add_circle_outline_rounded,
-                    color: AppColors.primary),
+                trailing: const Icon(
+                  Icons.add_circle_outline_rounded,
+                  color: AppColors.primary,
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showConfigurePrinterDialog(
@@ -133,12 +137,15 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
-              const Icon(Icons.settings_suggest_rounded,
-                  color: AppColors.primary),
+              const Icon(
+                Icons.settings_suggest_rounded,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: 8),
               Text(existingPrinter == null ? 'Tambah Printer' : 'Ubah Printer'),
             ],
@@ -182,8 +189,10 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                 DropdownButtonFormField<PrinterRole>(
                   initialValue: selectedRole,
                   decoration: InputDecoration(
-                    prefixIcon:
-                        const Icon(Icons.work_outline_rounded, size: 20),
+                    prefixIcon: const Icon(
+                      Icons.work_outline_rounded,
+                      size: 20,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -217,7 +226,8 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                         onSelected: (selected) {
                           if (selected) {
                             setDialogState(
-                                () => selectedPaper = PrinterPaperSize.mm58);
+                              () => selectedPaper = PrinterPaperSize.mm58,
+                            );
                           }
                         },
                       ),
@@ -230,7 +240,8 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                         onSelected: (selected) {
                           if (selected) {
                             setDialogState(
-                                () => selectedPaper = PrinterPaperSize.mm80);
+                              () => selectedPaper = PrinterPaperSize.mm80,
+                            );
                           }
                         },
                       ),
@@ -246,23 +257,30 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Salinan Struk',
-                              style: TextStyle(fontSize: 12)),
+                          const Text(
+                            'Salinan Struk',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           Row(
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.remove_circle_outline),
                                 onPressed: receiptCopies > 1
-                                    ? () => setDialogState(() => receiptCopies--)
+                                    ? () =>
+                                          setDialogState(() => receiptCopies--)
                                     : null,
                               ),
-                              Text('$receiptCopies',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
+                              Text(
+                                '$receiptCopies',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline),
                                 onPressed: receiptCopies < 5
-                                    ? () => setDialogState(() => receiptCopies++)
+                                    ? () =>
+                                          setDialogState(() => receiptCopies++)
                                     : null,
                               ),
                             ],
@@ -274,23 +292,30 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Salinan Dapur',
-                              style: TextStyle(fontSize: 12)),
+                          const Text(
+                            'Salinan Dapur',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           Row(
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.remove_circle_outline),
                                 onPressed: kitchenCopies > 1
-                                    ? () => setDialogState(() => kitchenCopies--)
+                                    ? () =>
+                                          setDialogState(() => kitchenCopies--)
                                     : null,
                               ),
-                              Text('$kitchenCopies',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
+                              Text(
+                                '$kitchenCopies',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline),
                                 onPressed: kitchenCopies < 5
-                                    ? () => setDialogState(() => kitchenCopies++)
+                                    ? () =>
+                                          setDialogState(() => kitchenCopies++)
                                     : null,
                               ),
                             ],
@@ -344,9 +369,10 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       final repo = ref.read(printerRepositoryProvider);
       final now = DateTime.now();
 
+      final activeStoreId = ref.read(activeStoreIdProvider);
       final newPrinter = PrinterDevice(
         id: existingPrinter?.id ?? const Uuid().v4(),
-        storeId: AppConstants.defaultStoreId,
+        storeId: activeStoreId,
         name: nameController.text.trim().isEmpty
             ? 'Thermal Printer'
             : nameController.text.trim(),
@@ -371,9 +397,11 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(existingPrinter == null
-                ? 'Printer berhasil ditambahkan'
-                : 'Pengaturan printer diperbarui'),
+            content: Text(
+              existingPrinter == null
+                  ? 'Printer berhasil ditambahkan'
+                  : 'Pengaturan printer diperbarui',
+            ),
             backgroundColor: AppColors.success,
           ),
         );
@@ -491,7 +519,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       appBar: AppBar(
         title: const Text(
           'Pengaturan Printer',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
       body: ListView(
@@ -503,7 +531,9 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.2),
+              ),
             ),
             child: const Row(
               children: [
@@ -543,7 +573,10 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                   const SizedBox(height: 4),
                   const Text(
                     'Pindai printer Bluetooth yang sudah dipasangkan (paired) pada HP Anda.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -570,7 +603,9 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                                 )
                               : const Icon(Icons.bluetooth_searching_rounded),
                           label: Text(
-                            _isScanning ? 'Memindai...' : 'Cari Printer Bluetooth',
+                            _isScanning
+                                ? 'Memindai...'
+                                : 'Cari Printer Bluetooth',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -579,7 +614,9 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 14),
+                            vertical: 12,
+                            horizontal: 14,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -611,7 +648,8 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                 child: CircularProgressIndicator(),
               ),
             ),
-            error: (err, _) => Center(child: Text('Error memuat printer: $err')),
+            error: (err, _) =>
+                Center(child: Text('Error memuat printer: $err')),
             data: (printers) {
               if (printers.isEmpty) {
                 return Center(
@@ -619,8 +657,11 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                     padding: const EdgeInsets.all(32),
                     child: Column(
                       children: [
-                        Icon(Icons.print_disabled_rounded,
-                            size: 48, color: Colors.grey.shade400),
+                        Icon(
+                          Icons.print_disabled_rounded,
+                          size: 48,
+                          color: Colors.grey.shade400,
+                        ),
                         const SizedBox(height: 12),
                         const Text(
                           'Belum Ada Printer Dikonfigurasi',
@@ -707,7 +748,9 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isCurrentlyConnected
                                       ? Colors.green.shade100
@@ -737,14 +780,22 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                             runSpacing: 6,
                             children: [
                               _chip(Icons.work_outline, p.role.displayName),
-                              _chip(Icons.aspect_ratio, p.paperSize.displayName),
+                              _chip(
+                                Icons.aspect_ratio,
+                                p.paperSize.displayName,
+                              ),
                               if (p.autoPrint)
-                                _chip(Icons.flash_on_rounded, 'Auto Print ON',
-                                    color: Colors.amber.shade100,
-                                    textColor: Colors.amber.shade900),
+                                _chip(
+                                  Icons.flash_on_rounded,
+                                  'Auto Print ON',
+                                  color: Colors.amber.shade100,
+                                  textColor: Colors.amber.shade900,
+                                ),
                               if (p.receiptCopies > 1)
-                                _chip(Icons.copy_rounded,
-                                    '${p.receiptCopies}x Struk'),
+                                _chip(
+                                  Icons.copy_rounded,
+                                  '${p.receiptCopies}x Struk',
+                                ),
                             ],
                           ),
                           const Divider(height: 20),
@@ -761,20 +812,25 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                                   foregroundColor: AppColors.danger,
                                 ),
                                 onPressed: () => _handleDelete(p),
-                                icon: const Icon(Icons.delete_outline_rounded,
-                                    size: 16),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 16,
+                                ),
                                 label: const Text('Hapus'),
                               ),
                               OutlinedButton.icon(
-                                onPressed: () =>
-                                    _showConfigurePrinterDialog(existingPrinter: p),
+                                onPressed: () => _showConfigurePrinterDialog(
+                                  existingPrinter: p,
+                                ),
                                 icon: const Icon(Icons.edit_outlined, size: 16),
                                 label: const Text('Ubah'),
                               ),
                               OutlinedButton.icon(
                                 onPressed: () => _handleTestPrint(p),
-                                icon: const Icon(Icons.receipt_long_rounded,
-                                    size: 16),
+                                icon: const Icon(
+                                  Icons.receipt_long_rounded,
+                                  size: 16,
+                                ),
                                 label: const Text('Uji Cetak'),
                               ),
                               ElevatedButton.icon(
@@ -801,7 +857,8 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                                         width: 14,
                                         height: 14,
                                         child: CircularProgressIndicator(
-                                            strokeWidth: 2),
+                                          strokeWidth: 2,
+                                        ),
                                       )
                                     : Icon(
                                         isCurrentlyConnected
@@ -813,8 +870,8 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                                   isCurrentlyConnected
                                       ? 'Putus'
                                       : (isConnectingThis
-                                          ? 'Menghubungkan...'
-                                          : 'Sambungkan'),
+                                            ? 'Menghubungkan...'
+                                            : 'Sambungkan'),
                                 ),
                               ),
                             ],
@@ -833,8 +890,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
     );
   }
 
-  Widget _chip(IconData icon, String text,
-      {Color? color, Color? textColor}) {
+  Widget _chip(IconData icon, String text, {Color? color, Color? textColor}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

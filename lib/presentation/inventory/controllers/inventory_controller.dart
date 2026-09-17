@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/database_providers.dart';
-import '../../products/controllers/category_controller.dart';
 
 final inventoryControllerProvider =
     StateNotifierProvider<InventoryController, AsyncValue<void>>((ref) {
@@ -22,8 +21,9 @@ class InventoryController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     try {
       final repo = _ref.read(inventoryRepositoryProvider);
+      final storeId = _ref.read(activeStoreIdProvider);
       await repo.stockIn(
-        storeId: defaultStoreId,
+        storeId: storeId,
         productId: productId,
         variantId: variantId,
         addedQty: addedQty,
@@ -46,8 +46,9 @@ class InventoryController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     try {
       final repo = _ref.read(inventoryRepositoryProvider);
+      final storeId = _ref.read(activeStoreIdProvider);
       await repo.stockAdjustment(
-        storeId: defaultStoreId,
+        storeId: storeId,
         productId: productId,
         variantId: variantId,
         deltaQty: deltaQty,

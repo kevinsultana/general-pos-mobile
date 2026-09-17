@@ -21,7 +21,7 @@ class StoreSettingsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(
           'Pengaturan Toko',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
       body: storeAsync.when(
@@ -35,13 +35,18 @@ class StoreSettingsScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.storefront_outlined,
-                        size: 64, color: AppColors.primary),
+                    const Icon(
+                      Icons.storefront_outlined,
+                      size: 64,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'Menyiapkan Pengaturan Toko...',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
@@ -63,7 +68,8 @@ class StoreSettingsScreen extends ConsumerWidget {
 
           final storeRepo = ref.read(storeRepositoryProvider);
 
-          final isProActive = isCloud &&
+          final isProActive =
+              isCloud &&
               store.subscriptionPlan == 'PRO' &&
               store.subscriptionStatus == 'ACTIVE';
 
@@ -91,8 +97,9 @@ class StoreSettingsScreen extends ConsumerWidget {
                           children: [
                             CircleAvatar(
                               radius: 26,
-                              backgroundColor:
-                                  AppColors.primary.withValues(alpha: 0.1),
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
                               child: const Icon(
                                 Icons.store_rounded,
                                 size: 28,
@@ -118,19 +125,25 @@ class StoreSettingsScreen extends ConsumerWidget {
                                       ),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withValues(alpha: 0.08),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
                                         ),
                                         child: const Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.edit_outlined,
-                                                size: 13,
-                                                color: AppColors.primary),
+                                            Icon(
+                                              Icons.edit_outlined,
+                                              size: 13,
+                                              color: AppColors.primary,
+                                            ),
                                             SizedBox(width: 4),
                                             Text(
                                               'Edit',
@@ -150,17 +163,17 @@ class StoreSettingsScreen extends ConsumerWidget {
                                     const SizedBox(height: 2),
                                     Row(
                                       children: [
-                                        const Icon(Icons.person_outline_rounded,
-                                            size: 13,
-                                            color:
-                                                AppColors.textSecondaryLight),
+                                        const Icon(
+                                          Icons.person_outline_rounded,
+                                          size: 13,
+                                          color: AppColors.textSecondaryLight,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Pemilik: ${store.ownerName}',
                                           style: const TextStyle(
                                             fontSize: 12,
-                                            color:
-                                                AppColors.textSecondaryLight,
+                                            color: AppColors.textSecondaryLight,
                                           ),
                                         ),
                                       ],
@@ -177,8 +190,11 @@ class StoreSettingsScreen extends ConsumerWidget {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.location_on_outlined,
-                                size: 16, color: AppColors.textSecondaryLight),
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 16,
+                              color: AppColors.textSecondaryLight,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -188,7 +204,8 @@ class StoreSettingsScreen extends ConsumerWidget {
                                     : 'Alamat belum diatur (ketuk untuk mengisi)',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: (store.address != null &&
+                                  color:
+                                      (store.address != null &&
                                           store.address!.trim().isNotEmpty)
                                       ? AppColors.textPrimaryLight
                                       : AppColors.textMuted,
@@ -202,8 +219,11 @@ class StoreSettingsScreen extends ConsumerWidget {
                         // Nomor Telepon
                         Row(
                           children: [
-                            const Icon(Icons.phone_outlined,
-                                size: 16, color: AppColors.textSecondaryLight),
+                            const Icon(
+                              Icons.phone_outlined,
+                              size: 16,
+                              color: AppColors.textSecondaryLight,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -213,7 +233,8 @@ class StoreSettingsScreen extends ConsumerWidget {
                                     : 'Nomor telepon belum diatur (ketuk untuk mengisi)',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: (store.phone != null &&
+                                  color:
+                                      (store.phone != null &&
                                           store.phone!.trim().isNotEmpty)
                                       ? AppColors.textPrimaryLight
                                       : AppColors.textMuted,
@@ -239,7 +260,9 @@ class StoreSettingsScreen extends ConsumerWidget {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: isProActive
                                     ? Colors.green.shade50
@@ -300,8 +323,11 @@ class StoreSettingsScreen extends ConsumerWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.info_outline_rounded,
-                          color: Colors.amber.shade900, size: 20),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        color: Colors.amber.shade900,
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -320,8 +346,9 @@ class StoreSettingsScreen extends ConsumerWidget {
                               'Fitur paket PRO dan sinkronisasi multi-kasir otomatis aktif setelah Anda mendaftarkan atau menyinkronkan toko ke Cloud Server.',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.amber.shade900
-                                    .withValues(alpha: 0.85),
+                                color: Colors.amber.shade900.withValues(
+                                  alpha: 0.85,
+                                ),
                                 height: 1.35,
                               ),
                             ),
@@ -340,8 +367,11 @@ class StoreSettingsScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   SizedBox(width: 4),
-                                  Icon(Icons.arrow_forward_rounded,
-                                      size: 14, color: AppColors.primary),
+                                  Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 14,
+                                    color: AppColors.primary,
+                                  ),
                                 ],
                               ),
                             ),
@@ -402,9 +432,11 @@ class StoreSettingsScreen extends ConsumerWidget {
                         await storeRepo.setCustomerEnabled(store.id, val);
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text(val
-                                ? 'Modul Pelanggan diaktifkan'
-                                : 'Modul Pelanggan dinonaktifkan'),
+                            content: Text(
+                              val
+                                  ? 'Modul Pelanggan diaktifkan'
+                                  : 'Modul Pelanggan dinonaktifkan',
+                            ),
                             duration: const Duration(seconds: 1),
                           ),
                         );
@@ -505,7 +537,10 @@ class StoreSettingsScreen extends ConsumerWidget {
                             ButtonSegment(
                               value: 'ROUND_NEAREST',
                               label: Text('Terdekat'),
-                              icon: Icon(Icons.compare_arrows_rounded, size: 16),
+                              icon: Icon(
+                                Icons.compare_arrows_rounded,
+                                size: 16,
+                              ),
                             ),
                             ButtonSegment(
                               value: 'ROUND_UP',
@@ -515,7 +550,10 @@ class StoreSettingsScreen extends ConsumerWidget {
                             ButtonSegment(
                               value: 'ROUND_DOWN',
                               label: Text('Ke Bawah'),
-                              icon: Icon(Icons.arrow_downward_rounded, size: 16),
+                              icon: Icon(
+                                Icons.arrow_downward_rounded,
+                                size: 16,
+                              ),
                             ),
                           ],
                           selected: {store.cashRoundingMode},
@@ -533,8 +571,8 @@ class StoreSettingsScreen extends ConsumerWidget {
                           store.cashRoundingMode == 'ROUND_NEAREST'
                               ? 'Membulatkan ke kelipatan terdekat (standar setengah ke atas)'
                               : store.cashRoundingMode == 'ROUND_UP'
-                                  ? 'Membulatkan nilai sisa ke atas ke kelipatan berikutnya (Ceiling)'
-                                  : 'Memotong sisa ke kelipatan di bawahnya (Floor)',
+                              ? 'Membulatkan nilai sisa ke atas ke kelipatan berikutnya (Ceiling)'
+                              : 'Memotong sisa ke kelipatan di bawahnya (Floor)',
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondaryLight,
@@ -557,15 +595,20 @@ class StoreSettingsScreen extends ConsumerWidget {
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Colors.indigo.shade50,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.print_rounded,
-                        color: Colors.indigo.shade700, size: 24),
+                    child: Icon(
+                      Icons.print_rounded,
+                      color: Colors.indigo.shade700,
+                      size: 24,
+                    ),
                   ),
                   title: const Text(
                     'Pengaturan Printer Thermal',
@@ -574,10 +617,15 @@ class StoreSettingsScreen extends ConsumerWidget {
                   subtitle: const Text(
                     'Hubungkan printer Bluetooth (58mm/80mm), salinan struk & auto-print',
                     style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondaryLight),
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 16, color: Colors.grey),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   onTap: () => context.push('/printers'),
                 ),
               ),
@@ -589,21 +637,31 @@ class StoreSettingsScreen extends ConsumerWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: isCloud ? Colors.blue.shade300 : Colors.grey.shade200,
+                    color: isCloud
+                        ? Colors.blue.shade300
+                        : Colors.grey.shade200,
                   ),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isCloud ? Colors.blue.shade50 : Colors.grey.shade100,
+                      color: isCloud
+                          ? Colors.blue.shade50
+                          : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      isCloud ? Icons.cloud_sync_rounded : Icons.storage_rounded,
-                      color: isCloud ? Colors.blue.shade700 : Colors.grey.shade700,
+                      isCloud
+                          ? Icons.cloud_sync_rounded
+                          : Icons.storage_rounded,
+                      color: isCloud
+                          ? Colors.blue.shade700
+                          : Colors.grey.shade700,
                       size: 24,
                     ),
                   ),
@@ -611,13 +669,21 @@ class StoreSettingsScreen extends ConsumerWidget {
                     children: [
                       const Text(
                         'Mode Operasional',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: isCloud ? Colors.blue.shade100 : Colors.grey.shade200,
+                          color: isCloud
+                              ? Colors.blue.shade100
+                              : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -625,21 +691,26 @@ class StoreSettingsScreen extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: isCloud ? Colors.blue.shade800 : Colors.grey.shade800,
+                            color: isCloud
+                                ? Colors.blue.shade800
+                                : Colors.grey.shade800,
                           ),
                         ),
                       ),
                     ],
                   ),
                   subtitle: Text(
-                    isCloud
-                        ? 'Multi-device sync aktif (cloud_cache.sqlite)'
-                        : 'Standalone offline (local.sqlite). Tekan untuk ganti mode atau sinkronisasi.',
+                    isCloud ? 'Multi-device sync aktif (cloud_cache.sqlite)' : 'Standalone offline (local.sqlite). Tekan untuk ganti mode atau sinkronisasi.',
                     style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondaryLight),
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 16, color: Colors.grey),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   onTap: () => context.push('/cloud-sync'),
                 ),
               ),
@@ -653,15 +724,20 @@ class StoreSettingsScreen extends ConsumerWidget {
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Colors.teal.shade50,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.backup_rounded,
-                        color: Colors.teal.shade700, size: 24),
+                    child: Icon(
+                      Icons.backup_rounded,
+                      color: Colors.teal.shade700,
+                      size: 24,
+                    ),
                   ),
                   title: const Text(
                     'Cadangkan & Pulihkan Data',
@@ -670,10 +746,15 @@ class StoreSettingsScreen extends ConsumerWidget {
                   subtitle: const Text(
                     'Export database lokal terenkripsi (.posbak) & restore data toko',
                     style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondaryLight),
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 16, color: Colors.grey),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   onTap: () => context.push('/backup'),
                 ),
               ),
@@ -708,15 +789,15 @@ class StoreSettingsScreen extends ConsumerWidget {
               ),
               title: const Row(
                 children: [
-                  Icon(Icons.edit_note_rounded,
-                      color: AppColors.primary, size: 26),
+                  Icon(
+                    Icons.edit_note_rounded,
+                    color: AppColors.primary,
+                    size: 26,
+                  ),
                   SizedBox(width: 10),
                   Text(
                     'Edit Informasi Toko',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ],
               ),
@@ -826,11 +907,15 @@ class StoreSettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              actionsPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
-                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.pop(dialogCtx),
                   child: const Text('Batal'),
                 ),
                 ElevatedButton(
@@ -861,8 +946,9 @@ class StoreSettingsScreen extends ConsumerWidget {
                               Navigator.pop(dialogCtx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content:
-                                      Text('Detail toko berhasil diperbarui'),
+                                  content: Text(
+                                    'Detail toko berhasil diperbarui',
+                                  ),
                                   backgroundColor: AppColors.accent,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -886,7 +972,9 @@ class StoreSettingsScreen extends ConsumerWidget {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text('Simpan'),
                 ),

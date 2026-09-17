@@ -1,10 +1,10 @@
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/backup_info.dart';
@@ -15,7 +15,8 @@ class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
 
   @override
-  ConsumerState<BackupRestoreScreen> createState() => _BackupRestoreScreenState();
+  ConsumerState<BackupRestoreScreen> createState() =>
+      _BackupRestoreScreenState();
 }
 
 class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
@@ -59,8 +60,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Row(
             children: [
               Icon(Icons.shield_outlined, color: AppColors.primary),
@@ -76,28 +78,28 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                 const Text(
                   'Data toko akan dienkripsi dengan algoritma AES-256 dan dilindungi dengan checksum SHA-256.',
                   style: TextStyle(
-                      fontSize: 13, color: AppColors.textSecondaryLight),
+                    fontSize: 13,
+                    color: AppColors.textSecondaryLight,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
                 // Custom Storage Path
                 const Text(
                   'Folder Tempat Penyimpanan:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: pathController,
                   decoration: InputDecoration(
                     hintText: 'Pilih folder atau ketik path...',
-                    prefixIcon:
-                        const Icon(Icons.folder_outlined, size: 20),
+                    prefixIcon: const Icon(Icons.folder_outlined, size: 20),
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.drive_file_move_outline,
-                          color: AppColors.primary),
+                      icon: const Icon(
+                        Icons.drive_file_move_outline,
+                        color: AppColors.primary,
+                      ),
                       tooltip: 'Pilih Folder dari File Manager',
                       onPressed: () async {
                         final dir = await _pickDirectoryHelper();
@@ -109,7 +111,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                       },
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -130,7 +134,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                     icon: const Icon(Icons.folder_open_rounded, size: 18),
                     label: const Text(
                       'Buka File Manager (Pilih Folder)',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     onPressed: () async {
                       final dir = await _pickDirectoryHelper();
@@ -149,7 +156,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                   const Text(
                     'Atau klik folder cepat:',
                     style: TextStyle(
-                        fontSize: 11, color: AppColors.textSecondaryLight),
+                      fontSize: 11,
+                      color: AppColors.textSecondaryLight,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Wrap(
@@ -163,7 +172,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                         label = 'Folder Cadangan Internal';
                       }
                       return ActionChip(
-                        label: Text(label, style: const TextStyle(fontSize: 11)),
+                        label: Text(
+                          label,
+                          style: const TextStyle(fontSize: 11),
+                        ),
                         avatar: const Icon(Icons.folder_outlined, size: 14),
                         onPressed: () {
                           setDialogState(() {
@@ -183,8 +195,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                   decoration: InputDecoration(
                     labelText: 'Kata Sandi Cadangan (Opsional)',
                     hintText: 'Biarkan kosong untuk proteksi default',
-                    prefixIcon:
-                        const Icon(Icons.lock_outline_rounded, size: 20),
+                    prefixIcon: const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 20,
+                    ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         hidePassword ? Icons.visibility_off : Icons.visibility,
@@ -230,8 +244,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     if (confirmed == true && mounted) {
       setState(() => _isLoading = true);
       try {
+        final activeStoreId = ref.read(activeStoreIdProvider);
         final backupInfo = await backupRepo.createBackup(
-          storeId: AppConstants.defaultStoreId,
+          storeId: activeStoreId,
           password: passwordController.text.trim().isEmpty
               ? null
               : passwordController.text.trim(),
@@ -382,8 +397,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content:
-                  Text('Format file bukan file cadangan .posbak yang valid'),
+              content: Text(
+                'Format file bukan file cadangan .posbak yang valid',
+              ),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -415,8 +431,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Row(
             children: [
               Icon(Icons.file_open_rounded, color: AppColors.primary),
@@ -430,7 +447,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             children: [
               const Text(
                 'Pilih file .posbak langsung dari File Manager atau ketik path file:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondaryLight,
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -438,10 +458,15 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                 decoration: InputDecoration(
                   labelText: 'Path File (.posbak)',
                   hintText: 'Pilih file atau ketik path...',
-                  prefixIcon: const Icon(Icons.insert_drive_file_outlined, size: 20),
+                  prefixIcon: const Icon(
+                    Icons.insert_drive_file_outlined,
+                    size: 20,
+                  ),
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.folder_open_rounded,
-                        color: AppColors.primary),
+                    icon: const Icon(
+                      Icons.folder_open_rounded,
+                      color: AppColors.primary,
+                    ),
                     tooltip: 'Cari di File Manager',
                     onPressed: () async {
                       try {
@@ -482,8 +507,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                     ),
                   ),
                   icon: const Icon(Icons.folder_open_rounded, size: 18),
-                  label: const Text('Buka File Manager (Pilih File)',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'Buka File Manager (Pilih File)',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                   onPressed: () async {
                     try {
                       final pickedFile = await FilePicker.pickFile(
@@ -583,7 +610,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Format file bukan file cadangan .posbak yang valid'),
+              content: Text(
+                'Format file bukan file cadangan .posbak yang valid',
+              ),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -600,18 +629,22 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     }
   }
 
-  Future<void> _confirmRestore(BackupFileInfo backup,
-      {String? prefilledPassword}) async {
-    final passwordController =
-        TextEditingController(text: prefilledPassword ?? '');
+  Future<void> _confirmRestore(
+    BackupFileInfo backup, {
+    String? prefilledPassword,
+  }) async {
+    final passwordController = TextEditingController(
+      text: prefilledPassword ?? '',
+    );
     bool hidePassword = true;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Row(
             children: [
               Icon(Icons.warning_amber_rounded, color: AppColors.danger),
@@ -634,7 +667,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
               const SizedBox(height: 10),
               const Text(
                 'Transaksi atau produk baru yang dibuat setelah tanggal cadangan ini akan terhapus.',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondaryLight,
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -778,8 +814,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Row(
             children: [
               Icon(Icons.delete_forever_rounded, color: AppColors.danger),
@@ -842,7 +879,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                 backgroundColor: AppColors.danger,
                 foregroundColor: Colors.white,
               ),
-              onPressed: confirmationController.text.trim().toUpperCase() == 'RESET'
+              onPressed:
+                  confirmationController.text.trim().toUpperCase() == 'RESET'
                   ? () => Navigator.pop(ctx, true)
                   : null,
               child: const Text('Hapus & Reset Database'),
@@ -856,8 +894,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       setState(() => _isLoading = true);
       try {
         final backupRepo = ref.read(backupRepositoryProvider);
+        final activeStoreId = ref.read(activeStoreIdProvider);
         await backupRepo.resetDatabaseToInitial(
-          storeId: AppConstants.defaultStoreId,
+          storeId: activeStoreId,
         );
 
         _invalidateAllDatabaseProviders();
@@ -866,7 +905,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                  'Database berhasil di-reset! Semua data telah bersih kembali seperti baru.'),
+                'Database berhasil di-reset! Semua data telah bersih kembali seperti baru.',
+              ),
               backgroundColor: AppColors.success,
               duration: Duration(seconds: 3),
             ),
@@ -906,12 +946,17 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondaryLight)),
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondaryLight,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
@@ -925,7 +970,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       appBar: AppBar(
         title: const Text(
           'Cadangkan & Pulihkan',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
       body: Stack(
@@ -947,8 +992,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.security_rounded,
-                          size: 32, color: AppColors.primary),
+                      Icon(
+                        Icons.security_rounded,
+                        size: 32,
+                        color: AppColors.primary,
+                      ),
                       SizedBox(width: 14),
                       Expanded(
                         child: Text(
@@ -979,8 +1027,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.backup_rounded,
-                                color: AppColors.primary, size: 24),
+                            Icon(
+                              Icons.backup_rounded,
+                              color: AppColors.primary,
+                              size: 24,
+                            ),
                             SizedBox(width: 10),
                             Text(
                               'Cadangkan Data Sekarang',
@@ -1007,14 +1058,16 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                onPressed:
-                                    _isLoading ? null : _showCreateBackupDialog,
+                                onPressed: _isLoading
+                                    ? null
+                                    : _showCreateBackupDialog,
                                 icon: const Icon(Icons.add_moderator_rounded),
                                 label: const Text(
                                   'Buat Cadangan Baru (.posbak)',
@@ -1034,10 +1087,14 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               side: const BorderSide(
-                                  color: AppColors.primary, width: 1.5),
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                               foregroundColor: AppColors.primary,
                             ),
-                            onPressed: _isLoading ? null : _pickAndRestoreBackup,
+                            onPressed: _isLoading
+                                ? null
+                                : _pickAndRestoreBackup,
                             icon: const Icon(Icons.file_open_rounded, size: 20),
                             label: const Text(
                               'Buka File Manager (Pilih & Pulihkan .posbak)',
@@ -1055,8 +1112,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                             label: const Text(
                               'Atau ketik path file manual...',
                               style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondaryLight),
+                                fontSize: 12,
+                                color: AppColors.textSecondaryLight,
+                              ),
                             ),
                           ),
                         ),
@@ -1095,9 +1153,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                       child: CircularProgressIndicator(),
                     ),
                   ),
-                  error: (err, _) => Center(
-                    child: Text('Error memuat cadangan: $err'),
-                  ),
+                  error: (err, _) =>
+                      Center(child: Text('Error memuat cadangan: $err')),
                   data: (backups) {
                     if (backups.isEmpty) {
                       return Center(
@@ -1105,8 +1162,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                           padding: const EdgeInsets.all(32),
                           child: Column(
                             children: [
-                              Icon(Icons.inventory_rounded,
-                                  size: 48, color: Colors.grey.shade400),
+                              Icon(
+                                Icons.inventory_rounded,
+                                size: 48,
+                                color: Colors.grey.shade400,
+                              ),
                               const SizedBox(height: 12),
                               const Text(
                                 'Belum Ada File Cadangan',
@@ -1119,8 +1179,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                               const Text(
                                 'Tekan tombol "Buat Cadangan Baru" di atas untuk menyimpan data toko Anda.',
                                 textAlign: TextAlign.center,
-                                style:
-                                    TextStyle(fontSize: 12, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ],
                           ),
@@ -1153,8 +1215,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                         color: Colors.blue.shade50,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: Icon(Icons.file_present_rounded,
-                                          color: Colors.blue.shade700, size: 24),
+                                      child: Icon(
+                                        Icons.file_present_rounded,
+                                        color: Colors.blue.shade700,
+                                        size: 24,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -1174,7 +1239,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                             dateStr,
                                             style: const TextStyle(
                                               fontSize: 11,
-                                              color: AppColors.textSecondaryLight,
+                                              color:
+                                                  AppColors.textSecondaryLight,
                                             ),
                                           ),
                                         ],
@@ -1182,7 +1248,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                     ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(8),
@@ -1226,25 +1294,28 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                 const Divider(height: 20),
                                 Wrap(
                                   alignment: WrapAlignment.end,
-                                  crossAxisAlignment:
-                                      WrapCrossAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   spacing: 6,
                                   runSpacing: 6,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.copy_rounded,
-                                          size: 18, color: Colors.grey),
+                                      icon: const Icon(
+                                        Icons.copy_rounded,
+                                        size: 18,
+                                        color: Colors.grey,
+                                      ),
                                       tooltip: 'Salin Path',
                                       onPressed: () {
                                         Clipboard.setData(
-                                            ClipboardData(text: b.filePath));
+                                          ClipboardData(text: b.filePath),
+                                        );
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Path disalin'),
-                                            duration: Duration(seconds: 2),
-                                          ),
-                                        );
+                                              const SnackBar(
+                                                content: Text('Path disalin'),
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
                                       },
                                     ),
                                     TextButton.icon(
@@ -1252,8 +1323,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                         foregroundColor: AppColors.danger,
                                       ),
                                       onPressed: () => _confirmDelete(b),
-                                      icon: const Icon(Icons.delete_outline_rounded,
-                                          size: 18),
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 18,
+                                      ),
                                       label: const Text('Hapus'),
                                     ),
                                     ElevatedButton.icon(
@@ -1261,13 +1334,16 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                         backgroundColor: AppColors.primary,
                                         foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                       ),
                                       onPressed: () => _confirmRestore(b),
-                                      icon: const Icon(Icons.restore_rounded,
-                                          size: 18),
+                                      icon: const Icon(
+                                        Icons.restore_rounded,
+                                        size: 18,
+                                      ),
                                       label: const Text('Pulihkan'),
                                     ),
                                   ],
@@ -1297,8 +1373,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.warning_rounded,
-                                color: Colors.red.shade700, size: 24),
+                            Icon(
+                              Icons.warning_rounded,
+                              color: Colors.red.shade700,
+                              size: 24,
+                            ),
                             const SizedBox(width: 10),
                             Text(
                               'Reset Database ke Kondisi Awal',
@@ -1331,7 +1410,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            onPressed: _isLoading ? null : _showResetDatabaseDialog,
+                            onPressed: _isLoading
+                                ? null
+                                : _showResetDatabaseDialog,
                             icon: const Icon(Icons.delete_forever_rounded),
                             label: const Text(
                               'Reset Semua Database',

@@ -4,11 +4,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/providers/database_providers.dart';
 import '../../../data/local/app_database.dart';
-import 'category_controller.dart';
 
 final productListStreamProvider = StreamProvider<List<Product>>((ref) {
   final repo = ref.watch(productRepositoryProvider);
-  return repo.watchProducts(defaultStoreId);
+  final storeId = ref.watch(activeStoreIdProvider);
+  return repo.watchProducts(storeId);
 });
 
 final productSearchQueryProvider = StateProvider<String>((ref) => '');
@@ -65,6 +65,7 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
     try {
       final productRepo = _ref.read(productRepositoryProvider);
       final inventoryRepo = _ref.read(inventoryRepositoryProvider);
+      final storeId = _ref.read(activeStoreIdProvider);
       final productId = id ?? _uuid.v4();
       final now = DateTime.now();
 
@@ -72,7 +73,7 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
 
       final companion = ProductsCompanion(
         id: Value(productId),
-        storeId: const Value(defaultStoreId),
+        storeId: Value(storeId),
         categoryId: Value(categoryId),
         name: Value(name.trim()),
         sku: Value(sku?.trim().isNotEmpty == true ? sku!.trim() : null),
@@ -99,7 +100,7 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
             await productRepo.saveVariant(vWithZero);
             if (initialVarStock > 0) {
               await inventoryRepo.stockAdjustment(
-                storeId: defaultStoreId,
+                storeId: storeId,
                 productId: productId,
                 variantId: v.id.value,
                 deltaQty: initialVarStock,
@@ -117,7 +118,7 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
       } else if (initialStock > 0 && id == null) {
         // Record initial stock movement if > 0
         await inventoryRepo.stockAdjustment(
-          storeId: defaultStoreId,
+          storeId: storeId,
           productId: productId,
           deltaQty: initialStock,
           reason: 'Initial Stock Creation',

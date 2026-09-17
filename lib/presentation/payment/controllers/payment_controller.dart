@@ -37,8 +37,28 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
   /// Completes a transaction with one or more payments
   Future<String> completePayment({
     required List<PaymentInput> payments,
-    String storeId = AppConstants.defaultStoreId,
+    String? storeId,
   }) async {
+    String effectiveStoreId = (storeId != null && storeId.isNotEmpty) ? storeId : '';
+    if (effectiveStoreId.isEmpty) {
+      try {
+        final currentStore = await _storeRepo.getCurrentStore();
+        if (currentStore != null && currentStore.id.isNotEmpty) {
+          effectiveStoreId = currentStore.id;
+        }
+      } catch (_) {}
+    }
+    if (effectiveStoreId.isEmpty) {
+      try {
+        final activeId = _ref.read(activeStoreIdProvider);
+        if (activeId.isNotEmpty) {
+          effectiveStoreId = activeId;
+        }
+      } catch (_) {}
+    }
+    if (effectiveStoreId.isEmpty) {
+      effectiveStoreId = AppConstants.defaultStoreId;
+    }
     state = const AsyncValue.loading();
     try {
       final cartState = _ref.read(cartControllerProvider);
@@ -125,7 +145,7 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
       final totalPayable = cartState.grandTotal + roundingAmount;
 
       final transactionId = await _trxRepo.completeTransaction(
-        storeId: storeId,
+        storeId: effectiveStoreId,
         orderType: cartState.orderType,
         queueNumber: cartState.queueNumber,
         customerId: cartState.customerId,
@@ -212,7 +232,16 @@ class PaymentController extends StateNotifier<AsyncValue<String?>> {
 
   /// Fetches cash rounding settings for the store
   Future<CashRoundingResult> calculateCashRounding(int rawAmount) async {
-    final store = await _storeRepo.getStore(AppConstants.defaultStoreId);
+    Store? store;
+    try {
+      store = await _storeRepo.getCurrentStore();
+    } catch (_) {}
+    if (store == null) {
+      try {
+        final activeStoreId = _ref.read(activeStoreIdProvider);
+        store = await _storeRepo.getStore(activeStoreId);
+      } catch (_) {}
+    }
     final enabled = store?.cashRoundingEnabled ?? true;
     final increment = store?.cashRoundingIncrement ?? 1000;
     final modeStr = store?.cashRoundingMode ?? 'ROUND_NEAREST';

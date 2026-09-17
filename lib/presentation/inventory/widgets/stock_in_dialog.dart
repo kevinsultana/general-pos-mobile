@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/thousands_separator_input_formatter.dart';
 import '../../../data/local/app_database.dart';
 import '../../../domain/services/cost_calculator.dart';
 import '../controllers/inventory_controller.dart';
@@ -35,11 +35,11 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
   void initState() {
     super.initState();
     _newUnitCost = widget.product.cost;
-    _costController.text = _newUnitCost.toString();
+    _costController.text = ThousandsSeparatorInputFormatter.format(_newUnitCost);
     _loadVariants();
 
     _qtyController.addListener(() {
-      final parsed = int.tryParse(_qtyController.text) ?? 0;
+      final parsed = ThousandsSeparatorInputFormatter.parse(_qtyController.text);
       if (parsed != _addedQty) {
         setState(() {
           _addedQty = parsed;
@@ -48,7 +48,7 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
     });
 
     _costController.addListener(() {
-      final parsed = int.tryParse(_costController.text) ?? 0;
+      final parsed = ThousandsSeparatorInputFormatter.parse(_costController.text);
       if (parsed != _newUnitCost) {
         setState(() {
           _newUnitCost = parsed;
@@ -66,7 +66,7 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
         _variants = variants;
         _selectedVariant = variants.first;
         _newUnitCost = _selectedVariant!.cost;
-        _costController.text = _newUnitCost.toString();
+        _costController.text = ThousandsSeparatorInputFormatter.format(_newUnitCost);
       });
     }
   }
@@ -91,16 +91,18 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
     final previewNewStock = widget.product.stock + _addedQty;
 
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 480),
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -149,7 +151,8 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                       .map(
                         (v) => DropdownMenuItem(
                           value: v,
-                          child: Text('${v.name} (Stok saat ini: ${v.stock})'),
+                          child: Text(
+                              '${v.name} (Stok saat ini: ${ThousandsSeparatorInputFormatter.format(v.stock)})'),
                         ),
                       )
                       .toList(),
@@ -158,7 +161,8 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                       setState(() {
                         _selectedVariant = val;
                         _newUnitCost = val.cost;
-                        _costController.text = _newUnitCost.toString();
+                        _costController.text =
+                            ThousandsSeparatorInputFormatter.format(_newUnitCost);
                       });
                     }
                   },
@@ -170,15 +174,15 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
               TextFormField(
                 controller: _qtyController,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
                 decoration: const InputDecoration(
                   labelText: 'Jumlah Tambahan Unit *',
                   hintText: 'Contoh: 10',
                   prefixIcon: Icon(Icons.add_box_outlined),
                 ),
                 validator: (val) {
-                  final parsed = int.tryParse(val ?? '');
-                  if (parsed == null || parsed <= 0) {
+                  final parsed = ThousandsSeparatorInputFormatter.parse(val);
+                  if (parsed <= 0) {
                     return 'Masukkan jumlah unit minimal 1';
                   }
                   return null;
@@ -190,15 +194,15 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
               TextFormField(
                 controller: _costController,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
                 decoration: const InputDecoration(
                   labelText: 'Harga Beli per Unit Baru (HPP) *',
                   prefixText: 'Rp ',
                   prefixIcon: Icon(Icons.monetization_on_outlined),
                 ),
                 validator: (val) {
-                  final parsed = int.tryParse(val ?? '');
-                  if (parsed == null || parsed < 0) {
+                  final parsed = ThousandsSeparatorInputFormatter.parse(val);
+                  if (parsed < 0) {
                     return 'Masukkan harga beli yang valid';
                   }
                   return null;
@@ -228,21 +232,31 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                   children: [
                     if (_selectedVariant != null) ...[
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Stok Varian ${_selectedVariant!.name}:',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondaryLight,
+                          Expanded(
+                            child: Text(
+                              'Stok Varian ${_selectedVariant!.name}:',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondaryLight,
+                              ),
                             ),
                           ),
-                          Text(
-                            '${_selectedVariant!.stock}  ➜  ${_selectedVariant!.stock + _addedQty} unit',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: AppColors.textPrimaryLight,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '${ThousandsSeparatorInputFormatter.format(_selectedVariant!.stock)} ➜ ${ThousandsSeparatorInputFormatter.format(_selectedVariant!.stock + _addedQty)} unit',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimaryLight,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -250,42 +264,98 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                       const SizedBox(height: 8),
                     ],
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          _selectedVariant != null ? 'Total Stok Master:' : 'Stok:',
+                          _selectedVariant != null ? 'Total Stok Master:' : 'Estimasi Stok:',
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             color: AppColors.textSecondaryLight,
                           ),
                         ),
-                        Text(
-                          '${widget.product.stock}  ➜  $previewNewStock unit',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: AppColors.textPrimaryLight,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '${ThousandsSeparatorInputFormatter.format(widget.product.stock)} ➜ ${ThousandsSeparatorInputFormatter.format(previewNewStock)} unit',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: AppColors.textPrimaryLight,
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(height: 1),
+                    ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'HPP Rata-Rata Baru:',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondaryLight,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'HPP Saat Ini',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondaryLight,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  CurrencyFormatter.format(widget.product.cost),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondaryLight,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          '${CurrencyFormatter.format(widget.product.cost)}  ➜  ${CurrencyFormatter.format(previewNewCost)}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 16,
                             color: AppColors.accent,
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text(
+                                'HPP Rata-Rata Baru',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  CurrencyFormatter.format(previewNewCost),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.accent,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -297,17 +367,20 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
 
               // Action Buttons
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Batal'),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+                      child: const Text('Batal'),
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _isSubmitting
-                        ? null
-                        : () async {
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting
+                          ? null
+                          : () async {
                             if (_formKey.currentState?.validate() != true) return;
 
                             setState(() {
@@ -330,7 +403,7 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Berhasil menambah $_addedQty unit ke ${widget.product.name}',
+                                      'Berhasil menambah ${ThousandsSeparatorInputFormatter.format(_addedQty)} unit ke ${widget.product.name}',
                                     ),
                                     backgroundColor: AppColors.success,
                                   ),
@@ -362,14 +435,20 @@ class _StockInDialogState extends ConsumerState<StockInDialog> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Simpan Stok Masuk'),
-                  ),
-                ],
-              ),
+                        : const Text(
+                            'Simpan Stok Masuk',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

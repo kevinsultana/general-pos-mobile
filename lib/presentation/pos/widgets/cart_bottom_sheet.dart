@@ -73,57 +73,66 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
 
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.shopping_bag_outlined,
-                        color: AppColors.primary, size: 24),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Keranjang Pesanan',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${cartState.totalItemCount} item',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                Expanded(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.shopping_bag_outlined,
+                          color: AppColors.primary, size: 22),
+                      const SizedBox(width: 8),
+                      const Flexible(
+                        child: Text(
+                          'Keranjang Pesanan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimaryLight,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${cartState.totalItemCount} item',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     if (cartState.isNotEmpty)
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                            foregroundColor: AppColors.danger),
+                      IconButton(
+                        tooltip: 'Kosongkan Keranjang',
+                        icon: const Icon(Icons.delete_sweep_rounded,
+                            color: AppColors.danger, size: 22),
+                        visualDensity: VisualDensity.compact,
                         onPressed: () {
                           cartNotifier.clearCart();
                           Navigator.pop(context);
                         },
-                        icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                        label: const Text('Kosongkan'),
                       ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded),
+                      tooltip: 'Tutup',
+                      icon: const Icon(Icons.close_rounded, size: 22),
+                      visualDensity: VisualDensity.compact,
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -531,10 +540,16 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
                         style: TextStyle(
                             fontSize: 13, color: AppColors.textSecondaryLight),
                       ),
-                      Text(
-                        CurrencyFormatter.format(cartState.rawSubtotal),
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            CurrencyFormatter.format(cartState.rawSubtotal),
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -550,12 +565,18 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
                           style: TextStyle(
                               fontSize: 13, color: AppColors.danger),
                         ),
-                        Text(
-                          '-${CurrencyFormatter.format(cartState.itemDiscountsTotal)}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.danger,
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '-${CurrencyFormatter.format(cartState.itemDiscountsTotal)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.danger,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -567,76 +588,82 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'Diskon Transaksi',
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondaryLight),
-                          ),
-                          if (cartState.voucherCode != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade100,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Flexible(
                               child: Text(
-                                cartState.voucherCode!,
+                                'Diskon Transaksi',
                                 style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber.shade900,
+                                    fontSize: 13,
+                                    color: AppColors.textSecondaryLight),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (cartState.voucherCode != null) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade100,
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
+                                child: Text(
+                                  cartState.voucherCode!,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 6),
+                            InkWell(
+                              onTap: () {
+                                VoucherDialog.show(
+                                  context,
+                                  baseAmount: cartState.orderSubtotal,
+                                  cartItems: cartState.items,
+                                  currentVoucherCode: cartState.voucherCode,
+                                  currentPromotionId: cartState.promotionId,
+                                  initialType: cartState.orderDiscountType,
+                                  initialValue: cartState.orderDiscountValue,
+                                  onApply: ({
+                                    required discountType,
+                                    required discountValue,
+                                    promotionId,
+                                    voucherCode,
+                                  }) {
+                                    if (promotionId != null) {
+                                      cartNotifier.setPromotion(
+                                        promotionId: promotionId,
+                                        voucherCode: voucherCode,
+                                        discountType: discountType!,
+                                        discountValue: discountValue!,
+                                      );
+                                    } else {
+                                      cartNotifier.setOrderDiscount(
+                                        discountType,
+                                        discountValue,
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                              child: Icon(
+                                cartState.orderDiscountAmount > 0
+                                    ? Icons.edit_rounded
+                                    : Icons.add_circle_outline_rounded,
+                                size: 16,
+                                color: AppColors.accent,
                               ),
                             ),
                           ],
-                          const SizedBox(width: 6),
-                          InkWell(
-                            onTap: () {
-                              VoucherDialog.show(
-                                context,
-                                baseAmount: cartState.orderSubtotal,
-                                cartItems: cartState.items,
-                                currentVoucherCode: cartState.voucherCode,
-                                currentPromotionId: cartState.promotionId,
-                                initialType: cartState.orderDiscountType,
-                                initialValue: cartState.orderDiscountValue,
-                                onApply: ({
-                                  required discountType,
-                                  required discountValue,
-                                  promotionId,
-                                  voucherCode,
-                                }) {
-                                  if (promotionId != null) {
-                                    cartNotifier.setPromotion(
-                                      promotionId: promotionId,
-                                      voucherCode: voucherCode,
-                                      discountType: discountType!,
-                                      discountValue: discountValue!,
-                                    );
-                                  } else {
-                                    cartNotifier.setOrderDiscount(
-                                      discountType,
-                                      discountValue,
-                                    );
-                                  }
-                                },
-                              );
-                            },
-                            child: Icon(
-                              cartState.orderDiscountAmount > 0
-                                  ? Icons.edit_rounded
-                                  : Icons.add_circle_outline_rounded,
-                              size: 16,
-                              color: AppColors.accent,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         cartState.orderDiscountAmount > 0
                             ? '-${CurrencyFormatter.format(cartState.orderDiscountAmount)}'
@@ -665,12 +692,18 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
                           color: AppColors.textPrimaryLight,
                         ),
                       ),
-                      Text(
-                        CurrencyFormatter.format(cartState.grandTotal),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.accent,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            CurrencyFormatter.format(cartState.grandTotal),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.accent,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -725,8 +758,10 @@ class _CartBottomSheetState extends ConsumerState<CartBottomSheet> {
                                   ? null
                                   : () async {
                                       try {
-                                        final draftId =
-                                            await cartNotifier.saveAsDraft();
+                                        final activeStoreId =
+                                            ref.read(activeStoreIdProvider);
+                                        final draftId = await cartNotifier
+                                            .saveAsDraft(storeId: activeStoreId);
                                         if (context.mounted) {
                                           Navigator.pop(context);
                                           ScaffoldMessenger.of(context)

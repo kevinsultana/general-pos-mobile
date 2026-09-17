@@ -80,4 +80,48 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 50));
   });
+
+  testWidgets(
+      'CartBottomSheet renders header without overflow on narrow screen',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+        ],
+        child: const MaterialApp(
+          home: PosScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Add item to cart
+    await tester.tap(find.text('Es Teh Manis'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Open CartBottomSheet
+    await tester.tap(find.text('Keranjang'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Verify header elements are present without RenderFlex overflow
+    expect(find.text('Keranjang Pesanan'), findsOneWidget);
+    expect(find.byIcon(Icons.delete_sweep_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+    // Unmount and flush
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
 }

@@ -54,9 +54,25 @@ class StockMovementDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  Future<List<StockMovement>> getRecentMovements(String storeId, {int limit = 50}) {
+  Future<void> healOrphanMovements(String storeId) async {
+    try {
+      if (storeId != 'store-default-01' && storeId.isNotEmpty) {
+        await (update(stockMovements)
+              ..where((tbl) =>
+                  tbl.storeId.equals('store-default-01') |
+                  tbl.storeId.equals('store-default-001') |
+                  tbl.storeId.equals('')))
+            .write(StockMovementsCompanion(storeId: Value(storeId)));
+      }
+    } catch (_) {}
+  }
+
+  Future<List<StockMovement>> getRecentMovements(String storeId, {int limit = 50}) async {
+    await healOrphanMovements(storeId);
     return (select(stockMovements)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)])
           ..limit(limit))
         .get();

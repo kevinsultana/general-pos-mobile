@@ -12,9 +12,9 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
   }
 
   /// Parses a thousand-separated or raw numeric string back into an integer.
-  /// Returns 0 if empty or unparseable.
-  static int parse(String text) {
-    if (text.isEmpty) return 0;
+  /// Returns 0 if null, empty or unparseable.
+  static int parse(String? text) {
+    if (text == null || text.isEmpty) return 0;
     final digitsOnly = text.replaceAll(RegExp(r'[^\d]'), '');
     if (digitsOnly.isEmpty) return 0;
     return int.tryParse(digitsOnly) ?? 0;

@@ -12,7 +12,10 @@ class PromotionListScreen extends ConsumerWidget {
   const PromotionListScreen({super.key});
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Promotion promo) async {
+    BuildContext context,
+    WidgetRef ref,
+    Promotion promo,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -65,14 +68,15 @@ class PromotionListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final promotionsAsync = ref.watch(promotionListStreamProvider);
-    final canManagePromotions =
-        ref.watch(hasPermissionProvider(AppPermissions.managePromotions));
+    final canManagePromotions = ref.watch(
+      hasPermissionProvider(AppPermissions.managePromotions),
+    );
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Promosi & Voucher',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         actions: [
           if (canManagePromotions) ...[
@@ -103,8 +107,11 @@ class PromotionListScreen extends ConsumerWidget {
             color: AppColors.primary.withValues(alpha: 0.08),
             child: const Row(
               children: [
-                Icon(Icons.verified_user_outlined,
-                    size: 18, color: AppColors.primary),
+                Icon(
+                  Icons.verified_user_outlined,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -125,8 +132,10 @@ class PromotionListScreen extends ConsumerWidget {
             child: promotionsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(
-                child: Text('Error: $err',
-                    style: const TextStyle(color: AppColors.danger)),
+                child: Text(
+                  'Error: $err',
+                  style: const TextStyle(color: AppColors.danger),
+                ),
               ),
               data: (promotions) {
                 if (promotions.isEmpty) {
@@ -168,8 +177,7 @@ class PromotionListScreen extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            onPressed: () =>
-                                PromotionFormDialog.show(context),
+                            onPressed: () => PromotionFormDialog.show(context),
                             icon: const Icon(Icons.add_rounded),
                             label: const Text('Tambah Promosi Pertama'),
                           ),
@@ -224,7 +232,10 @@ class PromotionListScreen extends ConsumerWidget {
                                       ? (val) {
                                           ref
                                               .read(promotionRepositoryProvider)
-                                              .togglePromotionActive(promo.id, val);
+                                              .togglePromotionActive(
+                                                promo.id,
+                                                val,
+                                              );
                                         }
                                       : null,
                                 ),
@@ -241,8 +252,9 @@ class PromotionListScreen extends ConsumerWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.1),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -327,8 +339,10 @@ class PromotionListScreen extends ConsumerWidget {
                                       context,
                                       promotion: promo,
                                     ),
-                                    icon: const Icon(Icons.edit_outlined,
-                                        size: 16),
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 16,
+                                    ),
                                     label: const Text('Ubah'),
                                   ),
                                   const SizedBox(width: 8),
@@ -339,8 +353,9 @@ class PromotionListScreen extends ConsumerWidget {
                                     onPressed: () =>
                                         _confirmDelete(context, ref, promo),
                                     icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                        size: 16),
+                                      Icons.delete_outline_rounded,
+                                      size: 16,
+                                    ),
                                     label: const Text('Hapus'),
                                   ),
                                 ],

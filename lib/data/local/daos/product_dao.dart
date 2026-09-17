@@ -8,15 +8,36 @@ part 'product_dao.g.dart';
 class ProductDao extends DatabaseAccessor<AppDatabase> with _$ProductDaoMixin {
   ProductDao(super.db);
 
-  Future<List<Product>> getAllProducts(String storeId) {
+  Future<void> healOrphanProducts(String storeId) async {
+    try {
+      if (storeId != 'store-default-01' && storeId.isNotEmpty) {
+        await (update(products)
+              ..where((tbl) =>
+                  tbl.storeId.equals('store-default-01') |
+                  tbl.storeId.equals('store-default-001') |
+                  tbl.storeId.equals('')))
+            .write(ProductsCompanion(storeId: Value(storeId)));
+      }
+    } catch (_) {}
+  }
+
+  Future<List<Product>> getAllProducts(String storeId) async {
+    await healOrphanProducts(storeId);
     return (select(products)
-          ..where((tbl) => tbl.storeId.equals(storeId) & tbl.active.equals(true)))
+          ..where((tbl) =>
+              (tbl.storeId.equals(storeId) |
+                  tbl.storeId.equals('store-default-01')) &
+              tbl.active.equals(true)))
         .get();
   }
 
-  Stream<List<Product>> watchAllProducts(String storeId) {
-    return (select(products)
-          ..where((tbl) => tbl.storeId.equals(storeId) & tbl.active.equals(true)))
+  Stream<List<Product>> watchAllProducts(String storeId) async* {
+    await healOrphanProducts(storeId);
+    yield* (select(products)
+          ..where((tbl) =>
+              (tbl.storeId.equals(storeId) |
+                  tbl.storeId.equals('store-default-01')) &
+              tbl.active.equals(true)))
         .watch();
   }
 
@@ -26,13 +47,19 @@ class ProductDao extends DatabaseAccessor<AppDatabase> with _$ProductDaoMixin {
 
   Future<Product?> getProductBySku(String storeId, String sku) {
     return (select(products)
-          ..where((tbl) => tbl.storeId.equals(storeId) & tbl.sku.equals(sku)))
+          ..where((tbl) =>
+              (tbl.storeId.equals(storeId) |
+                  tbl.storeId.equals('store-default-01')) &
+              tbl.sku.equals(sku)))
         .getSingleOrNull();
   }
 
   Future<Product?> getProductByBarcode(String storeId, String barcode) {
     return (select(products)
-          ..where((tbl) => tbl.storeId.equals(storeId) & tbl.barcode.equals(barcode)))
+          ..where((tbl) =>
+              (tbl.storeId.equals(storeId) |
+                  tbl.storeId.equals('store-default-01')) &
+              tbl.barcode.equals(barcode)))
         .getSingleOrNull();
   }
 

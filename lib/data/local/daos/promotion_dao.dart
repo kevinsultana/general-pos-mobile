@@ -28,18 +28,37 @@ class PromotionDao extends DatabaseAccessor<AppDatabase> with _$PromotionDaoMixi
     ''');
   }
 
+  Future<void> healOrphanPromotions(String storeId) async {
+    try {
+      if (storeId != 'store-default-01' && storeId.isNotEmpty) {
+        await (update(promotions)
+              ..where((tbl) =>
+                  tbl.storeId.equals('store-default-01') |
+                  tbl.storeId.equals('store-default-001') |
+                  tbl.storeId.equals('')))
+            .write(PromotionsCompanion(storeId: Value(storeId)));
+      }
+    } catch (_) {}
+  }
+
   Future<List<Promotion>> getAllPromotions(String storeId) async {
     await ensureTableExists();
+    await healOrphanPromotions(storeId);
     return (select(promotions)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
         .get();
   }
 
   Stream<List<Promotion>> watchAllPromotions(String storeId) async* {
     await ensureTableExists();
+    await healOrphanPromotions(storeId);
     yield* (select(promotions)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
         .watch();
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -42,7 +41,14 @@ class _ReportHubScreenState extends ConsumerState<ReportHubScreen>
         return (todayStart, todayEnd);
       case DateFilterPreset.yesterday:
         final yStart = todayStart.subtract(const Duration(days: 1));
-        final yEnd = DateTime(yStart.year, yStart.month, yStart.day, 23, 59, 59);
+        final yEnd = DateTime(
+          yStart.year,
+          yStart.month,
+          yStart.day,
+          23,
+          59,
+          59,
+        );
         return (yStart, yEnd);
       case DateFilterPreset.last7Days:
         final start = todayStart.subtract(const Duration(days: 6));
@@ -74,18 +80,30 @@ class _ReportHubScreenState extends ConsumerState<ReportHubScreen>
   @override
   Widget build(BuildContext context) {
     final (startDate, endDate) = _getDateRange(_selectedPreset);
+    final activeStoreId = ref.watch(activeStoreIdProvider);
     final dateParams = DateRangeParams(
       startDate: startDate,
       endDate: endDate,
-      storeId: AppConstants.defaultStoreId,
+      storeId: activeStoreId,
     );
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Laporan & Analisis',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Segarkan Laporan',
+            onPressed: () {
+              ref.invalidate(salesReportProvider);
+              ref.invalidate(productSalesReportProvider);
+              ref.invalidate(inventoryReportProvider);
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,
@@ -110,7 +128,10 @@ class _ReportHubScreenState extends ConsumerState<ReportHubScreen>
                 return const SizedBox.shrink();
               }
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 color: Colors.white,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -124,8 +145,12 @@ class _ReportHubScreenState extends ConsumerState<ReportHubScreen>
                           selected: isSelected,
                           selectedColor: AppColors.primary,
                           labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : AppColors.textPrimaryLight,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textPrimaryLight,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                             fontSize: 12,
                           ),
                           onSelected: (val) {
@@ -218,7 +243,10 @@ class _SalesReportTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -228,8 +256,11 @@ class _SalesReportTab extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.trending_up_rounded,
-                                  color: Colors.white, size: 18),
+                              const Icon(
+                                Icons.trending_up_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'Laba Kotor: ${CurrencyFormatter.format(report.estimatedGrossProfit)}',
@@ -243,7 +274,9 @@ class _SalesReportTab extends ConsumerWidget {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
@@ -296,7 +329,8 @@ class _SalesReportTab extends ConsumerWidget {
                     child: _MetricTile(
                       title: 'Transaksi Sukses',
                       value: '${report.transactionCount}',
-                      subtitle: 'Rata-rata: ${CurrencyFormatter.format(report.averageTransactionValue)}',
+                      subtitle:
+                          'Rata-rata: ${CurrencyFormatter.format(report.averageTransactionValue)}',
                       icon: Icons.receipt_long_outlined,
                       iconColor: Colors.green,
                     ),
@@ -305,8 +339,10 @@ class _SalesReportTab extends ConsumerWidget {
                   Expanded(
                     child: _MetricTile(
                       title: 'Batal & Refund',
-                      value: '${report.cancelledCount} Batal / ${report.refundCount} Refund',
-                      subtitle: 'Total: ${CurrencyFormatter.format(report.cancelledTotal + report.refundTotal)}',
+                      value:
+                          '${report.cancelledCount} Batal / ${report.refundCount} Refund',
+                      subtitle:
+                          'Total: ${CurrencyFormatter.format(report.cancelledTotal + report.refundTotal)}',
                       icon: Icons.cancel_outlined,
                       iconColor: Colors.red,
                     ),
@@ -329,8 +365,11 @@ class _SalesReportTab extends ConsumerWidget {
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.pie_chart_outline_rounded,
-                              size: 20, color: AppColors.primary),
+                          Icon(
+                            Icons.pie_chart_outline_rounded,
+                            size: 20,
+                            color: AppColors.primary,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Metode Pembayaran',
@@ -370,14 +409,16 @@ class _SalesReportTab extends ConsumerWidget {
                                     Text(
                                       pm.method,
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                     Text(
                                       '${CurrencyFormatter.format(pm.totalAmount)} (${pm.count}x)',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -414,8 +455,11 @@ class _SalesReportTab extends ConsumerWidget {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.calendar_month_outlined,
-                                size: 20, color: AppColors.primary),
+                            Icon(
+                              Icons.calendar_month_outlined,
+                              size: 20,
+                              color: AppColors.primary,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               'Ringkasan Harian',
@@ -435,15 +479,19 @@ class _SalesReportTab extends ConsumerWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(dateStr,
-                                    style: const TextStyle(
-                                        color: AppColors.textSecondaryLight,
-                                        fontSize: 12)),
+                                Text(
+                                  dateStr,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondaryLight,
+                                    fontSize: 12,
+                                  ),
+                                ),
                                 Text(
                                   '${CurrencyFormatter.format(daily.netSales)} (${daily.transactionCount} trx)',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ],
                             ),
@@ -475,7 +523,8 @@ class _ProductReportTab extends ConsumerWidget {
 
     return prodAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('Error memuat laporan produk: $err')),
+      error: (err, _) =>
+          Center(child: Text('Error memuat laporan produk: $err')),
       data: (report) {
         if (report.items.isEmpty) {
           return Center(
@@ -484,8 +533,11 @@ class _ProductReportTab extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.production_quantity_limits_rounded,
-                      size: 64, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.production_quantity_limits_rounded,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Belum Ada Penjualan Produk',
@@ -667,7 +719,9 @@ class _ProductReportTab extends ConsumerWidget {
                             const SizedBox(height: 4),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade50,
                                 borderRadius: BorderRadius.circular(6),
@@ -704,8 +758,10 @@ class _InventoryReportTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final invAsync =
-        ref.watch(inventoryReportProvider(AppConstants.defaultStoreId));
+    final activeStoreId = ref.watch(activeStoreIdProvider);
+    final invAsync = ref.watch(
+      inventoryReportProvider(activeStoreId),
+    );
 
     return invAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -713,7 +769,7 @@ class _InventoryReportTab extends ConsumerWidget {
       data: (report) {
         return RefreshIndicator(
           onRefresh: () async =>
-              ref.refresh(inventoryReportProvider(AppConstants.defaultStoreId)),
+              ref.refresh(inventoryReportProvider(activeStoreId)),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -762,7 +818,10 @@ class _InventoryReportTab extends ConsumerWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const Text(' • ', style: TextStyle(color: Colors.white70)),
+                        const Text(
+                          ' • ',
+                          style: TextStyle(color: Colors.white70),
+                        ),
                         Text(
                           '${report.totalStockUnits} Total Unit Fisik',
                           style: const TextStyle(
@@ -790,8 +849,11 @@ class _InventoryReportTab extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded,
-                          color: Colors.red.shade700, size: 24),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red.shade700,
+                        size: 24,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -821,8 +883,11 @@ class _InventoryReportTab extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.notification_important_rounded,
-                                size: 20, color: Colors.orange.shade800),
+                            Icon(
+                              Icons.notification_important_rounded,
+                              size: 20,
+                              color: Colors.orange.shade800,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Peringatan Stok Menipis (${report.lowStockCount})',
@@ -839,20 +904,22 @@ class _InventoryReportTab extends ConsumerWidget {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Text(
                                     item.productName,
                                     style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: item.stock < 0
                                         ? Colors.red.shade100
@@ -894,8 +961,11 @@ class _InventoryReportTab extends ConsumerWidget {
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.history_rounded,
-                              size: 20, color: AppColors.primary),
+                          Icon(
+                            Icons.history_rounded,
+                            size: 20,
+                            color: AppColors.primary,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Mutasi Stok Terakhir (Buku Besar)',
@@ -930,10 +1000,9 @@ class _InventoryReportTab extends ConsumerWidget {
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: (isPositive
-                                            ? Colors.green
-                                            : Colors.red)
-                                        .withValues(alpha: 0.1),
+                                    color:
+                                        (isPositive ? Colors.green : Colors.red)
+                                            .withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -1062,10 +1131,7 @@ class _MetricTile extends StatelessWidget {
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
             ),
           ],
         ),

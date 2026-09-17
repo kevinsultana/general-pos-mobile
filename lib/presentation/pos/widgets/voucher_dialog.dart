@@ -132,8 +132,9 @@ class _VoucherDialogState extends ConsumerState<VoucherDialog>
     });
 
     final promoRepo = ref.read(promotionRepositoryProvider);
+    final activeStoreId = ref.read(activeStoreIdProvider);
     final promo = await promoRepo.getPromotionByCode(
-      'store-default-01',
+      activeStoreId,
       code.trim().toUpperCase(),
     );
 

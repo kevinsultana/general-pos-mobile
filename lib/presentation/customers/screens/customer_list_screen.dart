@@ -82,13 +82,23 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
       appBar: AppBar(
         title: const Text(
           'Daftar Pelanggan',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Segarkan',
+            onPressed: () => ref.refresh(customerListStreamProvider),
+          ),
+          IconButton(
             icon: const Icon(Icons.person_add_alt_1_rounded),
             tooltip: 'Tambah Pelanggan',
-            onPressed: () => CustomerFormDialog.show(context),
+            onPressed: () async {
+              final newId = await CustomerFormDialog.show(context);
+              if (newId != null) {
+                ref.invalidate(customerListStreamProvider);
+              }
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -96,7 +106,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        onPressed: () => CustomerFormDialog.show(context),
+        onPressed: () async {
+          final newId = await CustomerFormDialog.show(context);
+          if (newId != null) {
+            ref.invalidate(customerListStreamProvider);
+          }
+        },
         icon: const Icon(Icons.person_add_alt_1_rounded),
         label: const Text('Pelanggan Baru'),
       ),
@@ -199,7 +214,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   itemBuilder: (context, index) {
                     final customer = filtered[index];
                     final initials = customer.name.isNotEmpty
-                        ? customer.name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+                        ? customer.name
+                              .trim()
+                              .split(' ')
+                              .map((e) => e.isNotEmpty ? e[0] : '')
+                              .take(2)
+                              .join()
+                              .toUpperCase()
                         : '?';
 
                     return Card(
@@ -215,7 +236,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                         ),
                         leading: CircleAvatar(
                           radius: 22,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.12,
+                          ),
                           child: Text(
                             initials,
                             style: const TextStyle(
@@ -236,11 +259,15 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 4),
-                            if (customer.phone != null && customer.phone!.isNotEmpty)
+                            if (customer.phone != null &&
+                                customer.phone!.isNotEmpty)
                               Row(
                                 children: [
-                                  const Icon(Icons.phone_outlined,
-                                      size: 14, color: AppColors.textSecondaryLight),
+                                  const Icon(
+                                    Icons.phone_outlined,
+                                    size: 14,
+                                    color: AppColors.textSecondaryLight,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     customer.phone!,
@@ -251,11 +278,15 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                   ),
                                 ],
                               ),
-                            if (customer.email != null && customer.email!.isNotEmpty)
+                            if (customer.email != null &&
+                                customer.email!.isNotEmpty)
                               Row(
                                 children: [
-                                  const Icon(Icons.email_outlined,
-                                      size: 14, color: AppColors.textSecondaryLight),
+                                  const Icon(
+                                    Icons.email_outlined,
+                                    size: 14,
+                                    color: AppColors.textSecondaryLight,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     customer.email!,
@@ -266,7 +297,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                   ),
                                 ],
                               ),
-                            if (customer.notes != null && customer.notes!.isNotEmpty)
+                            if (customer.notes != null &&
+                                customer.notes!.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 2),
                                 child: Text(
@@ -289,16 +321,25 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                               icon: const Icon(Icons.edit_outlined, size: 20),
                               color: AppColors.primary,
                               tooltip: 'Ubah Data',
-                              onPressed: () => CustomerFormDialog.show(
-                                context,
-                                customer: customer,
-                              ),
+                              onPressed: () async {
+                                final res = await CustomerFormDialog.show(
+                                  context,
+                                  customer: customer,
+                                );
+                                if (res != null) {
+                                  ref.invalidate(customerListStreamProvider);
+                                }
+                              },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 20,
+                              ),
                               color: AppColors.danger,
                               tooltip: 'Hapus',
-                              onPressed: () => _confirmDelete(context, customer),
+                              onPressed: () =>
+                                  _confirmDelete(context, customer),
                             ),
                           ],
                         ),

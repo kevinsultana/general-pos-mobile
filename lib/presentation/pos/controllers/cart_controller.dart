@@ -11,14 +11,15 @@ final cartControllerProvider =
     StateNotifierProvider<CartController, CartState>((ref) {
   final draftRepo = ref.watch(draftRepositoryProvider);
   final productRepo = ref.watch(productRepositoryProvider);
-  return CartController(draftRepo, productRepo);
+  return CartController(draftRepo, productRepo, ref);
 });
 
 class CartController extends StateNotifier<CartState> {
   final IDraftRepository _draftRepo;
   final IProductRepository _productRepo;
+  final Ref? _ref;
 
-  CartController(this._draftRepo, this._productRepo)
+  CartController(this._draftRepo, this._productRepo, [this._ref])
       : super(const CartState());
 
   /// Adds a product to the cart. If the product/variant already exists, increments quantity.
@@ -51,13 +52,16 @@ class CartController extends StateNotifier<CartState> {
   }
 
   /// Looks up a product or variant by barcode and adds it to the cart.
-  Future<bool> addByBarcode(String barcode,
-      {String storeId = AppConstants.defaultStoreId}) async {
+  Future<bool> addByBarcode(String barcode, {String? storeId}) async {
     final cleanBarcode = barcode.trim();
     if (cleanBarcode.isEmpty) return false;
 
+    final String effectiveStoreId =
+        storeId ?? _ref?.read(activeStoreIdProvider) ?? AppConstants.defaultStoreId;
+
     // Search product
-    final product = await _productRepo.getProductByBarcode(storeId, cleanBarcode);
+    final product =
+        await _productRepo.getProductByBarcode(effectiveStoreId, cleanBarcode);
     if (product != null) {
       addProduct(product);
       return true;
@@ -195,15 +199,17 @@ class CartController extends StateNotifier<CartState> {
 
   /// Saves the current cart state as a draft in the database.
   /// PRD rule: Draft transactions must NOT affect stock!
-  Future<String> saveAsDraft(
-      {String storeId = AppConstants.defaultStoreId}) async {
+  Future<String> saveAsDraft({String? storeId}) async {
     if (state.isEmpty) {
       throw Exception('Keranjang belanja kosong');
     }
 
+    final String effectiveStoreId =
+        storeId ?? _ref?.read(activeStoreIdProvider) ?? AppConstants.defaultStoreId;
+
     final draftId = await _draftRepo.saveDraft(
       existingDraftId: state.loadedDraftId,
-      storeId: storeId,
+      storeId: effectiveStoreId,
       orderType: state.orderType,
       queueNumber: state.queueNumber,
       customerId: state.customerId,

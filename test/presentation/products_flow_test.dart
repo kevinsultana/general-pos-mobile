@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile_pos/core/constants/app_constants.dart';
 import 'package:mobile_pos/core/providers/database_providers.dart';
 import 'package:mobile_pos/data/local/app_database.dart';
 import 'package:mobile_pos/presentation/products/screens/product_form_screen.dart';
@@ -186,5 +187,91 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 50));
   });
+
+  testWidgets(
+      'ProductListScreen renders product action buttons as icon-only with tooltips',
+      (WidgetTester tester) async {
+    // Insert store and product
+    await db.into(db.stores).insert(
+          StoresCompanion.insert(
+            id: AppConstants.defaultStoreId,
+            name: 'Store Icon Test',
+            currency: const Value('IDR'),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+    await db.into(db.products).insert(
+          ProductsCompanion.insert(
+            id: 'prod-icon-test',
+            storeId: AppConstants.defaultStoreId,
+            categoryId: 'cat-test',
+            name: 'Kopi Susu Gula Aren',
+            sku: const Value('KSGA-01'),
+            sellingPrice: 18000,
+            cost: 10000,
+            stock: 25,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+        ],
+        child: const MaterialApp(
+          home: ProductListScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Kopi Susu Gula Aren'), findsOneWidget);
+
+    // Verify action icon buttons exist by their tooltips
+    final stockInButton = find.byTooltip('Stock In');
+    final adjustButton = find.byTooltip('Sesuaikan Stok');
+    final historyButton = find.byTooltip('Histori Stok');
+    final barcodeButton = find.byTooltip('Cetak Label Barcode (CODE 128)');
+    final editButton = find.byTooltip('Edit Produk');
+
+    expect(stockInButton, findsOneWidget);
+    expect(adjustButton, findsOneWidget);
+    expect(historyButton, findsOneWidget);
+    expect(barcodeButton, findsOneWidget);
+    expect(editButton, findsOneWidget);
+
+    // Verify icons inside the buttons
+    expect(find.byIcon(Icons.add_shopping_cart_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.history_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.qr_code_2_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+
+    // Verify that OutlinedButton with text labels no longer exist for these actions
+    expect(find.widgetWithText(OutlinedButton, 'Stock In'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Sesuaikan'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Histori'), findsNothing);
+
+    // Tap Stock In icon button to verify it opens the dialog
+    await tester.tap(stockInButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stock In (Tambah Stok)'), findsOneWidget);
+
+    // Close dialog
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+
+    // Unmount and flush
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 50));
+  });
 }
+
 

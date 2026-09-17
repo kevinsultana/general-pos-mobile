@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile_pos/core/providers/database_providers.dart';
 import 'package:mobile_pos/data/local/app_database.dart';
 import 'package:mobile_pos/data/repositories/draft_repository_impl.dart';
 import 'package:mobile_pos/data/repositories/product_repository_impl.dart';
@@ -12,6 +13,7 @@ import 'package:mobile_pos/presentation/payment/controllers/payment_controller.d
 import 'package:mobile_pos/presentation/pos/controllers/cart_controller.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late AppDatabase db;
   late TransactionRepositoryImpl trxRepo;
   late StoreRepositoryImpl storeRepo;
@@ -83,6 +85,9 @@ void main() {
 
     container = ProviderContainer(
       overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        storeRepositoryProvider.overrideWithValue(storeRepo),
+        activeStoreIdProvider.overrideWithValue('store-default-01'),
         paymentControllerProvider.overrideWith(
           (ref) => PaymentController(ref, trxRepo, storeRepo, db: db),
         ),

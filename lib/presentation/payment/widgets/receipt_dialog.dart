@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -128,7 +129,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
     );
   }
 
-  Future<void> _handleDirectPrint(ReceiptData receiptData) async {
+  Future<void> _handleDirectPrint(ReceiptData receiptData, {String? storeId}) async {
     if (_isPrinting) return;
     setState(() {
       _isPrinting = true;
@@ -137,7 +138,10 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
     final printerService = ref.read(printerServiceProvider);
 
     try {
-      final success = await printerService.printReceipt(receiptData);
+      final effectiveStoreId = (storeId != null && storeId.isNotEmpty)
+          ? storeId
+          : AppConstants.defaultStoreId;
+      final success = await printerService.printReceipt(receiptData, storeId: effectiveStoreId);
       if (mounted) {
         setState(() {
           _lastPrintSuccess = success;
@@ -186,12 +190,15 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
     }
   }
 
-  Future<void> _handleKitchenPrint(KitchenTicketData ticketData) async {
+  Future<void> _handleKitchenPrint(KitchenTicketData ticketData, {String? storeId}) async {
     setState(() => _isPrinting = true);
     final printerService = ref.read(printerServiceProvider);
 
     try {
-      final success = await printerService.printKitchenTicket(ticketData);
+      final effectiveStoreId = (storeId != null && storeId.isNotEmpty)
+          ? storeId
+          : AppConstants.defaultStoreId;
+      final success = await printerService.printKitchenTicket(ticketData, storeId: effectiveStoreId);
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -546,7 +553,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                         ),
                         onPressed: _isPrinting
                             ? null
-                            : () => _handleDirectPrint(receiptData),
+                            : () => _handleDirectPrint(receiptData, storeId: store?.id ?? trx.storeId),
                         icon: _isPrinting
                             ? const SizedBox(
                                 width: 16,
@@ -600,7 +607,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                         ),
                         onPressed: _isPrinting
                             ? null
-                            : () => _handleDirectPrint(receiptData),
+                            : () => _handleDirectPrint(receiptData, storeId: store?.id ?? trx.storeId),
                         icon: _isPrinting
                             ? const SizedBox(
                                 width: 16,
@@ -657,7 +664,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _handleKitchenPrint(kitchenTicketData),
+                          onPressed: () => _handleKitchenPrint(kitchenTicketData, storeId: store?.id ?? trx.storeId),
                           icon: const Icon(Icons.restaurant_rounded, size: 16),
                           label: const Text('Tiket Dapur',
                               style: TextStyle(fontSize: 12)),
@@ -749,7 +756,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
     final storeRepo = ref.read(storeRepositoryProvider);
     final String targetStoreId = (transaction?.storeId != null && transaction!.storeId.isNotEmpty)
         ? transaction.storeId
-        : ref.read(activeStoreIdProvider);
+        : AppConstants.defaultStoreId;
     final store = await storeRepo.getStore(targetStoreId) ?? await storeRepo.getCurrentStore();
 
     Customer? customer;

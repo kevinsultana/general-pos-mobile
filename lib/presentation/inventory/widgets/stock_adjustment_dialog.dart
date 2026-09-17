@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/thousands_separator_input_formatter.dart';
 import '../../../data/local/app_database.dart';
 import '../controllers/inventory_controller.dart';
 
@@ -62,22 +62,24 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final qty = int.tryParse(_qtyController.text) ?? 0;
+    final qty = ThousandsSeparatorInputFormatter.parse(_qtyController.text);
     final delta = _isIncrease ? qty : -qty;
     final currentStock = _selectedVariant != null ? _selectedVariant!.stock : widget.product.stock;
     final newStock = currentStock + delta;
 
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 480),
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -189,7 +191,7 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
               TextFormField(
                 controller: _qtyController,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
                 decoration: const InputDecoration(
                   labelText: 'Kuantitas *',
                   hintText: 'Masukkan jumlah unit',
@@ -197,8 +199,8 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
                 ),
                 onChanged: (_) => setState(() {}),
                 validator: (val) {
-                  final parsed = int.tryParse(val ?? '');
-                  if (parsed == null || parsed <= 0) {
+                  final parsed = ThousandsSeparatorInputFormatter.parse(val);
+                  if (parsed <= 0) {
                     return 'Masukkan jumlah minimal 1';
                   }
                   return null;
@@ -245,23 +247,34 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          _selectedVariant != null
-                              ? 'Stok Varian ${_selectedVariant!.name}:'
-                              : 'Perubahan Stok:',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondaryLight,
+                        Expanded(
+                          child: Text(
+                            _selectedVariant != null
+                                ? 'Stok Varian ${_selectedVariant!.name}:'
+                                : 'Perubahan Stok:',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondaryLight,
+                            ),
                           ),
                         ),
-                        Text(
-                          '$currentStock  ➜  $newStock unit',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: newStock < 0 ? AppColors.danger : AppColors.textPrimaryLight,
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '${ThousandsSeparatorInputFormatter.format(currentStock)} ➜ ${ThousandsSeparatorInputFormatter.format(newStock)} unit',
+                              textAlign: TextAlign.end,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: newStock < 0 ? AppColors.danger : AppColors.textPrimaryLight,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -369,6 +382,7 @@ class _StockAdjustmentDialogState extends ConsumerState<StockAdjustmentDialog> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

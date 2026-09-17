@@ -30,7 +30,7 @@ class _TransactionHistoryScreenState
       appBar: AppBar(
         title: const Text(
           'Riwayat Transaksi',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
       body: Column(
@@ -61,12 +61,15 @@ class _TransactionHistoryScreenState
 
                 if (_selectedFilter != 'ALL') {
                   if (_selectedFilter == 'REFUNDED') {
-                    filtered = filtered.where((t) =>
-                        t.status == 'REFUNDED' ||
-                        t.status == 'PARTIALLY_REFUNDED');
+                    filtered = filtered.where(
+                      (t) =>
+                          t.status == 'REFUNDED' ||
+                          t.status == 'PARTIALLY_REFUNDED',
+                    );
                   } else {
-                    filtered =
-                        filtered.where((t) => t.status == _selectedFilter);
+                    filtered = filtered.where(
+                      (t) => t.status == _selectedFilter,
+                    );
                   }
                 }
 
@@ -77,8 +80,11 @@ class _TransactionHistoryScreenState
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.receipt_long_outlined,
-                            size: 64, color: Colors.grey.shade400),
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
                         const SizedBox(height: 16),
                         const Text(
                           'Belum Ada Transaksi',
@@ -172,13 +178,20 @@ class _TransactionHistoryScreenState
                                           .read(customerRepositoryProvider)
                                           .getCustomerById(trx.customerId!),
                                       builder: (context, snap) {
-                                        if (snap.data == null) return const SizedBox.shrink();
+                                        if (snap.data == null) {
+                                          return const SizedBox.shrink();
+                                        }
                                         return Padding(
-                                          padding: const EdgeInsets.only(left: 8),
+                                          padding: const EdgeInsets.only(
+                                            left: 8,
+                                          ),
                                           child: Row(
                                             children: [
-                                              const Icon(Icons.person_outline_rounded,
-                                                  size: 13, color: AppColors.primary),
+                                              const Icon(
+                                                Icons.person_outline_rounded,
+                                                size: 13,
+                                                color: AppColors.primary,
+                                              ),
                                               const SizedBox(width: 2),
                                               Text(
                                                 snap.data!.name,
@@ -226,8 +239,7 @@ class _TransactionHistoryScreenState
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) =>
-                  Center(child: Text('Terjadi kesalahan: $err')),
+              error: (err, _) => Center(child: Text('Terjadi kesalahan: $err')),
             ),
           ),
         ],
@@ -305,11 +317,7 @@ class _TransactionHistoryScreenState
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: fg,
-        ),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg),
       ),
     );
   }
@@ -405,8 +413,10 @@ class _TransactionDetailSheet extends ConsumerWidget {
                   children: [
                     const Text(
                       'Rincian Item',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     ...items.map((item) {
@@ -424,14 +434,16 @@ class _TransactionDetailSheet extends ConsumerWidget {
                                         ? '${item.productNameSnapshot} (${item.variantNameSnapshot})'
                                         : item.productNameSnapshot,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                   Text(
                                     '${item.quantity} x ${CurrencyFormatter.format(item.unitPrice)}',
                                     style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.textSecondaryLight),
+                                      fontSize: 11,
+                                      color: AppColors.textSecondaryLight,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -439,7 +451,9 @@ class _TransactionDetailSheet extends ConsumerWidget {
                             Text(
                               CurrencyFormatter.format(item.total),
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 13),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
@@ -448,8 +462,10 @@ class _TransactionDetailSheet extends ConsumerWidget {
                     const Divider(height: 24),
 
                     // Calculations
-                    _buildSummaryRow('Subtotal',
-                        CurrencyFormatter.format(transaction.subtotal)),
+                    _buildSummaryRow(
+                      'Subtotal',
+                      CurrencyFormatter.format(transaction.subtotal),
+                    ),
                     if (transaction.discountTotal > 0)
                       _buildSummaryRow(
                         'Diskon Transaksi',
@@ -460,7 +476,8 @@ class _TransactionDetailSheet extends ConsumerWidget {
                       _buildSummaryRow(
                         'Pembulatan Tunai',
                         CurrencyFormatter.formatWithSign(
-                            transaction.roundingAmount),
+                          transaction.roundingAmount,
+                        ),
                         color: transaction.roundingAmount > 0
                             ? AppColors.warning
                             : AppColors.danger,
@@ -469,8 +486,10 @@ class _TransactionDetailSheet extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('TOTAL AKHIR',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'TOTAL AKHIR',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         Text(
                           CurrencyFormatter.format(transaction.total),
                           style: const TextStyle(
@@ -498,8 +517,10 @@ class _TransactionDetailSheet extends ConsumerWidget {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          ReceiptDialog.show(context,
-                              transactionId: transaction.id);
+                          ReceiptDialog.show(
+                            context,
+                            transactionId: transaction.id,
+                          );
                         },
                         icon: const Icon(Icons.receipt_long_rounded, size: 18),
                         label: const Text('Lihat Struk'),
@@ -535,11 +556,16 @@ class _TransactionDetailSheet extends ConsumerWidget {
                         ),
                       ),
                       onPressed: () {
-                        ReceiptDialog.show(context, transactionId: transaction.id);
+                        ReceiptDialog.show(
+                          context,
+                          transactionId: transaction.id,
+                        );
                       },
                       icon: const Icon(Icons.print_rounded, size: 18),
-                      label: const Text('Cetak Ulang Struk (Reprint)',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: const Text(
+                        'Cetak Ulang Struk (Reprint)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -570,14 +596,21 @@ class _TransactionDetailSheet extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondaryLight)),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color ?? AppColors.textPrimaryLight)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondaryLight,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: color ?? AppColors.textPrimaryLight,
+            ),
+          ),
         ],
       ),
     );
@@ -596,7 +629,10 @@ class _TransactionDetailSheet extends ConsumerWidget {
           children: [
             const Text(
               'Pembatalan transaksi akan mengembalikan stok produk yang terjual secara otomatis ke inventori (Stock Reversal).',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondaryLight,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -636,7 +672,8 @@ class _TransactionDetailSheet extends ConsumerWidget {
                     const SnackBar(
                       backgroundColor: Colors.green,
                       content: Text(
-                          'Transaksi berhasil dibatalkan dan stok telah dipulihkan'),
+                        'Transaksi berhasil dibatalkan dan stok telah dipulihkan',
+                      ),
                     ),
                   );
                 }
@@ -686,4 +723,3 @@ class _TransactionDetailSheet extends ConsumerWidget {
     }
   }
 }
-

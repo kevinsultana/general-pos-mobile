@@ -26,15 +26,28 @@ part 'report_dao.g.dart';
 class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
   ReportDao(super.db);
 
+  Future<void> healOrphanData(String storeId) async {
+    try {
+      if (storeId != 'store-default-01' && storeId.isNotEmpty) {
+        await customStatement("UPDATE transactions SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+        await customStatement("UPDATE products SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+        await customStatement("UPDATE categories SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+        await customStatement("UPDATE stock_movements SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+      }
+    } catch (_) {}
+  }
+
   Future<SalesReport> getSalesReport({
     required String storeId,
     required DateTime startDate,
     required DateTime endDate,
   }) async {
+    await healOrphanData(storeId);
+
     // 1. Completed Transactions in range
     final completedTrx = await (select(transactions)
           ..where((tbl) =>
-              tbl.storeId.equals(storeId) &
+              (tbl.storeId.equals(storeId) | tbl.storeId.equals('store-default-01')) &
               tbl.status.equals('COMPLETED') &
               tbl.createdAt.isBiggerOrEqualValue(startDate) &
               tbl.createdAt.isSmallerOrEqualValue(endDate)))
@@ -48,7 +61,7 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
     // 2. Cancelled Transactions in range
     final cancelledTrx = await (select(transactions)
           ..where((tbl) =>
-              tbl.storeId.equals(storeId) &
+              (tbl.storeId.equals(storeId) | tbl.storeId.equals('store-default-01')) &
               tbl.status.equals('CANCELLED') &
               tbl.createdAt.isBiggerOrEqualValue(startDate) &
               tbl.createdAt.isSmallerOrEqualValue(endDate)))
@@ -63,7 +76,7 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
       innerJoin(transactions, transactions.id.equalsExp(refunds.transactionId)),
     ])
       ..where(
-        transactions.storeId.equals(storeId) &
+        (transactions.storeId.equals(storeId) | transactions.storeId.equals('store-default-01')) &
         refunds.createdAt.isBiggerOrEqualValue(startDate) &
         refunds.createdAt.isSmallerOrEqualValue(endDate),
       );
@@ -173,9 +186,10 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
+    await healOrphanData(storeId);
     final completedTrx = await (select(transactions)
           ..where((tbl) =>
-              tbl.storeId.equals(storeId) &
+              (tbl.storeId.equals(storeId) | tbl.storeId.equals('store-default-01')) &
               tbl.status.equals('COMPLETED') &
               tbl.createdAt.isBiggerOrEqualValue(startDate) &
               tbl.createdAt.isSmallerOrEqualValue(endDate)))
@@ -277,8 +291,11 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
   Future<InventoryReportSummary> getInventoryReport({
     required String storeId,
   }) async {
+    await healOrphanData(storeId);
     final allProducts = await (select(products)
-          ..where((tbl) => tbl.storeId.equals(storeId) & tbl.active.equals(true))
+          ..where((tbl) =>
+              (tbl.storeId.equals(storeId) | tbl.storeId.equals('store-default-01')) &
+              tbl.active.equals(true))
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.name)]))
         .get();
 
@@ -322,7 +339,8 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
 
     // Recent 25 stock movements
     final movements = await (select(stockMovements)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) | tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)])
           ..limit(25))
         .get();

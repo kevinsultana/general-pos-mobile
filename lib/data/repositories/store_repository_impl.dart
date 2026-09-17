@@ -18,10 +18,23 @@ class StoreRepositoryImpl implements IStoreRepository {
   Stream<Store?> watchStore(String id) => _storeDao.watchStoreById(id);
 
   @override
-  Future<Store?> getCurrentStore() => _storeDao.getFirstStore();
+  Future<Store?> getCurrentStore() async {
+    final store = await _storeDao.getFirstStore();
+    if (store != null) {
+      await _storeDao.healAllOrphanRecords(store.id);
+    }
+    return store;
+  }
 
   @override
-  Stream<Store?> watchCurrentStore() => _storeDao.watchFirstStore();
+  Stream<Store?> watchCurrentStore() {
+    return _storeDao.watchFirstStore().asyncMap((store) async {
+      if (store != null) {
+        await _storeDao.healAllOrphanRecords(store.id);
+      }
+      return store;
+    });
+  }
 
   @override
   Future<void> saveStore(StoresCompanion store) => _storeDao.insertStore(store);

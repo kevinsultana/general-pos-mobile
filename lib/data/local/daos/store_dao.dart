@@ -118,6 +118,19 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
     return db.userDao.hasAdminUser(store.id);
   }
 
+  Future<void> healAllOrphanRecords(String storeId) async {
+    if (storeId == 'store-default-01' || storeId.isEmpty) return;
+    try {
+      await customStatement("UPDATE products SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+      await customStatement("UPDATE categories SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+      await customStatement("UPDATE transactions SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+      await customStatement("UPDATE stock_movements SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+      await customStatement("UPDATE customers SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+      await customStatement("UPDATE promotions SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+      await customStatement("UPDATE printers SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
+    } catch (_) {}
+  }
+
   Future<Store> registerLocalStore({
     required String storeId,
     required String name,
@@ -177,6 +190,9 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
         updatedAt: now,
       );
       await db.userDao.insertUser(userCompanion);
+
+      // Auto-migrate all existing business records to the new storeId
+      await healAllOrphanRecords(storeId);
 
       final created = await getStoreById(storeId);
       return created!;

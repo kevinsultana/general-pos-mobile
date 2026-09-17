@@ -23,28 +23,49 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
     ''');
   }
 
+  Future<void> healOrphanCustomers(String storeId) async {
+    try {
+      if (storeId != 'store-default-01' && storeId.isNotEmpty) {
+        await (update(customers)
+              ..where((tbl) =>
+                  tbl.storeId.equals('store-default-01') |
+                  tbl.storeId.equals('store-default-001') |
+                  tbl.storeId.equals('')))
+            .write(CustomersCompanion(storeId: Value(storeId)));
+      }
+    } catch (_) {}
+  }
+
   Future<List<Customer>> getAllCustomers(String storeId) async {
     await ensureTableExists();
+    await healOrphanCustomers(storeId);
     return (select(customers)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.name)]))
         .get();
   }
 
   Stream<List<Customer>> watchAllCustomers(String storeId) async* {
     await ensureTableExists();
+    await healOrphanCustomers(storeId);
     yield* (select(customers)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.name)]))
         .watch();
   }
 
   Future<List<Customer>> searchCustomers(String storeId, String query) async {
     await ensureTableExists();
+    await healOrphanCustomers(storeId);
     final lowerQuery = '%${query.toLowerCase()}%';
     return (select(customers)
           ..where((tbl) =>
-              tbl.storeId.equals(storeId) &
+              (tbl.storeId.equals(storeId) |
+                  tbl.storeId.equals('store-default-01')) &
               (tbl.name.lower().like(lowerQuery) |
                   tbl.phone.lower().like(lowerQuery)))
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.name)]))

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/providers/permission_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -95,8 +94,9 @@ class _PromotionFormDialogState extends ConsumerState<PromotionFormDialog> {
           active: _active,
         );
       } else {
+        final activeStoreId = ref.read(activeStoreIdProvider);
         promoId = await repo.createPromotion(
-          storeId: AppConstants.defaultStoreId,
+          storeId: activeStoreId,
           name: _nameController.text.trim(),
           code: _codeController.text.trim().isNotEmpty
               ? _codeController.text.trim().toUpperCase()
@@ -107,6 +107,8 @@ class _PromotionFormDialogState extends ConsumerState<PromotionFormDialog> {
           active: _active,
         );
       }
+
+      ref.invalidate(promotionListStreamProvider);
 
       if (mounted) {
         Navigator.pop(context, promoId);

@@ -56,13 +56,18 @@ class _CustomerFormDialogState extends ConsumerState<CustomerFormDialog> {
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(customerRepositoryProvider);
+      final activeStoreId = ref.read(activeStoreIdProvider);
       String customerId;
 
       if (_isEditing) {
         customerId = widget.customer!.id;
+        final targetStoreId = widget.customer!.storeId.isNotEmpty &&
+                widget.customer!.storeId != AppConstants.defaultStoreId
+            ? widget.customer!.storeId
+            : activeStoreId;
         await repo.updateCustomer(
           id: customerId,
-          storeId: widget.customer!.storeId,
+          storeId: targetStoreId,
           name: _nameController.text.trim(),
           phone: _phoneController.text.trim(),
           email: _emailController.text.trim(),
@@ -70,13 +75,15 @@ class _CustomerFormDialogState extends ConsumerState<CustomerFormDialog> {
         );
       } else {
         customerId = await repo.createCustomer(
-          storeId: AppConstants.defaultStoreId,
+          storeId: activeStoreId,
           name: _nameController.text.trim(),
           phone: _phoneController.text.trim(),
           email: _emailController.text.trim(),
           notes: _notesController.text.trim(),
         );
       }
+
+      ref.invalidate(customerListStreamProvider);
 
       if (mounted) {
         Navigator.pop(context, customerId);

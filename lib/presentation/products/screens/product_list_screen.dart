@@ -10,7 +10,6 @@ import '../../inventory/widgets/stock_history_dialog.dart';
 import '../../inventory/widgets/stock_in_dialog.dart';
 import '../controllers/category_controller.dart';
 import '../controllers/product_controller.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/providers/permission_provider.dart';
 import '../../../data/services/barcode_label_service.dart';
@@ -35,7 +34,7 @@ class ProductListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(
           'Katalog Produk & Inventori',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         actions: [
           IconButton(
@@ -458,113 +457,111 @@ class _ProductCard extends ConsumerWidget {
             ),
             const Divider(height: 20),
 
-            // Row 4: Action Buttons (Stock In, Penyesuaian, Histori, Edit)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (canManageInventory) ...[
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+            // Row 4: Action Buttons (Stock In, Penyesuaian, Histori, Barcode, Edit)
+            Align(
+              alignment: Alignment.centerRight,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (canManageInventory) ...[
+                      IconButton(
+                        icon: const Icon(
+                          Icons.add_shopping_cart_rounded,
+                          size: 20,
+                          color: AppColors.accent,
                         ),
-                        side: const BorderSide(color: AppColors.accent),
-                        foregroundColor: AppColors.accent,
+                        tooltip: 'Stock In',
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => StockInDialog(product: product),
+                          );
+                        },
                       ),
-                      icon: const Icon(
-                        Icons.add_shopping_cart_rounded,
-                        size: 16,
-                      ),
-                      label: const Text('Stock In'),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => StockInDialog(product: product),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      IconButton(
+                        icon: const Icon(
+                          Icons.tune_rounded,
+                          size: 20,
+                          color: AppColors.textSecondaryLight,
                         ),
-                      ),
-                      icon: const Icon(Icons.tune_rounded, size: 16),
-                      label: const Text('Sesuaikan'),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) =>
-                              StockAdjustmentDialog(product: product),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    icon: const Icon(Icons.history_rounded, size: 16),
-                    label: const Text('Histori'),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => StockHistoryDialog(product: product),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.qr_code_2_rounded, size: 20),
-                    tooltip: 'Cetak Label Barcode (CODE 128)',
-                    onPressed: () async {
-                      final store = await ref
-                          .read(storeRepositoryProvider)
-                          .getStore(AppConstants.defaultStoreId);
-                      if (context.mounted) {
-                        final barcodeVal =
-                            product.barcode != null &&
-                                product.barcode!.isNotEmpty
-                            ? product.barcode!
-                            : (product.sku != null && product.sku!.isNotEmpty
-                                  ? product.sku!
-                                  : product.name);
-                        BarcodeLabelDialog.show(
-                          context,
-                          BarcodeLabelData(
-                            productName: product.name,
-                            barcodeValue: barcodeVal,
-                            price: product.sellingPrice,
-                            storeName: store?.name ?? 'TOKO UMKM POS',
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  if (canManageProducts) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      tooltip: 'Edit Produk',
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
+                        tooltip: 'Sesuaikan Stok',
+                        onPressed: () {
+                          showDialog(
+                            context: context,
                             builder: (_) =>
-                                ProductFormScreen(productToEdit: product),
-                          ),
+                                StockAdjustmentDialog(product: product),
+                          );
+                        },
+                      ),
+                    ],
+                    IconButton(
+                      icon: const Icon(
+                        Icons.history_rounded,
+                        size: 20,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      tooltip: 'Histori Stok',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => StockHistoryDialog(product: product),
                         );
                       },
                     ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.qr_code_2_rounded,
+                        size: 20,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      tooltip: 'Cetak Label Barcode (CODE 128)',
+                      onPressed: () async {
+                        final activeStoreId = ref.read(activeStoreIdProvider);
+                        final store = await ref
+                            .read(storeRepositoryProvider)
+                            .getStore(activeStoreId);
+                        if (context.mounted) {
+                          final barcodeVal =
+                              product.barcode != null &&
+                                  product.barcode!.isNotEmpty
+                              ? product.barcode!
+                              : (product.sku != null && product.sku!.isNotEmpty
+                                    ? product.sku!
+                                    : product.name);
+                          BarcodeLabelDialog.show(
+                            context,
+                            BarcodeLabelData(
+                              productName: product.name,
+                              barcodeValue: barcodeVal,
+                              price: product.sellingPrice,
+                              storeName: store?.name ?? 'TOKO UMKM POS',
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    if (canManageProducts) ...[
+                      IconButton(
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          size: 20,
+                          color: AppColors.textSecondaryLight,
+                        ),
+                        tooltip: 'Edit Produk',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ProductFormScreen(productToEdit: product),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ],

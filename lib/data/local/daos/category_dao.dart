@@ -8,12 +8,35 @@ part 'category_dao.g.dart';
 class CategoryDao extends DatabaseAccessor<AppDatabase> with _$CategoryDaoMixin {
   CategoryDao(super.db);
 
-  Future<List<Category>> getAllCategories(String storeId) {
-    return (select(categories)..where((tbl) => tbl.storeId.equals(storeId))).get();
+  Future<void> healOrphanCategories(String storeId) async {
+    try {
+      if (storeId != 'store-default-01' && storeId.isNotEmpty) {
+        await (update(categories)
+              ..where((tbl) =>
+                  tbl.storeId.equals('store-default-01') |
+                  tbl.storeId.equals('store-default-001') |
+                  tbl.storeId.equals('')))
+            .write(CategoriesCompanion(storeId: Value(storeId)));
+      }
+    } catch (_) {}
   }
 
-  Stream<List<Category>> watchAllCategories(String storeId) {
-    return (select(categories)..where((tbl) => tbl.storeId.equals(storeId))).watch();
+  Future<List<Category>> getAllCategories(String storeId) async {
+    await healOrphanCategories(storeId);
+    return (select(categories)
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01')))
+        .get();
+  }
+
+  Stream<List<Category>> watchAllCategories(String storeId) async* {
+    await healOrphanCategories(storeId);
+    yield* (select(categories)
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01')))
+        .watch();
   }
 
   Future<Category?> getCategoryById(String id) {

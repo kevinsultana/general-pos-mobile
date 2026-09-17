@@ -32,17 +32,36 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  Future<List<Transaction>> getTransactionsByStore(String storeId, {int limit = 50}) {
+  Future<void> healOrphanTransactions(String storeId) async {
+    try {
+      if (storeId != 'store-default-01' && storeId.isNotEmpty) {
+        await (update(transactions)
+              ..where((tbl) =>
+                  tbl.storeId.equals('store-default-01') |
+                  tbl.storeId.equals('store-default-001') |
+                  tbl.storeId.equals('')))
+            .write(TransactionsCompanion(storeId: Value(storeId)));
+      }
+    } catch (_) {}
+  }
+
+  Future<List<Transaction>> getTransactionsByStore(String storeId, {int limit = 50}) async {
+    await healOrphanTransactions(storeId);
     return (select(transactions)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)])
           ..limit(limit))
         .get();
   }
 
-  Stream<List<Transaction>> watchTransactionsByStore(String storeId, {int limit = 50}) {
-    return (select(transactions)
-          ..where((tbl) => tbl.storeId.equals(storeId))
+  Stream<List<Transaction>> watchTransactionsByStore(String storeId, {int limit = 50}) async* {
+    await healOrphanTransactions(storeId);
+    yield* (select(transactions)
+          ..where((tbl) =>
+              tbl.storeId.equals(storeId) |
+              tbl.storeId.equals('store-default-01'))
           ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)])
           ..limit(limit))
         .watch();
