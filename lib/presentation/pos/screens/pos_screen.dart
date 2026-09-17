@@ -30,86 +30,32 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     super.dispose();
   }
 
-  void _showBarcodeSearchDialog() {
-    final barcodeController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text('Scan / Input Barcode', style: TextStyle(fontSize: 16)),
-          ],
-        ),
-        content: TextField(
-          controller: barcodeController,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: 'Barcode Produk / Varian',
-            hintText: 'Contoh: 899123456789',
-            prefixIcon: const Icon(Icons.barcode_reader),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.camera_alt_outlined),
-              tooltip: 'Pindai dengan Kamera',
-              onPressed: () async {
-                final scanned = await BarcodeScannerScreen.scan(
-                  ctx,
-                  title: 'Pindai Barcode Transaksi',
-                );
-                if (scanned != null && scanned.isNotEmpty) {
-                  barcodeController.text = scanned;
-                }
-              },
-            ),
-          ),
-          onSubmitted: (val) async {
-            final found = await ref
-                .read(cartControllerProvider.notifier)
-                .addByBarcode(val);
-            if (ctx.mounted) {
-              Navigator.pop(ctx);
-            }
-            if (!found && mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  backgroundColor: AppColors.danger,
-                  content: Text('Produk dengan barcode tersebut tidak ditemukan'),
-                ),
-              );
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () async {
-              final val = barcodeController.text.trim();
-              final found = await ref
-                  .read(cartControllerProvider.notifier)
-                  .addByBarcode(val);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-              }
-              if (!found && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    backgroundColor: AppColors.danger,
-                    content:
-                        Text('Produk dengan barcode tersebut tidak ditemukan'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Cari & Tambah'),
-          ),
-        ],
-      ),
+  Future<void> _scanBarcodeWithCamera() async {
+    final scanned = await BarcodeScannerScreen.scan(
+      context,
+      title: 'Pindai Barcode Transaksi',
     );
+    if (scanned != null && scanned.isNotEmpty && mounted) {
+      final found = await ref
+          .read(cartControllerProvider.notifier)
+          .addByBarcode(scanned);
+      if (!found && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.danger,
+            content: Text('Produk dengan barcode "$scanned" tidak ditemukan'),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primary,
+            content: Text('Produk ($scanned) berhasil ditambahkan ke keranjang'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -127,13 +73,6 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       appBar: AppBar(
         title: const Text('Kasir POS', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          // Barcode Scanner button
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-            tooltip: 'Cari Barcode',
-            onPressed: _showBarcodeSearchDialog,
-          ),
-
           // Drafts saved badge button
           Stack(
             alignment: Alignment.center,
@@ -175,33 +114,56 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
+          // Search Bar + Barcode Scanner Button
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Cari nama produk, SKU, atau barcode...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: () {
-                          setState(() {
-                            _searchController.clear();
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val.trim().toLowerCase();
-                });
-              },
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Cari nama produk, SKU, atau barcode...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val.trim().toLowerCase();
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    foregroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 22),
+                  tooltip: 'Pindai Barcode Kamera',
+                  onPressed: _scanBarcodeWithCamera,
+                ),
+              ],
             ),
           ),
 

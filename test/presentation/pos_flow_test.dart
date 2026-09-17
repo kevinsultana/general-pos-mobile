@@ -62,6 +62,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Kasir POS'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byIcon(Icons.qr_code_scanner_rounded), findsOneWidget);
     expect(find.text('Es Teh Manis'), findsOneWidget);
     expect(find.text('Rp 5.000'), findsOneWidget);
 

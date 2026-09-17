@@ -72,6 +72,50 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     }
   }
 
+  Future<void> _showManualInputDialog() async {
+    final controller = TextEditingController();
+    final manualCode = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Input Barcode Manual'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Nomor Barcode / EAN-13',
+            hintText: 'Contoh: 899123456789',
+            prefixIcon: Icon(Icons.barcode_reader),
+          ),
+          onSubmitted: (val) {
+            if (val.trim().isNotEmpty) {
+              Navigator.pop(ctx, val.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final val = controller.text.trim();
+              if (val.isNotEmpty) {
+                Navigator.pop(ctx, val);
+              }
+            },
+            child: const Text('Gunakan Barcode'),
+          ),
+        ],
+      ),
+    );
+
+    if (manualCode != null && manualCode.isNotEmpty && mounted) {
+      Navigator.of(context).pop(manualCode);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -111,14 +155,29 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                        ),
-                        icon: const Icon(Icons.arrow_back),
-                        label: const Text('Kembali'),
-                        onPressed: () => Navigator.of(context).pop(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white60),
+                            ),
+                            icon: const Icon(Icons.keyboard_alt_outlined),
+                            label: const Text('Input Manual'),
+                            onPressed: _showManualInputDialog,
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.arrow_back),
+                            label: const Text('Kembali'),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -254,6 +313,20 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                               ),
                             ],
                           ),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white60),
+                            backgroundColor: Colors.black38,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.keyboard_alt_outlined, size: 16),
+                          label: const Text('Ketik Barcode Manual',
+                              style: TextStyle(fontSize: 12)),
+                          onPressed: _showManualInputDialog,
                         ),
                       ],
                     ),

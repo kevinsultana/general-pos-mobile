@@ -59,5 +59,7 @@ void main() {
 
     // Verify that HomeScreen title and components are rendered
     expect(find.text('Buka Kasir'), findsOneWidget);
+    // In local mode, cloud synchronization menu should NOT appear
+    expect(find.text('Sinkronisasi Cloud'), findsNothing);
   });
 }

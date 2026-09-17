@@ -393,21 +393,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   containerColor: Colors.indigo.shade50,
                   route: '/printers',
                 ),
-                _buildMenuTile(
-                  context,
-                  title: 'Sinkronisasi Cloud',
-                  subtitle: isCloudMode
-                      ? 'Multi-device sync'
-                      : 'Aktifkan Cloud',
-                  icon: Icons.cloud_sync_rounded,
-                  color: isCloudMode
-                      ? Colors.cyan.shade700
-                      : Colors.blueGrey.shade400,
-                  containerColor: isCloudMode
-                      ? Colors.cyan.shade50
-                      : const Color(0xFFF1F5F9),
-                  route: isCloudMode ? '/cloud-sync' : '/cloud-login',
-                ),
+                if (isCloudMode)
+                  _buildMenuTile(
+                    context,
+                    title: 'Sinkronisasi Cloud',
+                    subtitle: 'Multi-device sync',
+                    icon: Icons.cloud_sync_rounded,
+                    color: Colors.cyan.shade700,
+                    containerColor: Colors.cyan.shade50,
+                    route: '/cloud-sync',
+                  ),
                 if (canManageSettings)
                   _buildMenuTile(
                     context,
