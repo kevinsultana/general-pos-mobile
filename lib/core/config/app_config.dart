@@ -6,7 +6,7 @@ class AppConfig {
   /// or modified dynamically when server endpoint is assigned.
   static const String defaultBaseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://localhost:5000',
+    defaultValue: 'https://pos-api.kevinsultana.online',
   );
 
   /// Helper to normalize server URLs by stripping trailing slashes.
