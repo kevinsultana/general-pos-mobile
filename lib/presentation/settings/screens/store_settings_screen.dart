@@ -788,9 +788,116 @@ class StoreSettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/backup'),
                 ),
               ),
+              const SizedBox(height: 12),
+
+              // Reset Application Database Card (Simulasi Pengguna Baru)
+              Card(
+                elevation: 0.5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.red.shade200),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.delete_forever_rounded,
+                      color: Colors.red.shade700,
+                      size: 24,
+                    ),
+                  ),
+                  title: const Text(
+                    'Reset Semua Data Aplikasi',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Kosongkan semua database & token (simulasi pengguna baru pertama kali unduh)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: Colors.red,
+                  ),
+                  onTap: () => _showResetConfirmationDialog(context, ref),
+                ),
+              ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _showResetConfirmationDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.danger),
+            SizedBox(width: 8),
+            Text('Reset Semua Data?'),
+          ],
+        ),
+        content: const Text(
+          'Tindakan ini akan menghapus semua database lokal, cache cloud, dan sesi login pada aplikasi.\n\nAplikasi akan dikembalikan ke kondisi awal (seperti baru di-download) sehingga Anda dapat memulai simulasi kembali dari nol.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                final resetService = ref.read(dataResetServiceProvider);
+                await resetService.resetEverything();
+                ref.invalidate(appOperationalModeProvider);
+                if (context.mounted) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Seluruh database aplikasi berhasil di-reset bersih.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  context.go('/mode-select');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal me-reset: $e'),
+                      backgroundColor: AppColors.danger,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Ya, Reset Semua'),
+          ),
+        ],
       ),
     );
   }

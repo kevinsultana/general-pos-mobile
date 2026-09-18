@@ -16,11 +16,43 @@ class ModeSelectionScreen extends ConsumerStatefulWidget {
 class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkIfProMigrated();
+  }
+
+  Future<void> _checkIfProMigrated() async {
+    try {
+      final tokens = ref.read(tokenStorageProvider);
+      final isPro = await tokens.isProMigrated();
+      if (isPro && mounted) {
+        context.go('/');
+      }
+    } catch (_) {}
+  }
+
   Future<void> _selectLocalMode() async {
     setState(() => _isLoading = true);
     try {
       try {
         final tokens = ref.read(tokenStorageProvider);
+        final isPro = await tokens.isProMigrated();
+        if (isPro) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Toko Anda sudah bermigrasi ke Cloud PRO. Akses dialihkan ke Cloud.',
+                ),
+                backgroundColor: Colors.blueGrey,
+              ),
+            );
+            context.go('/');
+            return;
+          }
+        }
+
         await tokens.setCloudMode(false);
         await ref
             .read(appOperationalModeProvider.notifier)
@@ -79,6 +111,67 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _showResetAppDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.danger),
+            SizedBox(width: 8),
+            Text('Reset Semua Data?'),
+          ],
+        ),
+        content: const Text(
+          'Semua data database lokal, cache cloud, dan token akun pada aplikasi ini akan dihapus bersih.\n\nAplikasi akan kembali ke kondisi awal (seperti baru pertama kali di-download).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Reset Semua'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      try {
+        final resetService = ref.read(dataResetServiceProvider);
+        await resetService.resetEverything();
+        ref.invalidate(appOperationalModeProvider);
+        ref.invalidate(storeRepositoryProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Seluruh database aplikasi berhasil di-reset bersih.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal me-reset data: $e'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -179,14 +272,18 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                     onTap: _isLoading ? null : _selectCloudMode,
                   ),
 
-                  const SizedBox(height: 28),
-                  const Center(
-                    child: Text(
-                      'Anda dapat beralih mode kapan saja melalui Sidebar Menu di dalam aplikasi.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
+                  const SizedBox(height: 20),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _isLoading ? null : _showResetAppDialog,
+                      icon: const Icon(Icons.delete_sweep_rounded, size: 16, color: AppColors.danger),
+                      label: const Text(
+                        'Reset Semua Database (Simulasi Pengguna Baru)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),

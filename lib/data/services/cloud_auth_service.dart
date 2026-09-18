@@ -80,6 +80,53 @@ class CloudAuthService {
     }
   }
 
+  /// Register a new cloud store (PRO plan) and persist tokens.
+  Future<CloudUser> registerStore({
+    required String storeName,
+    required String username,
+    required String password,
+    String? ownerName,
+    String? email,
+    String? phone,
+    String? address,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'storeName': storeName,
+        'username': username,
+        'password': password,
+        if (ownerName != null && ownerName.isNotEmpty) 'ownerName': ownerName,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (address != null && address.isNotEmpty) 'address': address,
+      };
+
+      final response = await _apiClient.post('/api/v1/auth/register-store', body);
+      final data = response['data'] as Map<String, dynamic>;
+
+      final user = CloudUser.fromJson(data);
+
+      await _tokenStorage.saveTokens(
+        accessToken: data['accessToken'] as String,
+        refreshToken: data['refreshToken'] as String,
+        storeId: user.storeId,
+        userId: user.userId,
+      );
+      await _tokenStorage.saveUserData(
+        username: user.username,
+        displayName: user.displayName,
+        storeName: user.storeName,
+        permissions: user.permissions,
+      );
+      await _tokenStorage.setCloudMode(true);
+
+      return user;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'Gagal mendaftarkan toko ke cloud';
+      throw Exception(msg);
+    }
+  }
+
   /// Logout and clear tokens.
   Future<void> logout() async {
     try {

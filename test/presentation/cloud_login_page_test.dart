@@ -4,41 +4,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_pos/presentation/settings/screens/cloud_login_page.dart';
 
 void main() {
-  testWidgets('CloudLoginPage renders clean username/password form and hidden custom server settings',
+  testWidgets('CloudLoginPage renders clean dual-tab form without custom server endpoint settings',
       (tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
-          home: CloudLoginPage(),
+          home: CloudLoginPage(initialTab: 1),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    // Verify Title and Subtitle
+    // Verify Title and Subtitle in Login tab
     expect(find.text('Masuk ke Cloud POS'), findsOneWidget);
     expect(find.text('Sinkronisasi Cloud'), findsOneWidget);
 
-    // Verify Username and Password are the primary visible fields
+    // Verify Username and Password are visible
     expect(find.text('Username'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
     expect(find.text('Masuk ke Cloud'), findsOneWidget);
 
-    // Verify Server URL field is NOT visible initially
+    // Verify Server URL field & Advanced Server Settings toggle are completely removed
     expect(find.text('URL Server API'), findsNothing);
+    expect(find.text('Pengaturan Server Endpoint (Lanjutan)'), findsNothing);
 
-    // Verify Advanced Server Settings toggle button exists
-    final toggleBtn = find.text('Pengaturan Server Endpoint (Lanjutan)');
-    expect(toggleBtn, findsOneWidget);
-
-    // Scroll until visible and tap the toggle button to reveal server settings
-    await tester.ensureVisible(toggleBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(toggleBtn);
+    // Switch to Register tab
+    final registerTab = find.text('Daftar ke PRO Baru');
+    expect(registerTab, findsOneWidget);
+    await tester.tap(registerTab);
     await tester.pumpAndSettle();
 
-    // Now Server URL settings should be visible
-    expect(find.text('URL Server API'), findsOneWidget);
-    expect(find.text('Sembunyikan Pengaturan Server'), findsOneWidget);
+    // Verify Register tab fields
+    expect(find.text('Upgrade Toko ke PRO'), findsOneWidget);
+    expect(find.text('Nama Toko'), findsOneWidget);
+    expect(find.text('Nama Pemilik Toko'), findsOneWidget);
+    expect(find.text('Daftar & Migrasikan ke PRO'), findsOneWidget);
+
+    // Verify Server URL is still not present in Register tab
+    expect(find.text('URL Server API'), findsNothing);
+    expect(find.text('Pengaturan Server Endpoint (Lanjutan)'), findsNothing);
   });
 }

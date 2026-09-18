@@ -351,53 +351,65 @@ class AppSidebarDrawer extends ConsumerWidget {
                       ),
                     ),
                   ] else ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.cloud_done_rounded, color: Colors.green.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Toko Cloud PRO Aktif',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade900,
+                                  ),
+                                ),
+                                Text(
+                                  'Offline-First & Auto Sync Aktif',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (!isCloud) ...[
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textSecondaryLight,
-                          side: const BorderSide(color: AppColors.borderLight),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textMuted,
+                          padding: const EdgeInsets.symmetric(vertical: 6),
                         ),
-                        icon: const Icon(Icons.storefront_rounded, size: 18),
+                        icon: const Icon(Icons.swap_horiz_rounded, size: 16),
                         label: const Text(
-                          'Beralih ke Mode Lokal',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold),
+                          'Pilih Mode Operasional',
+                          style: TextStyle(fontSize: 11),
                         ),
-                        onPressed: () async {
+                        onPressed: () {
                           Navigator.pop(context);
-                          final tokens = ref.read(tokenStorageProvider);
-                          await tokens.setCloudMode(false);
-                          await ref
-                              .read(appOperationalModeProvider.notifier)
-                              .switchMode(AppOperationalMode.local);
+                          context.go('/mode-select');
                         },
                       ),
                     ),
                   ],
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.textMuted,
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                      ),
-                      icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                      label: const Text(
-                        'Pilih Mode Operasional',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        context.go('/mode-select');
-                      },
-                    ),
-                  ),
                 ],
               ),
             ),

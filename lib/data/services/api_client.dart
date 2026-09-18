@@ -17,6 +17,7 @@ class _StorageKeys {
   static const username = 'cloud_username';
   static const displayName = 'cloud_display_name';
   static const storeName = 'cloud_store_name';
+  static const isProMigrated = 'cloud_pro_migrated';
 }
 
 /// Manages JWT tokens, cloud server URL, and cached user profile/permissions in secure storage.
@@ -88,6 +89,14 @@ class TokenStorage {
 
   Future<void> setCloudMode(bool enabled) =>
       _storage.write(key: _StorageKeys.isCloudMode, value: enabled.toString());
+
+  Future<bool> isProMigrated() async {
+    final val = await _storage.read(key: _StorageKeys.isProMigrated);
+    return val == 'true';
+  }
+
+  Future<void> setProMigrated(bool migrated) =>
+      _storage.write(key: _StorageKeys.isProMigrated, value: migrated.toString());
 
   Future<void> clearTokens() async {
     await Future.wait([

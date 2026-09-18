@@ -697,8 +697,23 @@ class _OperationalModeCard extends ConsumerWidget {
                 if (target == mode) return;
 
                 if (target == AppOperationalMode.local) {
-                  // Check if there are pending events in cloud cache
                   final tokens = ref.read(tokenStorageProvider);
+                  final isPro = await tokens.isProMigrated();
+                  if (isPro) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Toko Anda telah bermigrasi ke Cloud PRO. Mode Lokal dinonaktifkan.',
+                          ),
+                          backgroundColor: Colors.blueGrey,
+                        ),
+                      );
+                    }
+                    return;
+                  }
+
+                  // Check if there are pending events in cloud cache
                   final storeId = await tokens.getStoreId();
                   int pending = 0;
                   if (storeId != null) {

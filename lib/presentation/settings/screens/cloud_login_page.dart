@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/providers/cloud_providers.dart';
+import '../../../core/providers/database_providers.dart';
 
-/// Login page for cloud backend access.
-/// SaaS Multi-Tenant: Users log in using their credentials directly.
-/// Backend server URL defaults to the centralized platform endpoint.
+/// Login & Upgrade page for SaaS Multi-Tenant Cloud POS.
+/// Supports both:
+/// 1. Registering a new PRO Cloud Store (automatically migrating local offline data to Cloud).
+/// 2. Logging in with existing Cloud Store credentials.
 class CloudLoginPage extends ConsumerStatefulWidget {
-  const CloudLoginPage({super.key});
+  final int initialTab;
+  const CloudLoginPage({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<CloudLoginPage> createState() => _CloudLoginPageState();
@@ -17,76 +20,160 @@ class CloudLoginPage extends ConsumerStatefulWidget {
 
 class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _serverUrlCtrl = TextEditingController(text: AppConfig.defaultBaseUrl);
+
+  // Mode: 0 = Daftar ke PRO (Register & Migrate), 1 = Masuk ke Cloud (Login)
+  late int _selectedTab = widget.initialTab;
+
+  // Controllers for Register
+  final _storeNameCtrl = TextEditingController();
+  final _ownerNameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+
+  // Common Controllers
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
-  bool _showCustomServerSettings = false;
+  String? _loadingStatusText;
   String? _errorMsg;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedUrl();
+    _loadInitialData();
   }
 
-  Future<void> _loadSavedUrl() async {
-    final tokens = ref.read(tokenStorageProvider);
-    final savedUrl = await tokens.getServerUrl();
-    if (savedUrl != null && savedUrl.isNotEmpty) {
-      _serverUrlCtrl.text = savedUrl;
-    } else {
-      _serverUrlCtrl.text = AppConfig.defaultBaseUrl;
-    }
+  Future<void> _loadInitialData() async {
+    // Auto-fill local store info if available
+    try {
+      final storeRepo = ref.read(storeRepositoryProvider);
+      final currentStore = await storeRepo.getCurrentStore();
+      if (currentStore != null) {
+        if (_storeNameCtrl.text.isEmpty) {
+          _storeNameCtrl.text = currentStore.name;
+        }
+        if (_ownerNameCtrl.text.isEmpty && currentStore.ownerName != null) {
+          _ownerNameCtrl.text = currentStore.ownerName!;
+        }
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _serverUrlCtrl.dispose();
+    _storeNameCtrl.dispose();
+    _ownerNameCtrl.dispose();
+    _emailCtrl.dispose();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _onLogin() async {
+  Future<void> _onSubmit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _isLoading = true;
       _errorMsg = null;
+      _loadingStatusText = _selectedTab == 0
+          ? 'Mendaftarkan akun toko ke Cloud Server...'
+          : 'Menghubungkan ke Cloud...';
     });
 
     try {
       final tokens = ref.read(tokenStorageProvider);
       final deviceId = await ref.read(deviceIdProvider.future);
-      final serverUrl = _serverUrlCtrl.text.trim().isNotEmpty
-          ? AppConfig.normalizeUrl(_serverUrlCtrl.text.trim())
-          : AppConfig.defaultBaseUrl;
+      const serverUrl = AppConfig.defaultBaseUrl;
 
       await tokens.saveServerConfig(
         serverUrl: serverUrl,
         deviceId: deviceId,
       );
 
-      await ref.read(cloudAuthProvider.notifier).login(
-            username: _usernameCtrl.text.trim(),
-            password: _passwordCtrl.text,
-          );
+      final storeRepo = ref.read(storeRepositoryProvider);
+      final localStore = await storeRepo.getCurrentStore();
+      final localStoreId = localStore?.id ?? 'store-default-01';
 
-      // Explicitly activate cloud mode
-      await tokens.setCloudMode(true);
-      await ref
-          .read(appOperationalModeProvider.notifier)
-          .switchMode(AppOperationalMode.cloud);
+      if (_selectedTab == 0) {
+        // ──── FLOW 1: DAFTAR KE PRO (REGISTER & AUTO-MIGRATE) ────
+        final cloudUser = await ref.read(cloudAuthProvider.notifier).registerStore(
+              storeName: _storeNameCtrl.text.trim(),
+              ownerName: _ownerNameCtrl.text.trim(),
+              username: _usernameCtrl.text.trim(),
+              password: _passwordCtrl.text,
+              email: _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null,
+            );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Berhasil masuk ke Cloud POS (Mode Cloud Aktif)'),
-            backgroundColor: Colors.green,
-          ),
+        // Migrate local offline data to Cloud
+        setState(() {
+          _loadingStatusText = 'Mensinkronkan data produk & transaksi lokal ke Cloud...';
+        });
+
+        final migrationService = ref.read(dataMigrationServiceProvider);
+        await migrationService.migrateLocalToCloud(
+          localStoreId: localStoreId,
+          cloudStoreId: cloudUser.storeId,
+          onProgress: (p) {
+            if (mounted) {
+              setState(() => _loadingStatusText = p.step);
+            }
+          },
         );
-        context.go('/');
+
+        // Switch permanently to Cloud Mode
+        await tokens.setCloudMode(true);
+        await tokens.setProMigrated(true);
+        await ref
+            .read(appOperationalModeProvider.notifier)
+            .switchMode(AppOperationalMode.cloud);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                '🎉 Selamat! Toko Anda kini resmi beralih ke Mode Cloud PRO. Seluruh data lokal telah tersinkronisasi.',
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          context.go('/');
+        }
+      } else {
+        // ──── FLOW 2: LOGIN AKUN CLOUD YANG SUDAH ADA ────
+        final user = await ref.read(cloudAuthProvider.notifier).login(
+              username: _usernameCtrl.text.trim(),
+              password: _passwordCtrl.text,
+            );
+
+        // Check if there are local offline items to migrate
+        final migrationService = ref.read(dataMigrationServiceProvider);
+        try {
+          setState(() {
+            _loadingStatusText = 'Memeriksa sinkronisasi data lokal...';
+          });
+          await migrationService.migrateLocalToCloud(
+            localStoreId: localStoreId,
+            cloudStoreId: user.storeId,
+          );
+        } catch (_) {}
+
+        // Activate Cloud Mode
+        await tokens.setCloudMode(true);
+        await tokens.setProMigrated(true);
+        await ref
+            .read(appOperationalModeProvider.notifier)
+            .switchMode(AppOperationalMode.cloud);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Berhasil masuk ke Cloud POS (Mode Cloud Aktif)'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.go('/');
+        }
       }
     } catch (e) {
       setState(() {
@@ -108,13 +195,13 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Masuk ke Cloud POS',
+          _selectedTab == 0 ? 'Daftar Cloud PRO' : 'Sinkronisasi Cloud',
           style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Form(
@@ -122,64 +209,206 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Cloud icon header
-                  Container(
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(vertical: 24),
+                  // Header icon
+                  Center(
                     child: Container(
-                      width: 80,
-                      height: 80,
+                      width: 72,
+                      height: 72,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [cs.primary, cs.secondary],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.25),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
                       child: Icon(Icons.cloud_sync_rounded,
-                          size: 44, color: cs.onPrimary),
+                          size: 38, color: cs.onPrimary),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
-                    'Sinkronisasi Cloud',
+                    _selectedTab == 0 ? 'Upgrade Toko ke PRO' : 'Masuk ke Cloud POS',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: cs.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    'Hubungkan ke server backend untuk mengaktifkan sinkronisasi multi-device.',
+                    _selectedTab == 0
+                        ? 'Daftarkan akun Cloud PRO untuk menikmati sinkronisasi multi-kasir, kitchen, gudang, dan dashboard web.'
+                        : 'Masuk dengan kredensial toko atau kasir untuk melanjutkan transaksi di Cloud.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: cs.onSurfaceVariant,
+                      height: 1.35,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
 
-                  // Username
+                  // Tab selector: [ Daftar Baru | Masuk ]
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: _isLoading
+                                ? null
+                                : () => setState(() => _selectedTab = 0),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _selectedTab == 0
+                                    ? cs.surface
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: _selectedTab == 0
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Text(
+                                'Daftar ke PRO Baru',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: _selectedTab == 0
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _selectedTab == 0
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: InkWell(
+                            onTap: _isLoading
+                                ? null
+                                : () => setState(() => _selectedTab = 1),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _selectedTab == 1
+                                    ? cs.surface
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: _selectedTab == 1
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Text(
+                                'Sudah Ada Akun (Masuk)',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: _selectedTab == 1
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _selectedTab == 1
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ──── FIELDS FOR REGISTER ────
+                  if (_selectedTab == 0) ...[
+                    _SectionLabel(label: 'Nama Toko'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _storeNameCtrl,
+                      decoration: _inputDecoration(
+                        context,
+                        hint: 'Nama Toko / Usaha Anda',
+                        icon: Icons.storefront_rounded,
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Nama toko wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 14),
+
+                    _SectionLabel(label: 'Nama Pemilik Toko'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _ownerNameCtrl,
+                      decoration: _inputDecoration(
+                        context,
+                        hint: 'Nama Pemilik / Penanggung Jawab',
+                        icon: Icons.badge_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    _SectionLabel(label: 'Email (Opsional)'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: _inputDecoration(
+                        context,
+                        hint: 'email@tokoanda.com',
+                        icon: Icons.email_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // ──── COMMON FIELDS: USERNAME & PASSWORD ────
                   _SectionLabel(label: 'Username'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _usernameCtrl,
                     decoration: _inputDecoration(
                       context,
-                      hint: 'Username akun toko atau kasir',
+                      hint: _selectedTab == 0 ? 'Buat username login' : 'Username akun toko atau kasir',
                       icon: Icons.person_outline_rounded,
                     ),
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'Username wajib diisi' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-                  // Password
                   _SectionLabel(label: 'Password'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscurePassword,
@@ -197,9 +426,37 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                       ),
                     ),
                     validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Password wajib diisi' : null,
+                        (v == null || v.length < 6) ? 'Password minimal 6 karakter' : null,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+
+                  // Auto migration info notice
+                  if (_selectedTab == 0) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.sync_rounded, color: cs.primary, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Semua produk, kategori & transaksi lokal saat ini akan otomatis disinkronkan ke Cloud.',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: cs.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Error message
                   if (_errorMsg != null) ...[
@@ -225,20 +482,26 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Login Button
+                  // Action Button with Loading & Status Text
                   FilledButton.icon(
-                    onPressed: _isLoading ? null : _onLogin,
+                    onPressed: _isLoading ? null : _onSubmit,
                     icon: _isLoading
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.cloud_done_rounded),
+                        : Icon(_selectedTab == 0
+                            ? Icons.rocket_launch_rounded
+                            : Icons.cloud_done_rounded),
                     label: Text(
-                      _isLoading ? 'Menghubungkan...' : 'Masuk ke Cloud',
+                      _isLoading
+                          ? (_loadingStatusText ?? 'Memproses...')
+                          : (_selectedTab == 0
+                              ? 'Daftar & Migrasikan ke PRO'
+                              : 'Masuk ke Cloud'),
                       style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w600, fontSize: 16),
+                          fontWeight: FontWeight.w600, fontSize: 15),
                     ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -246,92 +509,6 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                           borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // Optional Custom Server Settings toggle
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: () => setState(() =>
-                          _showCustomServerSettings = !_showCustomServerSettings),
-                      icon: Icon(
-                        _showCustomServerSettings
-                            ? Icons.expand_less_rounded
-                            : Icons.settings_outlined,
-                        size: 16,
-                        color: cs.outline,
-                      ),
-                      label: Text(
-                        _showCustomServerSettings
-                            ? 'Sembunyikan Pengaturan Server'
-                            : 'Pengaturan Server Endpoint (Lanjutan)',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: cs.outline,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  if (_showCustomServerSettings) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: cs.outlineVariant),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.dns_outlined, size: 16, color: cs.primary),
-                              const SizedBox(width: 6),
-                              Text(
-                                'URL Server API',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Secara default terhubung ke cloud server sistem. Ubah jika Anda memiliki server pribadi atau IP lokal kustom.',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                            controller: _serverUrlCtrl,
-                            keyboardType: TextInputType.url,
-                            style: const TextStyle(fontSize: 13),
-                            decoration: _inputDecoration(
-                              context,
-                              hint: AppConfig.defaultBaseUrl,
-                              icon: Icons.link_rounded,
-                            ),
-                            validator: (v) {
-                              if (_showCustomServerSettings &&
-                                  v != null &&
-                                  v.isNotEmpty &&
-                                  !v.startsWith('http://') &&
-                                  !v.startsWith('https://')) {
-                                return 'URL harus diawali http:// atau https://';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

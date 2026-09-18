@@ -9,7 +9,9 @@ import '../../data/services/cloud_sync_service.dart';
 import '../../data/services/sync_coordinator.dart';
 import '../../data/repositories/sync_repository_impl.dart';
 import '../../domain/repositories/i_sync_repository.dart';
-import 'database_providers.dart' show cloudCacheDatabaseProvider;
+import '../../data/services/data_migration_service.dart';
+import '../../data/services/data_reset_service.dart';
+import 'database_providers.dart' show cloudCacheDatabaseProvider, localDatabaseProvider;
 
 
 // ──────────────── Storage & HTTP Client ────────────────
@@ -96,6 +98,35 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
     }
   }
 
+  Future<CloudUser> registerStore({
+    required String storeName,
+    required String username,
+    required String password,
+    String? ownerName,
+    String? email,
+    String? phone,
+    String? address,
+  }) async {
+    state = const AsyncLoading();
+    final authService = ref.read(cloudAuthServiceProvider);
+    try {
+      final user = await authService.registerStore(
+        storeName: storeName,
+        username: username,
+        password: password,
+        ownerName: ownerName,
+        email: email,
+        phone: phone,
+        address: address,
+      );
+      state = AsyncData(user);
+      return user;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     final authService = ref.read(cloudAuthServiceProvider);
     await authService.logout();
@@ -105,6 +136,35 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
 
 final cloudAuthProvider = AsyncNotifierProvider<CloudAuthNotifier, CloudUser?>(() {
   return CloudAuthNotifier();
+});
+
+final isProMigratedProvider = FutureProvider<bool>((ref) async {
+  final tokens = ref.watch(tokenStorageProvider);
+  return tokens.isProMigrated();
+});
+
+final dataResetServiceProvider = Provider<DataResetService>((ref) {
+  final localDb = ref.watch(localDatabaseProvider);
+  final cloudDb = ref.watch(cloudCacheDatabaseProvider);
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  return DataResetService(
+    localDb: localDb,
+    cloudDb: cloudDb,
+    tokenStorage: tokenStorage,
+  );
+});
+
+final dataMigrationServiceProvider = Provider<DataMigrationService>((ref) {
+  final localDb = ref.watch(localDatabaseProvider);
+  final cloudDb = ref.watch(cloudCacheDatabaseProvider);
+  final apiClient = ref.watch(apiClientProvider);
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  return DataMigrationService(
+    localDb: localDb,
+    cloudDb: cloudDb,
+    apiClient: apiClient,
+    tokenStorage: tokenStorage,
+  );
 });
 
 /// Operational Mode: LOCAL (standalone offline) or CLOUD (multi-device sync)
