@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/providers/cloud_providers.dart';
 
 /// Login page for cloud backend access.
-/// Allows user to set server URL and login with credentials.
+/// SaaS Multi-Tenant: Users log in using their credentials directly.
+/// Backend server URL defaults to the centralized platform endpoint.
 class CloudLoginPage extends ConsumerStatefulWidget {
   const CloudLoginPage({super.key});
 
@@ -15,11 +17,12 @@ class CloudLoginPage extends ConsumerStatefulWidget {
 
 class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _serverUrlCtrl = TextEditingController(text: 'http://');
+  final _serverUrlCtrl = TextEditingController(text: AppConfig.defaultBaseUrl);
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _showCustomServerSettings = false;
   String? _errorMsg;
 
   @override
@@ -33,6 +36,8 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
     final savedUrl = await tokens.getServerUrl();
     if (savedUrl != null && savedUrl.isNotEmpty) {
       _serverUrlCtrl.text = savedUrl;
+    } else {
+      _serverUrlCtrl.text = AppConfig.defaultBaseUrl;
     }
   }
 
@@ -52,11 +57,14 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
     });
 
     try {
-      // Save server URL first
       final tokens = ref.read(tokenStorageProvider);
       final deviceId = await ref.read(deviceIdProvider.future);
+      final serverUrl = _serverUrlCtrl.text.trim().isNotEmpty
+          ? AppConfig.normalizeUrl(_serverUrlCtrl.text.trim())
+          : AppConfig.defaultBaseUrl;
+
       await tokens.saveServerConfig(
-        serverUrl: _serverUrlCtrl.text.trim(),
+        serverUrl: serverUrl,
         deviceId: deviceId,
       );
 
@@ -154,27 +162,6 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Server URL
-                  _SectionLabel(label: 'URL Server'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _serverUrlCtrl,
-                    keyboardType: TextInputType.url,
-                    decoration: _inputDecoration(
-                      context,
-                      hint: 'http://192.168.1.100:5000',
-                      icon: Icons.dns_rounded,
-                    ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'URL server wajib diisi';
-                      if (!v.startsWith('http://') && !v.startsWith('https://')) {
-                        return 'URL harus diawali http:// atau https://';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
                   // Username
                   _SectionLabel(label: 'Username'),
                   const SizedBox(height: 8),
@@ -182,11 +169,11 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                     controller: _usernameCtrl,
                     decoration: _inputDecoration(
                       context,
-                      hint: 'admin',
+                      hint: 'Username akun toko atau kasir',
                       icon: Icons.person_outline_rounded,
                     ),
                     validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Username wajib diisi' : null,
+                        (v == null || v.trim().isEmpty) ? 'Username wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -247,9 +234,9 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                             height: 18,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.login_rounded),
+                        : const Icon(Icons.cloud_done_rounded),
                     label: Text(
-                      _isLoading ? 'Menghubungkan...' : 'Masuk',
+                      _isLoading ? 'Menghubungkan...' : 'Masuk ke Cloud',
                       style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600, fontSize: 16),
                     ),
@@ -259,6 +246,92 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                           borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // Optional Custom Server Settings toggle
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () => setState(() =>
+                          _showCustomServerSettings = !_showCustomServerSettings),
+                      icon: Icon(
+                        _showCustomServerSettings
+                            ? Icons.expand_less_rounded
+                            : Icons.settings_outlined,
+                        size: 16,
+                        color: cs.outline,
+                      ),
+                      label: Text(
+                        _showCustomServerSettings
+                            ? 'Sembunyikan Pengaturan Server'
+                            : 'Pengaturan Server Endpoint (Lanjutan)',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: cs.outline,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  if (_showCustomServerSettings) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cs.outlineVariant),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.dns_outlined, size: 16, color: cs.primary),
+                              const SizedBox(width: 6),
+                              Text(
+                                'URL Server API',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Secara default terhubung ke cloud server sistem. Ubah jika Anda memiliki server pribadi atau IP lokal kustom.',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: _serverUrlCtrl,
+                            keyboardType: TextInputType.url,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: _inputDecoration(
+                              context,
+                              hint: AppConfig.defaultBaseUrl,
+                              icon: Icons.link_rounded,
+                            ),
+                            validator: (v) {
+                              if (_showCustomServerSettings &&
+                                  v != null &&
+                                  v.isNotEmpty &&
+                                  !v.startsWith('http://') &&
+                                  !v.startsWith('https://')) {
+                                return 'URL harus diawali http:// atau https://';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

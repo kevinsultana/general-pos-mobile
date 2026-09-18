@@ -90,7 +90,7 @@ class AppSidebarDrawer extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          isCloud ? 'MODE CLOUD' : 'MODE LOKAL',
+                          isCloud ? 'MODE CLOUD' : 'GENERAL POS',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
@@ -117,7 +117,7 @@ class AppSidebarDrawer extends ConsumerWidget {
                         ? (cloudUser != null
                             ? '${cloudUser.displayName} • ${cloudUser.permissions.contains('*') ? 'Super Admin' : 'Cloud Operator'}'
                             : 'Multi-Kasir • Sinkronisasi Aktif')
-                        : 'Kasir Mandiri • Offline Database',
+                        : 'Aplikasi Kasir POS',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 12,
@@ -273,38 +273,81 @@ class AppSidebarDrawer extends ConsumerWidget {
               child: Column(
                 children: [
                   if (!isCloud) ...[
-                    SizedBox(
+                    Container(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.indigo,
-                          side: const BorderSide(color: AppColors.indigo),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF312E81).withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        icon: const Icon(Icons.cloud_upload_rounded, size: 18),
-                        label: const Text(
-                          'Beralih ke Mode Cloud',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          final tokens = ref.read(tokenStorageProvider);
-                          final token = await tokens.getAccessToken();
-                          if (token != null && token.isNotEmpty) {
-                            await tokens.setCloudMode(true);
-                            await ref
-                                .read(appOperationalModeProvider.notifier)
-                                .switchMode(AppOperationalMode.cloud);
-                          } else {
-                            if (context.mounted) {
-                              context.push('/cloud-login');
-                            }
-                          }
-                        },
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(
+                                Icons.workspace_premium_rounded,
+                                color: Colors.amber,
+                                size: 18,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Daftar ke PRO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Akses Cloud Sync, Multi-Kasir & Web Dashboard',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.amber,
+                                foregroundColor: const Color(0xFF1E1B4B),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                context.push('/cloud-login');
+                              },
+                              child: const Text(
+                                'Upgrade ke PRO',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ] else ...[

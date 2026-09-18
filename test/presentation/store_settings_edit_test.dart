@@ -44,7 +44,7 @@ void main() {
   }
 
   group('StoreSettingsScreen Profile & PRO Package Tests', () {
-    testWidgets('renders store details and shows Paket PRO Tidak Aktif in local mode',
+    testWidgets('renders store details and shows PRO upgrade card in local mode',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pump();
@@ -56,10 +56,12 @@ void main() {
       expect(find.text('081234567890'), findsOneWidget);
       expect(find.text('Pemilik: Haji Mansur'), findsOneWidget);
 
-      // Verify PRO Inactive badge and explanation banner
-      expect(find.text('Paket PRO Tidak Aktif'), findsOneWidget);
-      expect(find.text('Paket PRO Tidak Aktif (Mode Lokal)'), findsOneWidget);
-      expect(find.text('Daftar / Sinkronisasi Cloud Sekarang'), findsOneWidget);
+      // Verify PRO promotion card with Cloud Sync, Multi Kasir, and Web Dashboard
+      expect(find.text('Daftar ke General POS PRO'), findsOneWidget);
+      expect(find.text('Cloud Sync Otomatis'), findsOneWidget);
+      expect(find.text('Multi Kasir & Multi Device'), findsOneWidget);
+      expect(find.text('Web Dashboard & Laporan'), findsOneWidget);
+      expect(find.text('Daftar ke PRO Sekarang'), findsOneWidget);
 
       // Unmount and flush pending stream timers
       await tester.pumpWidget(const SizedBox.shrink());

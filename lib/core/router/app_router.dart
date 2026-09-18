@@ -14,6 +14,8 @@ import '../../presentation/settings/screens/backup_restore_screen.dart';
 import '../../presentation/settings/screens/printer_settings_screen.dart';
 import '../../presentation/settings/screens/cloud_login_page.dart';
 import '../../presentation/settings/screens/cloud_sync_page.dart';
+import '../../presentation/settings/screens/order_type_settings_screen.dart';
+import '../../presentation/settings/screens/cash_rounding_settings_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/mode-select',
@@ -69,6 +71,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const StoreSettingsScreen(),
+    ),
+    GoRoute(
+      path: '/order-types',
+      builder: (context, state) => const OrderTypeSettingsScreen(),
+    ),
+    GoRoute(
+      path: '/cash-rounding',
+      builder: (context, state) => const CashRoundingSettingsScreen(),
     ),
     GoRoute(
       path: '/products',

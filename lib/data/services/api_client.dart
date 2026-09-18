@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../core/config/app_config.dart';
 
 /// Keys used in secure storage.
 class _StorageKeys {
@@ -162,9 +163,12 @@ class ApiClient {
 
     _refreshCompleter = Completer<bool>();
     try {
+      final savedUrl = await _tokenStorage.getServerUrl();
+      final serverUrl = AppConfig.normalizeUrl(
+        (savedUrl != null && savedUrl.isNotEmpty) ? savedUrl : AppConfig.defaultBaseUrl,
+      );
       final refreshToken = await _tokenStorage.getRefreshToken();
-      final serverUrl = await _tokenStorage.getServerUrl();
-      if (refreshToken == null || serverUrl == null) {
+      if (refreshToken == null) {
         _refreshCompleter!.complete(false);
         return false;
       }
@@ -207,11 +211,11 @@ class ApiClient {
   }
 
   Future<String> _baseUrl() async {
-    final url = await _tokenStorage.getServerUrl();
-    if (url == null || url.isEmpty) {
-      throw Exception('Server URL belum dikonfigurasi. Silakan atur di pengaturan Cloud.');
-    }
-    return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+    final savedUrl = await _tokenStorage.getServerUrl();
+    final url = (savedUrl != null && savedUrl.isNotEmpty)
+        ? savedUrl
+        : AppConfig.defaultBaseUrl;
+    return AppConfig.normalizeUrl(url);
   }
 
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) async {

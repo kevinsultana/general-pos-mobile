@@ -8,6 +8,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/local/app_database.dart' show Store;
 import '../../../domain/models/store_ext.dart';
 import '../../../domain/repositories/i_store_repository.dart';
+import 'order_type_settings_screen.dart';
+import 'cash_rounding_settings_screen.dart';
 
 class StoreSettingsScreen extends ConsumerWidget {
   const StoreSettingsScreen({super.key});
@@ -253,56 +255,59 @@ class StoreSettingsScreen extends ConsumerWidget {
                           runSpacing: 6,
                           children: [
                             Text(
-                              'Mata Uang: ${store.currency} | ${isCloud ? 'Mode Cloud' : 'Mode Lokal'}',
+                              isCloud
+                                  ? 'Mata Uang: ${store.currency} | Mode Cloud'
+                                  : 'Mata Uang: ${store.currency}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondaryLight,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isProActive
-                                    ? Colors.green.shade50
-                                    : Colors.amber.shade50,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: isProActive
-                                      ? Colors.green.shade300
-                                      : Colors.amber.shade300,
+                            if (isCloud)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
-                              ),
-                              child: Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 4,
-                                children: [
-                                  Icon(
-                                    isProActive
-                                        ? Icons.verified_rounded
-                                        : Icons.lock_clock_outlined,
-                                    size: 13,
+                                decoration: BoxDecoration(
+                                  color: isProActive
+                                      ? Colors.green.shade50
+                                      : Colors.amber.shade50,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
                                     color: isProActive
-                                        ? Colors.green.shade800
-                                        : Colors.amber.shade900,
+                                        ? Colors.green.shade300
+                                        : Colors.amber.shade300,
                                   ),
-                                  Text(
-                                    isProActive
-                                        ? 'Paket PRO Aktif'
-                                        : 'Paket PRO Tidak Aktif',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
+                                ),
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 4,
+                                  children: [
+                                    Icon(
+                                      isProActive
+                                          ? Icons.verified_rounded
+                                          : Icons.lock_clock_outlined,
+                                      size: 13,
                                       color: isProActive
-                                          ? Colors.green.shade900
+                                          ? Colors.green.shade800
                                           : Colors.amber.shade900,
                                     ),
-                                  ),
-                                ],
+                                    Text(
+                                      isProActive
+                                          ? 'Paket PRO Aktif'
+                                          : 'Paket PRO Tidak Aktif',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: isProActive
+                                            ? Colors.green.shade900
+                                            : Colors.amber.shade900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ],
@@ -311,8 +316,8 @@ class StoreSettingsScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Banner Penjelasan Jika Paket PRO Tidak Aktif
-              if (!isProActive) ...[
+              // Banner Penjelasan Jika Mode Cloud tapi Paket PRO Tidak Aktif
+              if (isCloud && !isProActive) ...[
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -335,7 +340,7 @@ class StoreSettingsScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Paket PRO Tidak Aktif (Mode Lokal)',
+                              'Langganan PRO Belum Aktif',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
@@ -344,7 +349,7 @@ class StoreSettingsScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              'Fitur paket PRO dan sinkronisasi multi-kasir otomatis aktif setelah Anda mendaftarkan atau menyinkronkan toko ke Cloud Server.',
+                              'Fitur sinkronisasi multi-kasir otomatis aktif setelah toko Anda berlangganan paket PRO di Cloud Server.',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.amber.shade900.withValues(
@@ -361,7 +366,7 @@ class StoreSettingsScreen extends ConsumerWidget {
                                 spacing: 4,
                                 children: [
                                   Text(
-                                    'Daftar / Sinkronisasi Cloud Sekarang',
+                                    'Cek Status Langganan Cloud',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -382,6 +387,12 @@ class StoreSettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+              ],
+
+              // Card Promo Daftar ke PRO (hanya ditampilkan jika dalam Mode Lokal)
+              if (!isCloud) ...[
+                const SizedBox(height: 14),
+                _buildProPromotionCard(context),
               ],
               const SizedBox(height: 24),
 
@@ -446,10 +457,14 @@ class StoreSettingsScreen extends ConsumerWidget {
 
                     const Divider(height: 1),
 
-                    // Order Type Toggle
-                    SwitchListTile(
-                      key: const Key('order_type_switch'),
-                      secondary: Container(
+                    // Order Type Navigation Tile
+                    ListTile(
+                      key: const Key('order_type_settings_tile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      leading: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: Colors.teal.shade50,
@@ -464,371 +479,152 @@ class StoreSettingsScreen extends ConsumerWidget {
                         'Pilihan Tipe Pesanan',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      subtitle: const Text(
-                        'Aktifkan untuk menampilkan pilihan tipe pesanan (Dine In, Takeaway, dll.) pada transaksi kasir POS.',
-                        style: TextStyle(fontSize: 12),
+                      subtitle: Text(
+                        store.orderTypeEnabled
+                            ? 'Aktif • ${store.orderTypesList.length} opsi (${store.orderTypesList.join(", ")})'
+                            : 'Nonaktif • Ketuk untuk mengatur tipe pesanan',
+                        style: const TextStyle(fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      value: store.orderTypeEnabled,
-                      activeThumbColor: AppColors.primary,
-                      onChanged: (val) async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        await storeRepo.setOrderTypeEnabled(store.id, val);
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              val
-                                  ? 'Pilihan Tipe Pesanan diaktifkan'
-                                  : 'Pilihan Tipe Pesanan dinonaktifkan',
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                            duration: const Duration(seconds: 1),
+                            decoration: BoxDecoration(
+                              color: store.orderTypeEnabled
+                                  ? Colors.teal.shade50
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: store.orderTypeEnabled
+                                    ? Colors.teal.shade200
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Text(
+                              store.orderTypeEnabled ? 'AKTIF' : 'NONAKTIF',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: store.orderTypeEnabled
+                                    ? Colors.teal.shade800
+                                    : Colors.grey.shade700,
+                              ),
+                            ),
                           ),
-                        );
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 15,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        try {
+                          context.push('/order-types');
+                        } catch (_) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const OrderTypeSettingsScreen(),
+                            ),
+                          );
+                        }
                       },
                     ),
 
-                    // Order Type Options CRUD (visible when orderTypeEnabled is true)
-                    if (store.orderTypeEnabled) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final isCompact = constraints.maxWidth < 340;
-                                  if (isCompact) {
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Daftar Pilihan Aktif:',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                            color: AppColors.textSecondaryLight,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Wrap(
-                                          spacing: 6,
-                                          runSpacing: 6,
-                                          crossAxisAlignment:
-                                              WrapCrossAlignment.center,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  _confirmResetOrderTypes(
-                                                      context,
-                                                      store,
-                                                      storeRepo),
-                                              style: TextButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4),
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                              ),
-                                              child: const Text('Reset Default',
-                                                  style: TextStyle(fontSize: 11)),
-                                            ),
-                                            FilledButton.tonalIcon(
-                                              key: const Key(
-                                                  'add_order_type_button'),
-                                              style: FilledButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 6),
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                              ),
-                                              onPressed: () =>
-                                                  _showAddOrderTypeDialog(
-                                                      context, store, storeRepo),
-                                              icon: const Icon(Icons.add_rounded,
-                                                  size: 14),
-                                              label: const Text('Tambah Opsi',
-                                                  style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.bold)),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    );
-                                  }
+                    const Divider(height: 1),
 
-                                  return Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Daftar Pilihan Aktif:',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: AppColors.textSecondaryLight,
-                                        ),
-                                      ),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                _confirmResetOrderTypes(
-                                                    context, store, storeRepo),
-                                            style: TextButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4),
-                                              visualDensity:
-                                                  VisualDensity.compact,
-                                            ),
-                                            child: const Text('Reset Default',
-                                                style: TextStyle(fontSize: 11)),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          FilledButton.tonalIcon(
-                                            key: const Key(
-                                                'add_order_type_button'),
-                                            style: FilledButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6),
-                                              visualDensity:
-                                                  VisualDensity.compact,
-                                            ),
-                                            onPressed: () =>
-                                                _showAddOrderTypeDialog(
-                                                    context, store, storeRepo),
-                                            icon: const Icon(Icons.add_rounded,
-                                                size: 14),
-                                            label: const Text('Tambah Opsi',
-                                                style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: store.orderTypesList.map((opt) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border:
-                                          Border.all(color: Colors.grey.shade300),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          opt,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12,
-                                            color: AppColors.textPrimaryLight,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        InkWell(
-                                          onTap: () => _showEditOrderTypeDialog(
-                                              context, store, storeRepo, opt),
-                                          borderRadius: BorderRadius.circular(4),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(2),
-                                            child: Icon(Icons.edit_outlined,
-                                                size: 14,
-                                                color: AppColors.primary),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 2),
-                                        InkWell(
-                                          onTap: () => _deleteOrderType(
-                                              context, store, storeRepo, opt),
-                                          borderRadius: BorderRadius.circular(4),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(2),
-                                            child: Icon(Icons.close_rounded,
-                                                size: 14,
-                                                color: AppColors.danger),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
+                    // Cash Rounding Navigation Tile
+                    ListTile(
+                      key: const Key('cash_rounding_settings_tile'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.price_change_rounded,
+                          color: Colors.amber.shade800,
                         ),
                       ),
-                    ],
+                      title: const Text(
+                        'Pembulatan Tunai',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        store.cashRoundingEnabled
+                            ? 'Aktif • Kelipatan Rp ${store.cashRoundingIncrement} (${store.cashRoundingMode == "ROUND_NEAREST" ? "Terdekat" : store.cashRoundingMode == "ROUND_UP" ? "Ke Atas" : "Ke Bawah"})'
+                            : 'Nonaktif • Ketuk untuk mengatur pembulatan kasir',
+                        style: const TextStyle(fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: store.cashRoundingEnabled
+                                  ? Colors.teal.shade50
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: store.cashRoundingEnabled
+                                    ? Colors.teal.shade200
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Text(
+                              store.cashRoundingEnabled ? 'AKTIF' : 'NONAKTIF',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: store.cashRoundingEnabled
+                                    ? Colors.teal.shade800
+                                    : Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 15,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        try {
+                          context.push('/cash-rounding');
+                        } catch (_) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const CashRoundingSettingsScreen(),
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-
-              // SECTION: Cash Rounding Settings (PRD 21)
-              const Text(
-                'PEMBULATAN UANG KAS (CASH ROUNDING)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: AppColors.textSecondaryLight,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Card(
-                elevation: 0.5,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: Colors.grey.shade200),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Toggle
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text(
-                          'Aktifkan Pembulatan Tunai',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: const Text(
-                          'Hanya berlaku untuk pembayaran kas/tunai guna menghindari receh.',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        value: store.cashRoundingEnabled,
-                        activeThumbColor: AppColors.primary,
-                        onChanged: (val) {
-                          storeRepo.updateCashRoundingSettings(
-                            storeId: store.id,
-                            enabled: val,
-                            increment: store.cashRoundingIncrement,
-                            mode: store.cashRoundingMode,
-                          );
-                        },
-                      ),
-
-                      if (store.cashRoundingEnabled) ...[
-                        const Divider(height: 24),
-
-                        // Increment Selection
-                        const Text(
-                          'Kelipatan Pembulatan (Increment):',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SegmentedButton<int>(
-                          segments: const [
-                            ButtonSegment(value: 100, label: Text('Rp 100')),
-                            ButtonSegment(value: 500, label: Text('Rp 500')),
-                            ButtonSegment(value: 1000, label: Text('Rp 1.000')),
-                          ],
-                          selected: {store.cashRoundingIncrement},
-                          onSelectionChanged: (set) {
-                            storeRepo.updateCashRoundingSettings(
-                              storeId: store.id,
-                              enabled: true,
-                              increment: set.first,
-                              mode: store.cashRoundingMode,
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Mode Selection
-                        const Text(
-                          'Metode Pembulatan:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(
-                              value: 'ROUND_NEAREST',
-                              label: Text('Terdekat'),
-                              icon: Icon(
-                                Icons.compare_arrows_rounded,
-                                size: 16,
-                              ),
-                            ),
-                            ButtonSegment(
-                              value: 'ROUND_UP',
-                              label: Text('Ke Atas'),
-                              icon: Icon(Icons.arrow_upward_rounded, size: 16),
-                            ),
-                            ButtonSegment(
-                              value: 'ROUND_DOWN',
-                              label: Text('Ke Bawah'),
-                              icon: Icon(
-                                Icons.arrow_downward_rounded,
-                                size: 16,
-                              ),
-                            ),
-                          ],
-                          selected: {store.cashRoundingMode},
-                          onSelectionChanged: (set) {
-                            storeRepo.updateCashRoundingSettings(
-                              storeId: store.id,
-                              enabled: true,
-                              increment: store.cashRoundingIncrement,
-                              mode: set.first,
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          store.cashRoundingMode == 'ROUND_NEAREST'
-                              ? 'Membulatkan ke kelipatan terdekat (standar setengah ke atas)'
-                              : store.cashRoundingMode == 'ROUND_UP'
-                              ? 'Membulatkan nilai sisa ke atas ke kelipatan berikutnya (Ceiling)'
-                              : 'Memotong sisa ke kelipatan di bawahnya (Floor)',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondaryLight,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
 
               // Printer Settings Card (PRD 27)
               Card(
@@ -875,90 +671,80 @@ class StoreSettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // Operational Mode & Cloud Sync Card
-              Card(
-                elevation: 0.5,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: isCloud
-                        ? Colors.blue.shade300
-                        : Colors.grey.shade200,
-                  ),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isCloud
-                          ? Colors.blue.shade50
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      isCloud
-                          ? Icons.cloud_sync_rounded
-                          : Icons.storage_rounded,
-                      color: isCloud
-                          ? Colors.blue.shade700
-                          : Colors.grey.shade700,
-                      size: 24,
+              // Operational Mode & Cloud Sync Card (hanya untuk Mode Cloud)
+              if (isCloud) ...[
+                Card(
+                  elevation: 0.5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: Colors.blue.shade300,
                     ),
                   ),
-                  title: Row(
-                    children: [
-                      const Text(
-                        'Mode Operasional',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isCloud
-                              ? Colors.blue.shade100
-                              : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          isCloud ? 'CLOUD PRO' : 'LOKAL',
+                      child: Icon(
+                        Icons.cloud_sync_rounded,
+                        color: Colors.blue.shade700,
+                        size: 24,
+                      ),
+                    ),
+                    title: Row(
+                      children: [
+                        const Text(
+                          'Layanan Cloud & Sync',
                           style: TextStyle(
-                            fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: isCloud
-                                ? Colors.blue.shade800
-                                : Colors.grey.shade800,
+                            fontSize: 14,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  subtitle: Text(
-                    isCloud ? 'Multi-device sync aktif (cloud_cache.sqlite)' : 'Standalone offline (local.sqlite). Tekan untuk ganti mode atau sinkronisasi.',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondaryLight,
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'CLOUD PRO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    subtitle: const Text(
+                      'Multi-device sync aktif. Tekan untuk melihat status sinkronisasi.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    onTap: () => context.push('/cloud-sync'),
                   ),
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: Colors.grey,
-                  ),
-                  onTap: () => context.push('/cloud-sync'),
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
 
               Card(
                 elevation: 0.5,
@@ -988,7 +774,7 @@ class StoreSettingsScreen extends ConsumerWidget {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   subtitle: const Text(
-                    'Export database lokal terenkripsi (.posbak) & restore data toko',
+                    'Export file cadangan terenkripsi (.posbak) & pulihkan data toko',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondaryLight,
@@ -1230,240 +1016,166 @@ class StoreSettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showAddOrderTypeDialog(
-    BuildContext context,
-    Store store,
-    IStoreRepository storeRepo,
-  ) async {
-    final controller = TextEditingController();
-    final formKey = GlobalKey<FormState>();
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Tambah Tipe Pesanan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Nama Tipe Pesanan *',
-                hintText: 'Cth: Ojol, Katering, Drive Thru',
-                border: OutlineInputBorder(),
-              ),
-              validator: (val) {
-                final trimmed = val?.trim() ?? '';
-                if (trimmed.isEmpty) return 'Nama tipe pesanan tidak boleh kosong';
-                final currentList = store.orderTypesList;
-                if (currentList.any((e) => e.toLowerCase() == trimmed.toLowerCase())) {
-                  return 'Tipe pesanan "$trimmed" sudah ada';
-                }
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                final newType = controller.text.trim();
-                final updatedList = [...store.orderTypesList, newType];
-                await storeRepo.updateOrderTypes(
-                  storeId: store.id,
-                  orderTypes: updatedList,
-                );
-                if (context.mounted) {
-                  Navigator.pop(dialogCtx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Tipe pesanan "$newType" berhasil ditambahkan'),
-                      backgroundColor: AppColors.accent,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Tambah'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
-  Future<void> _showEditOrderTypeDialog(
-    BuildContext context,
-    Store store,
-    IStoreRepository storeRepo,
-    String oldName,
-  ) async {
-    final controller = TextEditingController(text: oldName);
-    final formKey = GlobalKey<FormState>();
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Ubah Tipe Pesanan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Nama Tipe Pesanan *',
-                border: OutlineInputBorder(),
-              ),
-              validator: (val) {
-                final trimmed = val?.trim() ?? '';
-                if (trimmed.isEmpty) return 'Nama tipe pesanan tidak boleh kosong';
-                if (trimmed.toLowerCase() != oldName.toLowerCase()) {
-                  final currentList = store.orderTypesList;
-                  if (currentList
-                      .any((e) => e.toLowerCase() == trimmed.toLowerCase())) {
-                    return 'Tipe pesanan "$trimmed" sudah ada';
-                  }
-                }
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                final updatedName = controller.text.trim();
-                final updatedList = store.orderTypesList
-                    .map((e) => e == oldName ? updatedName : e)
-                    .toList();
-                await storeRepo.updateOrderTypes(
-                  storeId: store.id,
-                  orderTypes: updatedList,
-                );
-                if (context.mounted) {
-                  Navigator.pop(dialogCtx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text('Tipe pesanan berhasil diubah menjadi "$updatedName"'),
-                      backgroundColor: AppColors.accent,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteOrderType(
-    BuildContext context,
-    Store store,
-    IStoreRepository storeRepo,
-    String targetName,
-  ) async {
-    final currentList = store.orderTypesList;
-    if (currentList.length <= 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Minimal harus ada 1 tipe pesanan yang aktif.'),
-          backgroundColor: AppColors.danger,
+  Widget _buildProPromotionCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF4338CA)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      );
-      return;
-    }
-
-    final updatedList = currentList.where((e) => e != targetName).toList();
-    await storeRepo.updateOrderTypes(
-      storeId: store.id,
-      orderTypes: updatedList,
-    );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tipe pesanan "$targetName" dihapus'),
-          action: SnackBarAction(
-            label: 'Batal',
-            onPressed: () async {
-              await storeRepo.updateOrderTypes(
-                storeId: store.id,
-                orderTypes: currentList,
-              );
-            },
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _confirmResetOrderTypes(
-    BuildContext context,
-    Store store,
-    IStoreRepository storeRepo,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Reset Tipe Pesanan?'),
-        content: const Text(
-          'Kembalikan daftar pilihan tipe pesanan ke default:\n• Dine In\n• Takeaway\n• Delivery\n• Online',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset'),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4338CA).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Colors.amber.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.workspace_premium_rounded,
+                    color: Colors.amber,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Daftar ke General POS PRO',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Tingkatkan produktivitas bisnis Anda',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _proFeatureRow(
+                    icon: Icons.cloud_sync_rounded,
+                    title: 'Cloud Sync Otomatis',
+                    desc: 'Data produk & penjualan tersimpan aman di cloud',
+                  ),
+                  const SizedBox(height: 8),
+                  _proFeatureRow(
+                    icon: Icons.point_of_sale_rounded,
+                    title: 'Multi Kasir & Multi Device',
+                    desc: 'Hubungkan banyak perangkat kasir dalam 1 toko',
+                  ),
+                  const SizedBox(height: 8),
+                  _proFeatureRow(
+                    icon: Icons.dashboard_customize_rounded,
+                    title: 'Web Dashboard & Laporan',
+                    desc: 'Pantau laporan bisnis dari laptop / browser',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: const Color(0xFF1E1B4B),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                label: const Text(
+                  'Daftar ke PRO Sekarang',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () => context.push('/cloud-login'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
 
-    if (confirmed == true) {
-      await storeRepo.updateOrderTypes(
-        storeId: store.id,
-        orderTypes: const ['Dine In', 'Takeaway', 'Delivery', 'Online'],
-      );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pilihan tipe pesanan dikembalikan ke default'),
-            backgroundColor: AppColors.accent,
+  Widget _proFeatureRow({
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.amber, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              Text(
+                desc,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ),
-        );
-      }
-    }
+        ),
+      ],
+    );
   }
 }

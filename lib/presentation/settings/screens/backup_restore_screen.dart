@@ -286,47 +286,49 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
           children: [
             Icon(Icons.check_circle_rounded, color: AppColors.success),
             SizedBox(width: 8),
-            Text('Cadangan Berhasil'),
+            Expanded(child: Text('Cadangan Berhasil')),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'File cadangan terenkripsi (.posbak) telah berhasil dibuat dan disimpan.',
-              style: TextStyle(fontSize: 13),
-            ),
-            const SizedBox(height: 14),
-            _infoRow('Nama File', info.fileName),
-            _infoRow('Ukuran', info.formattedSize),
-            _infoRow('Transaksi', '${info.transactionCount ?? 0} transaksi'),
-            _infoRow('Produk', '${info.productCount ?? 0} produk'),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Lokasi: ${info.filePath}',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'File cadangan terenkripsi (.posbak) telah berhasil dibuat dan disimpan.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              _infoRow('Nama File', info.fileName),
+              _infoRow('Ukuran', info.formattedSize),
+              _infoRow('Transaksi', '${info.transactionCount ?? 0} transaksi'),
+              _infoRow('Produk', '${info.productCount ?? 0} produk'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Lokasi: ${info.filePath}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  tooltip: 'Salin Path',
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: info.filePath));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Path file disalin ke clipboard'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    tooltip: 'Salin Path',
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: info.filePath));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Path file disalin ke clipboard'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           ElevatedButton(
@@ -944,7 +946,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
@@ -953,9 +955,16 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
               color: AppColors.textSecondaryLight,
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              softWrap: true,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
           ),
         ],
       ),

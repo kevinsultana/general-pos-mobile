@@ -121,50 +121,83 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               onPressed: () => context.push('/cloud-sync'),
             ),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => context.push('/mode-select'),
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isCloudMode
-                    ? const Color(0xFF0284C7).withValues(alpha: 0.12)
-                    : Colors.grey.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isCloudMode
-                      ? const Color(0xFF0284C7).withValues(alpha: 0.3)
-                      : Colors.grey.withValues(alpha: 0.3),
+          if (!isCloudMode)
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => context.push('/cloud-login'),
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.amber.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.workspace_premium_rounded,
+                      size: 13,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'PRO',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isCloudMode
-                        ? Icons.cloud_done_rounded
-                        : Icons.offline_pin_rounded,
-                    size: 13,
-                    color: isCloudMode
-                        ? const Color(0xFF0284C7)
-                        : const Color(0xFF475569),
+            )
+          else
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => context.push('/cloud-sync'),
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.3),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isCloudMode ? 'Cloud' : 'Lokal',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: isCloudMode
-                          ? const Color(0xFF0284C7)
-                          : const Color(0xFF475569),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.cloud_done_rounded,
+                      size: 13,
+                      color: Color(0xFF0284C7),
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Text(
+                      'Cloud',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0284C7),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: l10n?.settings ?? 'Settings',
