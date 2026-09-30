@@ -217,8 +217,7 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
         } catch (_) {}
       }
 
-      await db.userDao.ensureTableExists();
-      await into(users).insert(
+      await db.userDao.insertUser(
         UsersCompanion.insert(
           id: userId,
           storeId: storeId,
@@ -230,7 +229,6 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
           createdAt: now,
           updatedAt: now,
         ),
-        mode: InsertMode.insertOrReplace,
       );
 
       await healAllOrphanRecords(storeId);

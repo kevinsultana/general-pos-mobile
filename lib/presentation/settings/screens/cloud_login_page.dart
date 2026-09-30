@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/providers/cloud_providers.dart';
 import '../../../core/providers/database_providers.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Login & Upgrade page for SaaS Multi-Tenant Cloud POS.
 /// Supports both:
