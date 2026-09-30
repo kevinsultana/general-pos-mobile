@@ -363,8 +363,114 @@ class CloudSyncService {
     if (db == null) return;
     final items = payload['items'] as List<dynamic>?;
     final trxId = payload['transactionId'] as String? ?? payload['id'] as String?;
-    if (items == null) return;
+    if (trxId == null) return;
 
+    // 1. Insert Transaction, Items, and Payments into local cloud cache
+    try {
+      final existingTx = await db.transactionDao.getTransactionById(trxId);
+      if (existingTx == null) {
+        final createdAt = DateTime.tryParse(payload['createdAt'] as String? ?? '') ?? DateTime.now();
+        final completedAt = DateTime.tryParse(payload['completedAt'] as String? ?? '') ?? createdAt;
+        final subtotal = (payload['subtotal'] as num?)?.toInt() ?? 0;
+        final total = (payload['total'] as num?)?.toInt() ?? 0;
+        final paidTotal = (payload['paidTotal'] as num?)?.toInt() ?? total;
+        final discountTotal = (payload['discountTotal'] as num?)?.toInt() ?? 0;
+        final roundingAmount = (payload['roundingAmount'] as num?)?.toInt() ?? 0;
+
+        await db.transactionDao.insertTransaction(
+          TransactionsCompanion.insert(
+            id: trxId,
+            storeId: storeId,
+            transactionNumber: payload['transactionNumber'] as String? ?? trxId,
+            customerId: Value(payload['customerId'] as String?),
+            promotionId: Value(payload['promotionId'] as String?),
+            orderType: Value(payload['orderType'] as String? ?? 'GENERAL'),
+            queueNumber: Value(payload['queueNumber'] as String?),
+            subtotal: subtotal,
+            discountType: Value(payload['discountType'] as String?),
+            discountValue: Value((payload['discountValue'] as num?)?.toInt()),
+            discountTotal: Value(discountTotal),
+            roundingAmount: Value(roundingAmount),
+            total: total,
+            paidTotal: Value(paidTotal),
+            status: payload['status'] as String? ?? 'COMPLETED',
+            completedAt: Value(completedAt),
+            createdAt: createdAt,
+            updatedAt: completedAt,
+          ),
+        );
+
+        if (items != null) {
+          for (final itemRaw in items) {
+            if (itemRaw is! Map<String, dynamic>) continue;
+            final itemId = itemRaw['id'] as String? ?? const Uuid().v4();
+            final productId = itemRaw['productId'] as String? ?? '';
+            final productName = itemRaw['productName'] as String? ??
+                itemRaw['productNameSnapshot'] as String? ??
+                'Item';
+            final quantityNum = (itemRaw['quantity'] as num?)?.toDouble() ?? 1.0;
+            final unitPrice = (itemRaw['unitPrice'] as num?)?.toInt() ?? 0;
+            final unitCost = (itemRaw['unitCost'] as num?)?.toInt() ??
+                (itemRaw['unitCostSnapshot'] as num?)?.toInt() ??
+                0;
+            final itemSubtotal = (itemRaw['subtotal'] as num?)?.toInt() ?? (unitPrice * quantityNum).toInt();
+            final itemTotal = (itemRaw['total'] as num?)?.toInt() ?? itemSubtotal;
+
+            await db.transactionDao.insertTransactionItem(
+              TransactionItemsCompanion.insert(
+                id: itemId,
+                transactionId: trxId,
+                productId: productId,
+                variantId: Value(itemRaw['variantId'] as String?),
+                productNameSnapshot: productName,
+                variantNameSnapshot: Value(itemRaw['variantNameSnapshot'] as String?),
+                skuSnapshot: Value(itemRaw['skuSnapshot'] as String?),
+                barcodeSnapshot: Value(itemRaw['barcodeSnapshot'] as String?),
+                unitCostSnapshot: unitCost,
+                quantity: quantityNum.toDouble(),
+                unitPrice: unitPrice,
+                discountType: Value(itemRaw['discountType'] as String?),
+                discountValue: Value((itemRaw['discountValue'] as num?)?.toInt()),
+                discountAmount: Value((itemRaw['discountAmount'] as num?)?.toInt() ?? 0),
+                subtotal: itemSubtotal,
+                total: itemTotal,
+                createdAt: createdAt,
+              ),
+            );
+          }
+        }
+
+        final payments = payload['payments'] as List<dynamic>?;
+        if (payments != null) {
+          for (final payRaw in payments) {
+            if (payRaw is! Map<String, dynamic>) continue;
+            final payId = payRaw['id'] as String? ?? const Uuid().v4();
+            final paymentMethodId = payRaw['paymentMethodId'] as String? ?? 'CASH';
+            final amount = (payRaw['amount'] as num?)?.toInt() ?? total;
+            final rounding = (payRaw['roundingAmount'] as num?)?.toInt() ?? 0;
+            final status = payRaw['status'] as String? ?? 'COMPLETED';
+            final paidAt = DateTime.tryParse(payRaw['paidAt'] as String? ?? '') ?? completedAt;
+
+            await db.paymentDao.insertPayment(
+              PaymentsCompanion.insert(
+                id: payId,
+                transactionId: trxId,
+                paymentMethodId: paymentMethodId,
+                amount: amount,
+                roundingAmount: Value(rounding),
+                status: status,
+                metadata: Value(payRaw['metadata'] != null ? jsonEncode(payRaw['metadata']) : null),
+                paidAt: Value(paidAt),
+                createdAt: createdAt,
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Adjust local stock and record stock movement
+    if (items == null) return;
     for (final itemRaw in items) {
       if (itemRaw is! Map<String, dynamic>) continue;
       final productId = itemRaw['productId'] as String?;

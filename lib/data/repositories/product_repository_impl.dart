@@ -41,8 +41,48 @@ class ProductRepositoryImpl implements IProductRepository {
       _productDao.getProductByBarcode(storeId, barcode);
 
   @override
-  Future<void> saveProduct(ProductsCompanion product) =>
-      _productDao.insertProduct(product);
+  Future<void> saveProduct(ProductsCompanion product) async {
+    await _productDao.insertProduct(product);
+    if (_isCloudMode && _db != null && product.id.present && product.storeId.present) {
+      final variants = await _productDao.getVariantsByProductId(product.id.value);
+      await _db.syncEventDao.insertRawEvent(
+        id: const Uuid().v4(),
+        storeId: product.storeId.value,
+        deviceId: _deviceId ?? 'pos-device',
+        entityType: 'Product',
+        entityId: product.id.value,
+        operation: 'CREATE_PRODUCT',
+        payload: jsonEncode({
+          'id': product.id.value,
+          'name': product.name.value,
+          'sku': product.sku.present ? product.sku.value : null,
+          'barcode': product.barcode.present ? product.barcode.value : null,
+          'categoryId': product.categoryId.present ? product.categoryId.value : null,
+          'cost': product.cost.present ? product.cost.value : 0,
+          'sellingPrice': product.sellingPrice.present ? product.sellingPrice.value : 0,
+          'stock': product.stock.present ? product.stock.value : 0,
+          'lowStockThreshold': product.lowStockThreshold.present ? product.lowStockThreshold.value : 5,
+          'active': product.active.present ? product.active.value : true,
+          'discontinued': product.discontinued.present ? product.discontinued.value : false,
+          'variants': variants
+              .map((v) => {
+                    'id': v.id,
+                    'name': v.name,
+                    'sku': v.sku,
+                    'barcode': v.barcode,
+                    'cost': v.cost,
+                    'sellingPrice': v.sellingPrice,
+                    'stock': v.stock,
+                    'lowStockThreshold': v.lowStockThreshold,
+                    'active': v.active,
+                  })
+              .toList(),
+        }),
+        status: 'PENDING',
+        createdAt: product.createdAt.present ? product.createdAt.value : DateTime.now(),
+      );
+    }
+  }
 
   @override
   Future<void> updateStock(String productId, int newStock) =>

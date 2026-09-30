@@ -95,15 +95,55 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
     setState(() => _lastError = null);
 
     try {
+      final tokens = ref.read(tokenStorageProvider);
+      final tier = await tokens.getTier();
+      final canSync = await tokens.canCloudSync();
+
+      if (tier != 'PRO' || !canSync) {
+        statusNotifier.setError();
+        if (mounted) {
+          _showUpgradeDialog(
+            'Fitur sinkronisasi data Cloud memerlukan paket PRO aktif. Silakan periksa status langganan atau upgrade melalui Web Dashboard.',
+          );
+        }
+        return;
+      }
+
+      final storeId = await tokens.getStoreId();
+      int migratedLocalData = 0;
+      if (storeId != null && storeId.isNotEmpty) {
+        final isMigrated = await tokens.isProMigrated();
+        if (!isMigrated) {
+          try {
+            final migrationService = ref.read(dataMigrationServiceProvider);
+            await migrationService.migrateAndPushLocalDataToCloud(storeId);
+            migratedLocalData = 1;
+          } catch (migErr) {
+            debugPrint('[CloudSync] Data migration notice: $migErr');
+          }
+        }
+      }
+
       final syncRepo = ref.read(syncRepositoryProvider);
       final result = await syncRepo.pushAll();
-      await syncRepo.pull();
+      final pulledCount = await syncRepo.pull();
+
       if (mounted) {
         setState(() {
           _lastResult = result;
           _lastSyncTime = DateTime.now();
         });
         statusNotifier.setSuccess();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Sinkronisasi Berhasil!\n• $pulledCount data baru ditarik dari Cloud\n• ${result.synced} antrian lokal terkirim ke Cloud${result.failed > 0 ? '\n• ${result.failed} antrian gagal (dapat dicoba ulang)' : ''}${migratedLocalData > 0 ? '\n• Database offline lokal telah diselaraskan ke Cloud' : ''}',
+            ),
+            backgroundColor: result.failed > 0 ? Colors.orange.shade800 : Colors.green.shade700,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -112,8 +152,17 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
         statusNotifier.setError();
         if (e is SubscriptionRequiredException ||
             errStr.contains('UPGRADE_REQUIRED') ||
+            errStr.contains('SUBSCRIPTION_REQUIRED') ||
             errStr.contains('SUBSCRIPTION_EXPIRED')) {
           _showUpgradeDialog(errStr);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Gagal menyinkronkan: $errStr'),
+              backgroundColor: Colors.red.shade700,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       }
     }

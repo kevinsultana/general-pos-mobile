@@ -310,13 +310,29 @@ class ApiClient {
     return AppConfig.normalizeUrl(url);
   }
 
+  String _normalizePath(String path) {
+    var p = path.trim();
+    if (!p.startsWith('/')) {
+      p = '/$p';
+    }
+    if (!p.startsWith('/api/v1')) {
+      p = '/api/v1$p';
+    }
+    return p;
+  }
+
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) async {
     try {
       final base = await _baseUrl();
-      final response = await _dio.post('$base$path', data: body);
+      final normPath = _normalizePath(path);
+      final response = await _dio.post('$base$normPath', data: body);
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       _checkSubscriptionError(e);
+      final serverMsg = _extractErrorMessage(e);
+      if (serverMsg != null) {
+        throw Exception(serverMsg);
+      }
       rethrow;
     }
   }
@@ -324,10 +340,15 @@ class ApiClient {
   Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? queryParams}) async {
     try {
       final base = await _baseUrl();
-      final response = await _dio.get('$base$path', queryParameters: queryParams);
+      final normPath = _normalizePath(path);
+      final response = await _dio.get('$base$normPath', queryParameters: queryParams);
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       _checkSubscriptionError(e);
+      final serverMsg = _extractErrorMessage(e);
+      if (serverMsg != null) {
+        throw Exception(serverMsg);
+      }
       rethrow;
     }
   }
@@ -335,12 +356,31 @@ class ApiClient {
   Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) async {
     try {
       final base = await _baseUrl();
-      final response = await _dio.put('$base$path', data: body);
+      final normPath = _normalizePath(path);
+      final response = await _dio.put('$base$normPath', data: body);
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       _checkSubscriptionError(e);
+      final serverMsg = _extractErrorMessage(e);
+      if (serverMsg != null) {
+        throw Exception(serverMsg);
+      }
       rethrow;
     }
+  }
+
+  String? _extractErrorMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is Map<String, dynamic>) {
+      final err = data['error'];
+      if (err is Map<String, dynamic> && err['message'] is String) {
+        return err['message'] as String;
+      }
+      if (data['message'] is String) {
+        return data['message'] as String;
+      }
+    }
+    return null;
   }
 
   void _checkSubscriptionError(DioException e) {
@@ -350,11 +390,13 @@ class ApiClient {
         final err = data['error'] as Map<String, dynamic>?;
         final code = err?['code'] as String?;
         final msg = err?['message'] as String? ?? 'Akses fitur ditolak';
-        if (code == 'UPGRADE_REQUIRED' || code == 'SUBSCRIPTION_EXPIRED') {
+        if (code == 'UPGRADE_REQUIRED' ||
+            code == 'SUBSCRIPTION_REQUIRED' ||
+            code == 'SUBSCRIPTION_EXPIRED') {
           throw SubscriptionRequiredException(
             msg,
-            code: code ?? 'UPGRADE_REQUIRED',
-            requiredPlan: (err?['details'] as Map<String, dynamic>?)?['requiredPlan'] as String?,
+            code: code ?? 'SUBSCRIPTION_REQUIRED',
+            requiredPlan: (err?['details'] as Map<String, dynamic>?)?['requiredPlan'] as String? ?? 'PRO',
           );
         }
       }
