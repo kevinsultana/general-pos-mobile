@@ -18,6 +18,8 @@ class _StorageKeys {
   static const displayName = 'cloud_display_name';
   static const storeName = 'cloud_store_name';
   static const isProMigrated = 'cloud_pro_migrated';
+  static const tier = 'cloud_tier';
+  static const canCloudSync = 'cloud_can_sync';
 }
 
 /// Manages JWT tokens, cloud server URL, and cached user profile/permissions in secure storage.
@@ -98,6 +100,20 @@ class TokenStorage {
   Future<void> setProMigrated(bool migrated) =>
       _storage.write(key: _StorageKeys.isProMigrated, value: migrated.toString());
 
+  Future<String?> getTier() => _storage.read(key: _StorageKeys.tier);
+
+  Future<bool> canCloudSync() async {
+    final val = await _storage.read(key: _StorageKeys.canCloudSync);
+    return val == 'true';
+  }
+
+  Future<void> saveTier({required String tier, required bool canCloudSync}) async {
+    await Future.wait([
+      _storage.write(key: _StorageKeys.tier, value: tier),
+      _storage.write(key: _StorageKeys.canCloudSync, value: canCloudSync.toString()),
+    ]);
+  }
+
   Future<void> clearTokens() async {
     await Future.wait([
       _storage.delete(key: _StorageKeys.accessToken),
@@ -108,6 +124,8 @@ class TokenStorage {
       _storage.delete(key: _StorageKeys.username),
       _storage.delete(key: _StorageKeys.displayName),
       _storage.delete(key: _StorageKeys.storeName),
+      _storage.delete(key: _StorageKeys.tier),
+      _storage.delete(key: _StorageKeys.canCloudSync),
     ]);
   }
 

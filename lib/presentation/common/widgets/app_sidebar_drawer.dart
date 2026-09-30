@@ -400,12 +400,12 @@ class AppSidebarDrawer extends ConsumerWidget {
                         ),
                         icon: const Icon(Icons.swap_horiz_rounded, size: 16),
                         label: const Text(
-                          'Pilih Mode Operasional',
+                          'Beralih / Masuk Akun Toko',
                           style: TextStyle(fontSize: 11),
                         ),
                         onPressed: () {
                           Navigator.pop(context);
-                          context.go('/mode-select');
+                          context.push('/cloud-login');
                         },
                       ),
                     ),

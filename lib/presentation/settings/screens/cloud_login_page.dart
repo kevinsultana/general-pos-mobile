@@ -45,6 +45,20 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
   }
 
   Future<void> _loadInitialData() async {
+    try {
+      final tokens = ref.read(tokenStorageProvider);
+      final storeId = await tokens.getStoreId();
+      final userId = await tokens.getUserId();
+      if (storeId != null && storeId.isNotEmpty && userId != null && userId.isNotEmpty) {
+        final storeRepo = ref.read(storeRepositoryProvider);
+        final isReg = await storeRepo.isStoreRegistered();
+        if (isReg && mounted) {
+          context.go('/');
+          return;
+        }
+      }
+    } catch (_) {}
+
     // Auto-fill local store info if available
     try {
       final storeRepo = ref.read(storeRepositoryProvider);
@@ -76,8 +90,8 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
       _isLoading = true;
       _errorMsg = null;
       _loadingStatusText = _selectedTab == 0
-          ? 'Mendaftarkan akun toko ke Cloud Server...'
-          : 'Menghubungkan ke Cloud...';
+          ? 'Mendaftarkan akun toko ke server...'
+          : 'Menghubungkan ke server...';
     });
 
     try {
@@ -95,7 +109,7 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
       final localStoreId = localStore?.id ?? 'store-default-01';
 
       if (_selectedTab == 0) {
-        // ──── FLOW 1: DAFTAR KE PRO (REGISTER & AUTO-MIGRATE) ────
+        // ──── FLOW 1: DAFTAR TOKO BARU ────
         final cloudUser = await ref.read(cloudAuthProvider.notifier).registerStore(
               storeName: _storeNameCtrl.text.trim(),
               ownerName: _ownerNameCtrl.text.trim(),
@@ -104,40 +118,66 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
               email: _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null,
             );
 
-        // Migrate local offline data to Cloud
+        // Bind authentic cloud store & owner into Drift SQLite
         setState(() {
-          _loadingStatusText = 'Mensinkronkan data produk & transaksi lokal ke Cloud...';
+          _loadingStatusText = 'Menyiapkan database kasir offline lokal...';
         });
-
-        final migrationService = ref.read(dataMigrationServiceProvider);
-        await migrationService.migrateLocalToCloud(
-          localStoreId: localStoreId,
-          cloudStoreId: cloudUser.storeId,
-          onProgress: (p) {
-            if (mounted) {
-              setState(() => _loadingStatusText = p.step);
-            }
-          },
+        await storeRepo.bindCloudStoreAndUser(
+          storeId: cloudUser.storeId,
+          storeName: cloudUser.storeName,
+          subscriptionPlan: cloudUser.tier,
+          userId: cloudUser.userId,
+          username: cloudUser.username,
+          displayName: cloudUser.displayName,
+          ownerName: _ownerNameCtrl.text.trim().isNotEmpty
+              ? _ownerNameCtrl.text.trim()
+              : null,
         );
 
-        // Switch permanently to Cloud Mode
-        await tokens.setCloudMode(true);
-        await tokens.setProMigrated(true);
-        await ref
-            .read(appOperationalModeProvider.notifier)
-            .switchMode(AppOperationalMode.cloud);
+        if (cloudUser.tier == 'FREE' || !cloudUser.canCloudSync) {
+          await tokens.setCloudMode(false);
+          await ref
+              .read(appOperationalModeProvider.notifier)
+              .switchMode(AppOperationalMode.local);
+          try {
+            ref.read(syncCoordinatorProvider).stopPeriodicSync();
+          } catch (_) {}
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                '🎉 Selamat! Toko Anda kini resmi beralih ke Mode Cloud PRO. Seluruh data lokal telah tersinkronisasi.',
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  '🎉 Pendaftaran Berhasil! Toko aktif dalam Mode Lokal (FREE). Kasir siap digunakan offline.',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
               ),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 4),
-            ),
-          );
-          context.go('/');
+            );
+            context.go('/');
+          }
+        } else {
+          // PRO tier
+          await tokens.setCloudMode(true);
+          await tokens.setProMigrated(true);
+          await ref
+              .read(appOperationalModeProvider.notifier)
+              .switchMode(AppOperationalMode.cloud);
+          try {
+            ref.read(syncCoordinatorProvider).startPeriodicSync();
+          } catch (_) {}
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  '🎉 Selamat! Toko Anda aktif dalam Mode Cloud PRO.',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
+              ),
+            );
+            context.go('/');
+          }
         }
       } else {
         // ──── FLOW 2: LOGIN AKUN CLOUD YANG SUDAH ADA ────
@@ -146,33 +186,68 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
               password: _passwordCtrl.text,
             );
 
-        // Check if there are local offline items to migrate
-        final migrationService = ref.read(dataMigrationServiceProvider);
-        try {
-          setState(() {
-            _loadingStatusText = 'Memeriksa sinkronisasi data lokal...';
-          });
-          await migrationService.migrateLocalToCloud(
-            localStoreId: localStoreId,
-            cloudStoreId: user.storeId,
-          );
-        } catch (_) {}
+        // Bind authentic cloud store & user into Drift SQLite
+        setState(() {
+          _loadingStatusText = 'Memperbarui database toko lokal...';
+        });
+        await storeRepo.bindCloudStoreAndUser(
+          storeId: user.storeId,
+          storeName: user.storeName,
+          subscriptionPlan: user.tier,
+          userId: user.userId,
+          username: user.username,
+          displayName: user.displayName,
+        );
 
-        // Activate Cloud Mode
-        await tokens.setCloudMode(true);
-        await tokens.setProMigrated(true);
-        await ref
-            .read(appOperationalModeProvider.notifier)
-            .switchMode(AppOperationalMode.cloud);
+        if (user.tier == 'FREE' || !user.canCloudSync) {
+          await tokens.setCloudMode(false);
+          await ref
+              .read(appOperationalModeProvider.notifier)
+              .switchMode(AppOperationalMode.local);
+          try {
+            ref.read(syncCoordinatorProvider).stopPeriodicSync();
+          } catch (_) {}
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Berhasil masuk ke Cloud POS (Mode Cloud Aktif)'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          context.go('/');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Berhasil masuk! Toko aktif dalam Mode Lokal (FREE).'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            context.go('/');
+          }
+        } else {
+          // PRO tier - sync check
+          final migrationService = ref.read(dataMigrationServiceProvider);
+          try {
+            setState(() {
+              _loadingStatusText = 'Memeriksa sinkronisasi data lokal ke Cloud...';
+            });
+            await migrationService.migrateLocalToCloud(
+              localStoreId: localStoreId,
+              cloudStoreId: user.storeId,
+            );
+          } catch (_) {}
+
+          await tokens.setCloudMode(true);
+          await tokens.setProMigrated(true);
+          await ref
+              .read(appOperationalModeProvider.notifier)
+              .switchMode(AppOperationalMode.cloud);
+          try {
+            ref.read(syncCoordinatorProvider).startPeriodicSync();
+          } catch (_) {}
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Berhasil masuk ke Cloud POS (Mode Cloud PRO Aktif)'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            context.go('/');
+          }
         }
       }
     } catch (e) {
@@ -195,7 +270,7 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          _selectedTab == 0 ? 'Daftar Cloud PRO' : 'Sinkronisasi Cloud',
+          _selectedTab == 0 ? 'Daftar Toko Baru (Free)' : 'Masuk Akun Toko',
           style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
       ),
@@ -229,13 +304,13 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                           ),
                         ],
                       ),
-                      child: Icon(Icons.cloud_sync_rounded,
+                      child: Icon(Icons.point_of_sale_rounded,
                           size: 38, color: cs.onPrimary),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _selectedTab == 0 ? 'Upgrade Toko ke PRO' : 'Masuk ke Cloud POS',
+                    _selectedTab == 0 ? 'Daftar Toko Baru' : 'Masuk Akun Toko',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 22,
@@ -246,8 +321,8 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                   const SizedBox(height: 6),
                   Text(
                     _selectedTab == 0
-                        ? 'Daftarkan akun Cloud PRO untuk menikmati sinkronisasi multi-kasir, kitchen, gudang, dan dashboard web.'
-                        : 'Masuk dengan kredensial toko atau kasir untuk melanjutkan transaksi di Cloud.',
+                        ? 'Daftarkan toko Anda untuk mulai menggunakan kasir offline mandiri di Android.'
+                        : 'Masuk dengan kredensial pemilik atau staf toko Anda.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 13,
@@ -290,7 +365,7 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                                     : null,
                               ),
                               child: Text(
-                                'Daftar ke PRO Baru',
+                                'Daftar Toko (Free)',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
@@ -329,7 +404,7 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                                     : null,
                               ),
                               child: Text(
-                                'Sudah Ada Akun (Masuk)',
+                                'Masuk Akun Toko',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
@@ -430,25 +505,25 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Auto migration info notice
+                  // Free offline info notice
                   if (_selectedTab == 0) ...[
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: cs.primaryContainer.withValues(alpha: 0.4),
+                        color: AppColors.accent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+                        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.sync_rounded, color: cs.primary, size: 20),
+                          const Icon(Icons.offline_pin_rounded, color: AppColors.accent, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Semua produk, kategori & transaksi lokal saat ini akan otomatis disinkronkan ke Cloud.',
+                              'Pendaftaran otomatis mengaktifkan Paket FREE (100% Offline). Anda dapat beralih ke Cloud PRO kapan saja.',
                               style: GoogleFonts.inter(
                                 fontSize: 11.5,
-                                color: cs.onPrimaryContainer,
+                                color: cs.onSurface,
                               ),
                             ),
                           ),
@@ -492,14 +567,14 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : Icon(_selectedTab == 0
-                            ? Icons.rocket_launch_rounded
-                            : Icons.cloud_done_rounded),
+                            ? Icons.storefront_rounded
+                            : Icons.login_rounded),
                     label: Text(
                       _isLoading
                           ? (_loadingStatusText ?? 'Memproses...')
                           : (_selectedTab == 0
-                              ? 'Daftar & Migrasikan ke PRO'
-                              : 'Masuk ke Cloud'),
+                              ? 'Daftarkan Toko Gratis'
+                              : 'Masuk ke Kasir POS'),
                       style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600, fontSize: 15),
                     ),

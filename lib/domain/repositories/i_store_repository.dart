@@ -45,5 +45,15 @@ abstract class IStoreRepository {
     required String phone,
     String? ownerName,
   });
+  Future<void> bindCloudStoreAndUser({
+    required String storeId,
+    required String storeName,
+    required String subscriptionPlan,
+    required String userId,
+    required String username,
+    required String displayName,
+    String? ownerName,
+  });
+  Future<void> healAllOrphanRecords(String storeId);
 }
 

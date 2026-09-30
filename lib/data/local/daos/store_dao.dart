@@ -155,6 +155,88 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
     } catch (_) {}
   }
 
+  Future<void> bindCloudStoreAndUser({
+    required String storeId,
+    required String storeName,
+    required String subscriptionPlan,
+    required String userId,
+    required String username,
+    required String displayName,
+    String? ownerName,
+  }) async {
+    final now = DateTime.now();
+    await db.transaction(() async {
+      final existingStore = await getStoreById(storeId);
+      if (existingStore == null) {
+        await into(stores).insert(
+          StoresCompanion.insert(
+            id: storeId,
+            name: storeName,
+            ownerName: Value(ownerName ?? displayName),
+            currency: const Value('IDR'),
+            timezone: const Value('Asia/Jakarta'),
+            language: const Value('id'),
+            businessType: const Value('GENERAL'),
+            customerEnabled: const Value(false),
+            draftEnabled: const Value(true),
+            splitPaymentEnabled: const Value(true),
+            refundEnabled: const Value(true),
+            cashRoundingEnabled: const Value(true),
+            cashRoundingIncrement: const Value(100),
+            cashRoundingMode: const Value('ROUND_NEAREST'),
+            subscriptionPlan: Value(subscriptionPlan),
+            subscriptionStatus: const Value('ACTIVE'),
+            subscriptionExpiresAt: const Value(null),
+            orderTypeEnabled: const Value(true),
+            orderTypesJson: const Value('["Dine In","Takeaway","Delivery","Online"]'),
+            createdAt: now,
+            updatedAt: now,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+      } else {
+        await (update(stores)..where((tbl) => tbl.id.equals(storeId))).write(
+          StoresCompanion(
+            name: Value(storeName),
+            subscriptionPlan: Value(subscriptionPlan),
+            subscriptionStatus: const Value('ACTIVE'),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+
+      if (storeId != 'store-default-01') {
+        try {
+          final placeholder = await getStoreById('store-default-01');
+          if (placeholder != null) {
+            final hasAdmin = await db.userDao.hasAdminUser('store-default-01');
+            if (!hasAdmin) {
+              await (delete(stores)..where((tbl) => tbl.id.equals('store-default-01'))).go();
+            }
+          }
+        } catch (_) {}
+      }
+
+      await db.userDao.ensureTableExists();
+      await into(users).insert(
+        UsersCompanion.insert(
+          id: userId,
+          storeId: storeId,
+          username: username,
+          displayName: displayName,
+          passwordHash: 'CLOUD_AUTHENTICATED',
+          role: const Value('ADMIN'),
+          active: const Value(true),
+          createdAt: now,
+          updatedAt: now,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+
+      await healAllOrphanRecords(storeId);
+    });
+  }
+
   Future<Store> registerLocalStore({
     required String storeId,
     required String name,

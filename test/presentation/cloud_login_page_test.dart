@@ -16,29 +16,29 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify Title and Subtitle in Login tab
-    expect(find.text('Masuk ke Cloud POS'), findsOneWidget);
-    expect(find.text('Sinkronisasi Cloud'), findsOneWidget);
+    expect(find.text('Masuk Akun Toko'), findsWidgets);
+    expect(find.text('Masuk dengan kredensial pemilik atau staf toko Anda.'), findsOneWidget);
 
     // Verify Username and Password are visible
     expect(find.text('Username'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
-    expect(find.text('Masuk ke Cloud'), findsOneWidget);
+    expect(find.text('Masuk ke Kasir POS'), findsOneWidget);
 
     // Verify Server URL field & Advanced Server Settings toggle are completely removed
     expect(find.text('URL Server API'), findsNothing);
     expect(find.text('Pengaturan Server Endpoint (Lanjutan)'), findsNothing);
 
     // Switch to Register tab
-    final registerTab = find.text('Daftar ke PRO Baru');
+    final registerTab = find.text('Daftar Toko (Free)');
     expect(registerTab, findsOneWidget);
     await tester.tap(registerTab);
     await tester.pumpAndSettle();
 
     // Verify Register tab fields
-    expect(find.text('Upgrade Toko ke PRO'), findsOneWidget);
+    expect(find.text('Daftar Toko Baru'), findsOneWidget);
     expect(find.text('Nama Toko'), findsOneWidget);
     expect(find.text('Nama Pemilik Toko'), findsOneWidget);
-    expect(find.text('Daftar & Migrasikan ke PRO'), findsOneWidget);
+    expect(find.text('Daftarkan Toko Gratis'), findsOneWidget);
 
     // Verify Server URL is still not present in Register tab
     expect(find.text('URL Server API'), findsNothing);

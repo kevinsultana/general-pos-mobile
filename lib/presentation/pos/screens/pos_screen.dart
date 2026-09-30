@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/cloud_providers.dart';
 import '../../../core/providers/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -69,13 +70,43 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     final cartNotifier = ref.read(cartControllerProvider.notifier);
 
     final draftCount = draftsAsync.value?.length ?? 0;
+    final isCloudMode = ref.watch(isCloudModeProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text(
-          'Kasir POS',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Kasir POS',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: isCloudMode
+                    ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                    : AppColors.accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isCloudMode
+                      ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+                      : AppColors.accent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Text(
+                isCloudMode ? 'PRO' : 'FREE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: isCloudMode ? const Color(0xFF6366F1) : AppColors.accent,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           // Drafts saved badge button

@@ -882,7 +882,7 @@ class StoreSettingsScreen extends ConsumerWidget {
                       backgroundColor: Colors.green,
                     ),
                   );
-                  context.go('/mode-select');
+                  context.go('/cloud-login');
                 }
               } catch (e) {
                 if (context.mounted) {

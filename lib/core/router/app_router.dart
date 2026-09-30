@@ -18,15 +18,19 @@ import '../../presentation/settings/screens/order_type_settings_screen.dart';
 import '../../presentation/settings/screens/cash_rounding_settings_screen.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/mode-select',
+  initialLocation: '/cloud-login',
   routes: [
     GoRoute(
       path: '/mode-select',
-      builder: (context, state) => const ModeSelectionScreen(),
+      redirect: (context, state) => '/cloud-login',
     ),
     GoRoute(
       path: '/local-register',
-      builder: (context, state) => const LocalRegisterScreen(),
+      redirect: (context, state) => '/cloud-login',
+    ),
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const CloudLoginPage(),
     ),
     GoRoute(
       path: '/',

@@ -7,6 +7,8 @@ class CloudUser {
   final String displayName;
   final String storeId;
   final String storeName;
+  final String tier;
+  final bool canCloudSync;
   final List<String> permissions;
 
   const CloudUser({
@@ -15,6 +17,8 @@ class CloudUser {
     required this.displayName,
     required this.storeId,
     required this.storeName,
+    this.tier = 'FREE',
+    this.canCloudSync = false,
     required this.permissions,
   });
 
@@ -22,13 +26,19 @@ class CloudUser {
     final user = json['user'] as Map<String, dynamic>;
     final store = json['store'] as Map<String, dynamic>? ?? {};
     final perms = (json['permissions'] as List<dynamic>?)?.cast<String>() ?? [];
+    final tier = (user['tier'] ?? store['subscriptionPlan'] ?? store['plan'] ?? 'FREE')
+        .toString()
+        .toUpperCase();
+    final canCloudSync = user['canCloudSync'] == true || tier != 'FREE';
 
     return CloudUser(
       userId: user['id'] as String,
       username: user['username'] as String,
       displayName: user['displayName'] as String? ?? user['username'],
-      storeId: store['id'] as String? ?? '',
-      storeName: store['name'] as String? ?? '',
+      storeId: store['id'] as String? ?? user['storeId'] as String? ?? '',
+      storeName: store['name'] as String? ?? user['storeName'] as String? ?? '',
+      tier: tier,
+      canCloudSync: canCloudSync,
       permissions: perms,
     );
   }
@@ -71,7 +81,11 @@ class CloudAuthService {
         storeName: user.storeName,
         permissions: user.permissions,
       );
-      await _tokenStorage.setCloudMode(true);
+      await _tokenStorage.saveTier(
+        tier: user.tier,
+        canCloudSync: user.canCloudSync,
+      );
+      await _tokenStorage.setCloudMode(user.canCloudSync);
 
       return user;
     } on DioException catch (e) {
@@ -118,7 +132,11 @@ class CloudAuthService {
         storeName: user.storeName,
         permissions: user.permissions,
       );
-      await _tokenStorage.setCloudMode(true);
+      await _tokenStorage.saveTier(
+        tier: user.tier,
+        canCloudSync: user.canCloudSync,
+      );
+      await _tokenStorage.setCloudMode(user.canCloudSync);
 
       return user;
     } on DioException catch (e) {

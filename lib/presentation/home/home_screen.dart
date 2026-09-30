@@ -129,34 +129,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-                  ),
+                  color: AppColors.accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.amber.withValues(alpha: 0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  border: Border.all(
+                    color: AppColors.accent.withValues(alpha: 0.35),
+                  ),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.workspace_premium_rounded,
+                      Icons.offline_pin_rounded,
                       size: 13,
-                      color: Colors.white,
+                      color: AppColors.accent,
                     ),
                     SizedBox(width: 4),
                     Text(
-                      'PRO',
+                      'Mode Lokal (Free)',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accent,
                       ),
                     ),
                   ],
@@ -171,11 +164,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.3),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.indigo.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -183,15 +182,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Icon(
                       Icons.cloud_done_rounded,
                       size: 13,
-                      color: Color(0xFF0284C7),
+                      color: Colors.white,
                     ),
                     SizedBox(width: 4),
                     Text(
-                      'Cloud',
+                      'Cloud PRO',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0284C7),
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],

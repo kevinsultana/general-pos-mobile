@@ -139,5 +139,29 @@ class StoreRepositoryImpl implements IStoreRepository {
         phone: phone,
         ownerName: ownerName,
       );
+
+  @override
+  Future<void> bindCloudStoreAndUser({
+    required String storeId,
+    required String storeName,
+    required String subscriptionPlan,
+    required String userId,
+    required String username,
+    required String displayName,
+    String? ownerName,
+  }) =>
+      _storeDao.bindCloudStoreAndUser(
+        storeId: storeId,
+        storeName: storeName,
+        subscriptionPlan: subscriptionPlan,
+        userId: userId,
+        username: username,
+        displayName: displayName,
+        ownerName: ownerName,
+      );
+
+  @override
+  Future<void> healAllOrphanRecords(String storeId) =>
+      _storeDao.healAllOrphanRecords(storeId);
 }
 

@@ -66,6 +66,8 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
     final displayName = await tokens.getDisplayName() ?? username;
     final storeName = await tokens.getStoreName() ?? '';
     final perms = await tokens.getPermissions();
+    final tier = await tokens.getTier() ?? 'FREE';
+    final canSync = await tokens.canCloudSync();
 
     return CloudUser(
       userId: userId,
@@ -73,6 +75,8 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
       displayName: displayName,
       storeId: storeId,
       storeName: storeName,
+      tier: tier,
+      canCloudSync: canSync,
       permissions: perms,
     );
   }
