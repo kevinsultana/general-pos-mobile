@@ -107,11 +107,14 @@ class TokenStorage {
       _storage.write(key: _StorageKeys.isProMigrated, value: migrated.toString());
 
   Future<String?> getTier() => _storage.read(key: _StorageKeys.tier);
+  Future<void> setTier(String tier) => _storage.write(key: _StorageKeys.tier, value: tier);
 
   Future<bool> canCloudSync() async {
     final val = await _storage.read(key: _StorageKeys.canCloudSync);
     return val == 'true';
   }
+  Future<void> setCanCloudSync(bool canSync) =>
+      _storage.write(key: _StorageKeys.canCloudSync, value: canSync.toString());
 
   Future<void> saveTier({required String tier, required bool canCloudSync}) async {
     await Future.wait([

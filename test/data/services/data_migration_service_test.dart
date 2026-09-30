@@ -144,11 +144,10 @@ void main() {
           customerId: const drift.Value(testCustId),
           orderType: const drift.Value('TAKEAWAY'),
           subtotal: 20000,
-          discountTotal: 0,
+          discountTotal: const drift.Value(0),
           roundingAmount: const drift.Value(0),
           total: 20000,
-          paidTotal: 20000,
-          changeTotal: 0,
+          paidTotal: const drift.Value(20000),
           status: 'COMPLETED',
           completedAt: drift.Value(txTime),
           createdAt: txTime,
@@ -168,7 +167,6 @@ void main() {
           subtotal: 20000,
           total: 20000,
           createdAt: txTime,
-          updatedAt: txTime,
         ),
       );
 
@@ -181,21 +179,20 @@ void main() {
           status: 'COMPLETED',
           paidAt: drift.Value(txTime),
           createdAt: txTime,
-          updatedAt: txTime,
         ),
       );
 
       // 6. Stock Movement
       await localDb.stockMovementDao.recordMovement(
         StockMovementsCompanion.insert(
-          id: drift.Value(testSmId),
-          storeId: const drift.Value(testStoreId),
-          productId: const drift.Value(testProdId),
-          type: const drift.Value('STOCK_IN'),
-          quantityDelta: const drift.Value(25),
+          id: testSmId,
+          storeId: testStoreId,
+          productId: testProdId,
+          type: 'STOCK_IN',
+          quantityDelta: 25,
           unitCost: const drift.Value(5000),
           reason: const drift.Value('Stok awal toko offline'),
-          createdAt: drift.Value(DateTime(2026, 8, 1, 9, 0)),
+          createdAt: DateTime(2026, 8, 1, 9, 0),
         ),
       );
     });

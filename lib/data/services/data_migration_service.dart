@@ -70,7 +70,7 @@ class DataMigrationService {
         payload: {
           'id': cat.id,
           'name': cat.name,
-          'active': cat.active,
+          'active': true,
         },
       ).toJson());
     }
@@ -308,7 +308,6 @@ class DataMigrationService {
             id: cat.id,
             storeId: storeId,
             name: cat.name,
-            active: Value(cat.active),
             createdAt: cat.createdAt,
             updatedAt: cat.updatedAt,
           ),
@@ -330,7 +329,7 @@ class DataMigrationService {
             cost: prod.cost,
             sellingPrice: prod.sellingPrice,
             stock: prod.stock,
-            lowStockThreshold: prod.lowStockThreshold,
+            lowStockThreshold: Value(prod.lowStockThreshold),
             imageReference: Value(prod.imageReference),
             active: Value(prod.active),
             discontinued: Value(prod.discontinued),
@@ -351,7 +350,7 @@ class DataMigrationService {
               cost: v.cost,
               sellingPrice: v.sellingPrice,
               stock: v.stock,
-              lowStockThreshold: v.lowStockThreshold,
+              lowStockThreshold: Value(v.lowStockThreshold),
               active: Value(v.active),
               createdAt: v.createdAt,
               updatedAt: v.updatedAt,
@@ -387,10 +386,10 @@ class DataMigrationService {
             id: promo.id,
             storeId: storeId,
             name: promo.name,
-            code: promo.code,
+            code: Value(promo.code),
             discountType: promo.discountType,
             discountValue: promo.discountValue,
-            minSpend: promo.minSpend,
+            minSpend: Value(promo.minSpend),
             startDate: Value(promo.startDate),
             endDate: Value(promo.endDate),
             productId: Value(promo.productId),
@@ -417,11 +416,10 @@ class DataMigrationService {
             subtotal: tx.subtotal,
             discountType: Value(tx.discountType),
             discountValue: Value(tx.discountValue),
-            discountTotal: tx.discountTotal,
+            discountTotal: Value(tx.discountTotal),
             roundingAmount: Value(tx.roundingAmount),
             total: tx.total,
-            paidTotal: tx.paidTotal,
-            changeTotal: tx.changeTotal,
+            paidTotal: Value(tx.paidTotal),
             status: tx.status,
             completedAt: Value(tx.completedAt),
             createdAt: tx.createdAt,
@@ -446,11 +444,10 @@ class DataMigrationService {
               unitPrice: item.unitPrice,
               discountType: Value(item.discountType),
               discountValue: Value(item.discountValue),
-              discountAmount: item.discountAmount,
+              discountAmount: Value(item.discountAmount),
               subtotal: item.subtotal,
               total: item.total,
               createdAt: item.createdAt,
-              updatedAt: item.updatedAt,
             ),
           );
         }
@@ -468,7 +465,6 @@ class DataMigrationService {
               metadata: Value(p.metadata),
               paidAt: Value(p.paidAt),
               createdAt: p.createdAt,
-              updatedAt: p.updatedAt,
             ),
           );
         }
@@ -480,17 +476,18 @@ class DataMigrationService {
       try {
         await _cloudDb.stockMovementDao.recordMovement(
           StockMovementsCompanion.insert(
-            id: Value(sm.id),
-            storeId: Value(storeId),
-            productId: Value(sm.productId),
+            id: sm.id,
+            storeId: storeId,
+            productId: sm.productId,
             variantId: Value(sm.variantId),
-            type: Value(sm.type),
-            quantityDelta: Value(sm.quantityDelta),
+            type: sm.type,
+            quantityDelta: sm.quantityDelta,
             unitCost: Value(sm.unitCost),
             referenceType: Value(sm.referenceType),
             referenceId: Value(sm.referenceId),
             reason: Value(sm.reason),
-            createdAt: Value(sm.createdAt),
+            createdById: Value(sm.createdById),
+            createdAt: sm.createdAt,
           ),
         );
       } catch (_) {}

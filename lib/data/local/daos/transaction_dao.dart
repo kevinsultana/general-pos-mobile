@@ -22,6 +22,14 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<void> insertTransaction(TransactionsCompanion transaction) {
+    return into(transactions).insert(transaction, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<void> insertTransactionItem(TransactionItemsCompanion item) {
+    return into(transactionItems).insert(item, mode: InsertMode.insertOrReplace);
+  }
+
   Future<Transaction?> getTransactionById(String id) {
     return (select(transactions)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }

@@ -97,7 +97,6 @@ class _StaffLoginPageState extends ConsumerState<StaffLoginPage> {
       }
 
       // Set mode to CLOUD and start background sync coordinator
-      final tokens = ref.read(tokenStorageProvider);
       await tokens.setCloudMode(true);
       await ref
           .read(appOperationalModeProvider.notifier)
