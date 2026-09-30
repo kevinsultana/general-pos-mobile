@@ -6,7 +6,10 @@ abstract class IProductRepository {
   Future<Product?> getProductById(String id);
   Future<Product?> getProductBySku(String storeId, String sku);
   Future<Product?> getProductByBarcode(String storeId, String barcode);
-  Future<void> saveProduct(ProductsCompanion product);
+  Future<void> saveProduct(
+    ProductsCompanion product, {
+    List<ProductVariantsCompanion>? variants,
+  });
   Future<void> updateStock(String productId, int newStock);
 
   // Categories

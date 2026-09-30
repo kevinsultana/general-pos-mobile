@@ -249,19 +249,51 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   Expanded(
                     child: categoriesAsync.when(
                       data: (categories) {
+                        // De-duplicate categories by id
+                        final seenIds = <String>{};
+                        final uniqueCategories = <Category>[];
+                        for (final c in categories) {
+                          if (seenIds.add(c.id)) {
+                            uniqueCategories.add(c);
+                          }
+                        }
+
+                        // Check if the selected category exists in the list
+                        final exists = uniqueCategories.any((c) => c.id == _selectedCategoryId);
+
+                        final items = uniqueCategories.map((c) {
+                          return DropdownMenuItem<String>(
+                            value: c.id,
+                            child: Text(c.name),
+                          );
+                        }).toList();
+
+                        // If selected category is not in list, add a fallback item to prevent assertion crash
+                        if (!exists && _selectedCategoryId != null && _selectedCategoryId!.isNotEmpty) {
+                          final shortId = _selectedCategoryId!.length > 8
+                              ? _selectedCategoryId!.substring(0, 8)
+                              : _selectedCategoryId!;
+                          items.insert(
+                            0,
+                            DropdownMenuItem<String>(
+                              value: _selectedCategoryId,
+                              child: Text('Kategori ($shortId...)'),
+                            ),
+                          );
+                        }
+
+                        final effectiveValue = (exists || (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty))
+                            ? _selectedCategoryId
+                            : null;
+
                         return DropdownButtonFormField<String>(
-                          initialValue: _selectedCategoryId,
+                          value: effectiveValue,
                           decoration: const InputDecoration(
                             labelText: 'Kategori Produk *',
                             prefixIcon: Icon(Icons.category_outlined),
                           ),
                           hint: const Text('Pilih Kategori'),
-                          items: categories.map((c) {
-                            return DropdownMenuItem(
-                              value: c.id,
-                              child: Text(c.name),
-                            );
-                          }).toList(),
+                          items: items,
                           onChanged: (val) {
                             setState(() {
                               _selectedCategoryId = val;

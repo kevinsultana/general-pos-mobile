@@ -700,11 +700,15 @@ class StoreSettingsScreen extends ConsumerWidget {
                     ),
                     title: Row(
                       children: [
-                        const Text(
-                          'Layanan Cloud & Sync',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        const Expanded(
+                          child: Text(
+                            'Layanan Cloud & Sync',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),

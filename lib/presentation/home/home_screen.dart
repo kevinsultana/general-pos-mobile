@@ -24,6 +24,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   final CashRoundingMode _mode = CashRoundingMode.roundNearest;
 
   final CashRoundingCalculator _calculator = const CashRoundingCalculator();
+  bool _isManualSyncing = false;
 
   @override
   void initState() {
@@ -133,6 +134,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         }
       }
     } catch (_) {}
+  }
+
+  Future<void> _performManualSync() async {
+    if (_isManualSyncing) return;
+    setState(() => _isManualSyncing = true);
+
+    try {
+      final tokens = ref.read(tokenStorageProvider);
+      final storeId = await tokens.getStoreId();
+
+      if (storeId != null && storeId.isNotEmpty) {
+        final isMigrated = await tokens.isProMigrated();
+        if (!isMigrated) {
+          try {
+            final migrationService = ref.read(dataMigrationServiceProvider);
+            await migrationService.migrateAndPushLocalDataToCloud(storeId);
+          } catch (migErr) {
+            debugPrint('[ManualSync] Migration: $migErr');
+          }
+        }
+      }
+
+      final syncRepo = ref.read(syncRepositoryProvider);
+      final pushResult = await syncRepo.pushAll();
+      final pulledCount = await syncRepo.pull();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              pushResult.failed > 0
+                  ? '⚠️ Sinkronisasi selesai: ${pushResult.synced} terkirim, ${pushResult.failed} gagal, $pulledCount data ditarik.'
+                  : '✅ Sinkronisasi Berhasil!\n• ${pushResult.synced} data lokal terkirim ke Cloud\n• $pulledCount data ditarik dari Cloud',
+            ),
+            backgroundColor: pushResult.failed > 0
+                ? Colors.orange.shade800
+                : Colors.green.shade700,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final errStr = e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Gagal sinkronisasi: $errStr'),
+            backgroundColor: Colors.red.shade700,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isManualSyncing = false);
+      }
+    }
   }
 
   @override
@@ -473,7 +531,178 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Tombol Sinkronisasi Manual Antara Kasir POS & Menu Operasional Toko
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isCloudMode
+                    ? const Color(0xFFEFF6FF)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isCloudMode
+                      ? const Color(0xFFBFDBFE)
+                      : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: _isManualSyncing
+                      ? null
+                      : () {
+                          if (isCloudMode) {
+                            _performManualSync();
+                          } else {
+                            context.push('/cloud-sync');
+                          }
+                        },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isCloudMode
+                                ? const Color(0xFF2563EB)
+                                : const Color(0xFF64748B),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: _isManualSyncing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.sync_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      _isManualSyncing
+                                          ? 'Menyinkronkan...'
+                                          : 'Sinkronisasi Cloud',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isCloudMode
+                                          ? const Color(0xFFDBEAFE)
+                                          : const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      isCloudMode ? 'Cloud' : 'Lokal',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: isCloudMode
+                                            ? const Color(0xFF1D4ED8)
+                                            : const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isCloudMode
+                                    ? 'Kirim data lokal & tarik data terbaru'
+                                    : 'Buka pengaturan Cloud Sync',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _isManualSyncing
+                              ? null
+                              : () {
+                                  if (isCloudMode) {
+                                    _performManualSync();
+                                  } else {
+                                    context.push('/cloud-sync');
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isCloudMode
+                                ? const Color(0xFF2563EB)
+                                : const Color(0xFF475569),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          icon: _isManualSyncing
+                              ? const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.refresh_rounded, size: 14),
+                          label: Text(
+                            _isManualSyncing ? 'Proses...' : 'Sync Now',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
 
             // Section: Menu Operasional
             const Text(

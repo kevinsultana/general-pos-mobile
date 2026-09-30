@@ -6,21 +6,25 @@ import '../../domain/models/cart_item.dart';
 import '../../domain/models/payment_input.dart';
 import '../../domain/repositories/i_transaction_repository.dart';
 import '../local/app_database.dart';
+import '../services/api_client.dart';
 
 class TransactionRepositoryImpl implements ITransactionRepository {
   final AppDatabase _db;
   final Uuid _uuid;
   final bool _isCloudMode;
   final String? _deviceId;
+  final ApiClient? _apiClient;
 
   TransactionRepositoryImpl(
     this._db, [
     Uuid? uuid,
     bool isCloudMode = false,
     String? deviceId,
+    ApiClient? apiClient,
   ])  : _uuid = uuid ?? const Uuid(),
         _isCloudMode = isCloudMode,
-        _deviceId = deviceId;
+        _deviceId = deviceId,
+        _apiClient = apiClient;
 
   @override
   Future<String> completeTransaction({
@@ -203,58 +207,78 @@ class TransactionRepositoryImpl implements ITransactionRepository {
         await _db.transactionDao.deleteTransactionWithItems(draftId);
       }
 
-      // 6. Enqueue COMPLETE_TRANSACTION sync event if in Cloud Mode
+      // 6. Direct online sync if in Cloud Mode, with SQLite fallback on failure
       if (_isCloudMode) {
+        final normalizedOrderType =
+            (orderType == 'GENERAL' || orderType.isEmpty) ? null : orderType;
+
         final syncPayload = {
           'id': transactionId,
           'transactionNumber': transactionNumber,
-          'customerId': customerId,
-          'promotionId': promotionId,
-          'orderType': orderType,
-          'queueNumber': queueNumber,
+          'customerId': (customerId != null && customerId.isNotEmpty) ? customerId : null,
+          'promotionId': (promotionId != null && promotionId.isNotEmpty) ? promotionId : null,
+          'orderType': normalizedOrderType,
+          'queueNumber': (queueNumber != null && queueNumber.isNotEmpty) ? queueNumber : null,
           'subtotal': subtotal,
-          'discountType': discountType,
+          'discountType': (discountType != null && discountType.isNotEmpty) ? discountType : null,
           'discountValue': discountValue,
           'discountTotal': discountTotal,
           'roundingAmount': roundingAmount,
           'total': total,
           'items': items.map((it) => {
+            'id': _uuid.v4(),
             'productId': it.productId,
             'productName': it.productName,
-            'variantId': it.variantId,
+            'variantId': (it.variantId != null && it.variantId!.isNotEmpty) ? it.variantId : null,
             'quantity': it.quantity,
             'unitPrice': it.unitPrice,
-            'discountType': it.discountType,
+            'discountType': (it.discountType != null && it.discountType!.isNotEmpty) ? it.discountType : null,
             'discountValue': it.discountValue,
             'discountAmount': it.discountAmount,
             'subtotal': it.subtotal,
             'total': it.total,
           }).toList(),
           'payments': payments.map((p) => {
+            'id': _uuid.v4(),
             'paymentMethodId': p.paymentMethodId,
             'amount': p.amount,
             'roundingAmount': p.roundingAmount,
             'paymentType': p.paymentType,
-            'tenderedAmount': p.tenderedAmount,
-            'changeAmount': p.changeAmount,
-            'referenceNumber': p.referenceNumber,
-            'note': p.note,
+            'metadata': {
+              'paymentType': p.paymentType,
+              'tenderedAmount': p.tenderedAmount,
+              'changeAmount': p.changeAmount,
+              'referenceNumber': p.referenceNumber,
+              'note': p.note,
+            },
           }).toList(),
         };
 
-        await _db.syncEventDao.insertEvent(
-          SyncEventsCompanion.insert(
-            id: _uuid.v4(),
-            storeId: storeId,
-            deviceId: _deviceId ?? 'pos-device',
-            entityType: 'Transaction',
-            entityId: transactionId,
-            operation: 'COMPLETE_TRANSACTION',
-            payload: jsonEncode(syncPayload),
-            status: 'PENDING',
-            createdAt: now,
-          ),
-        );
+        bool pushedOnline = false;
+        if (_apiClient != null) {
+          try {
+            await _apiClient!.post('/api/v1/transactions', syncPayload);
+            pushedOnline = true;
+          } catch (_) {
+            pushedOnline = false;
+          }
+        }
+
+        if (!pushedOnline) {
+          await _db.syncEventDao.insertEvent(
+            SyncEventsCompanion.insert(
+              id: _uuid.v4(),
+              storeId: storeId,
+              deviceId: _deviceId ?? 'pos-device',
+              entityType: 'Transaction',
+              entityId: transactionId,
+              operation: 'COMPLETE_TRANSACTION',
+              payload: jsonEncode(syncPayload),
+              status: 'PENDING',
+              createdAt: now,
+            ),
+          );
+        }
       }
 
       return transactionId;

@@ -136,12 +136,14 @@ final productRepositoryProvider = Provider<IProductRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final isCloud = ref.watch(isCloudModeProvider);
   final deviceId = ref.watch(deviceIdProvider).valueOrNull;
+  final apiClient = isCloud ? ref.watch(apiClientProvider) : null;
   return ProductRepositoryImpl(
     db.productDao,
     db.categoryDao,
     db: db,
     isCloudMode: isCloud,
     deviceId: deviceId,
+    apiClient: apiClient,
   );
 });
 
@@ -161,7 +163,8 @@ final transactionRepositoryProvider = Provider<ITransactionRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final isCloud = ref.watch(isCloudModeProvider);
   final deviceId = ref.watch(deviceIdProvider).valueOrNull;
-  return TransactionRepositoryImpl(db, null, isCloud, deviceId);
+  final apiClient = isCloud ? ref.watch(apiClientProvider) : null;
+  return TransactionRepositoryImpl(db, null, isCloud, deviceId, apiClient);
 });
 
 final draftRepositoryProvider = Provider<IDraftRepository>((ref) {
@@ -173,11 +176,13 @@ final customerRepositoryProvider = Provider<ICustomerRepository>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final isCloud = ref.watch(isCloudModeProvider);
   final deviceId = ref.watch(deviceIdProvider).valueOrNull;
+  final apiClient = isCloud ? ref.watch(apiClientProvider) : null;
   return CustomerRepositoryImpl(
     db.customerDao,
     db: db,
     isCloudMode: isCloud,
     deviceId: deviceId,
+    apiClient: apiClient,
   );
 });
 

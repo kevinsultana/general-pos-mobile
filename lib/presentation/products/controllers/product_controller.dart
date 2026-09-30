@@ -88,7 +88,10 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
         updatedAt: Value(now),
       );
 
-      await productRepo.saveProduct(companion);
+      await productRepo.saveProduct(
+        companion,
+        variants: hasVariants ? variants : null,
+      );
 
       // Save variants if present
       if (hasVariants) {

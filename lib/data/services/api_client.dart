@@ -369,6 +369,25 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> delete(String path) async {
+    try {
+      final base = await _baseUrl();
+      final normPath = _normalizePath(path);
+      final response = await _dio.delete('$base$normPath');
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {'data': response.data};
+    } on DioException catch (e) {
+      _checkSubscriptionError(e);
+      final serverMsg = _extractErrorMessage(e);
+      if (serverMsg != null) {
+        throw Exception(serverMsg);
+      }
+      rethrow;
+    }
+  }
+
   String? _extractErrorMessage(DioException e) {
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {

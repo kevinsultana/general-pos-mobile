@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/repositories/i_customer_repository.dart';
 import '../local/app_database.dart';
 import '../local/daos/customer_dao.dart';
+import '../services/api_client.dart';
 
 class CustomerRepositoryImpl implements ICustomerRepository {
   final CustomerDao _customerDao;
@@ -12,6 +13,7 @@ class CustomerRepositoryImpl implements ICustomerRepository {
   final AppDatabase? _db;
   final bool _isCloudMode;
   final String? _deviceId;
+  final ApiClient? _apiClient;
 
   CustomerRepositoryImpl(
     this._customerDao, {
@@ -19,7 +21,9 @@ class CustomerRepositoryImpl implements ICustomerRepository {
     this._db,
     this._isCloudMode = false,
     this._deviceId,
-  }) : _uuid = uuid ?? const Uuid();
+    ApiClient? apiClient,
+  })  : _uuid = uuid ?? const Uuid(),
+        _apiClient = apiClient;
 
   @override
   Future<List<Customer>> getCustomers(String storeId) {
@@ -66,23 +70,37 @@ class CustomerRepositoryImpl implements ICustomerRepository {
     );
 
     if (_isCloudMode && _db != null) {
-      await _db.syncEventDao.insertRawEvent(
-        id: _uuid.v4(),
-        storeId: storeId,
-        deviceId: _deviceId ?? 'pos-device',
-        entityType: 'Customer',
-        entityId: customerId,
-        operation: 'CREATE_CUSTOMER',
-        payload: jsonEncode({
-          'id': customerId,
-          'name': name.trim(),
-          'phone': phone?.trim(),
-          'email': email?.trim(),
-          'notes': notes?.trim(),
-        }),
-        status: 'PENDING',
-        createdAt: now,
-      );
+      final payload = {
+        'id': customerId,
+        'name': name.trim(),
+        'phone': phone?.trim(),
+        'email': email?.trim(),
+        'notes': notes?.trim(),
+      };
+
+      bool pushedOnline = false;
+      if (_apiClient != null) {
+        try {
+          await _apiClient!.post('/api/v1/customers', payload);
+          pushedOnline = true;
+        } catch (_) {
+          pushedOnline = false;
+        }
+      }
+
+      if (!pushedOnline) {
+        await _db.syncEventDao.insertRawEvent(
+          id: _uuid.v4(),
+          storeId: storeId,
+          deviceId: _deviceId ?? 'pos-device',
+          entityType: 'Customer',
+          entityId: customerId,
+          operation: 'CREATE_CUSTOMER',
+          payload: jsonEncode(payload),
+          status: 'PENDING',
+          createdAt: now,
+        );
+      }
     }
 
     return customerId;
@@ -117,23 +135,37 @@ class CustomerRepositoryImpl implements ICustomerRepository {
     );
 
     if (_isCloudMode && _db != null) {
-      await _db.syncEventDao.insertRawEvent(
-        id: _uuid.v4(),
-        storeId: storeId,
-        deviceId: _deviceId ?? 'pos-device',
-        entityType: 'Customer',
-        entityId: id,
-        operation: 'UPDATE_CUSTOMER',
-        payload: jsonEncode({
-          'id': id,
-          'name': name.trim(),
-          'phone': phone?.trim(),
-          'email': email?.trim(),
-          'notes': notes?.trim(),
-        }),
-        status: 'PENDING',
-        createdAt: now,
-      );
+      final payload = {
+        'id': id,
+        'name': name.trim(),
+        'phone': phone?.trim(),
+        'email': email?.trim(),
+        'notes': notes?.trim(),
+      };
+
+      bool pushedOnline = false;
+      if (_apiClient != null) {
+        try {
+          await _apiClient!.put('/api/v1/customers/$id', payload);
+          pushedOnline = true;
+        } catch (_) {
+          pushedOnline = false;
+        }
+      }
+
+      if (!pushedOnline) {
+        await _db.syncEventDao.insertRawEvent(
+          id: _uuid.v4(),
+          storeId: storeId,
+          deviceId: _deviceId ?? 'pos-device',
+          entityType: 'Customer',
+          entityId: id,
+          operation: 'UPDATE_CUSTOMER',
+          payload: jsonEncode(payload),
+          status: 'PENDING',
+          createdAt: now,
+        );
+      }
     }
   }
 
@@ -143,19 +175,31 @@ class CustomerRepositoryImpl implements ICustomerRepository {
     await _customerDao.deleteCustomer(id);
 
     if (_isCloudMode && _db != null && existing != null) {
-      await _db.syncEventDao.insertRawEvent(
-        id: _uuid.v4(),
-        storeId: existing.storeId,
-        deviceId: _deviceId ?? 'pos-device',
-        entityType: 'Customer',
-        entityId: id,
-        operation: 'DELETE_CUSTOMER',
-        payload: jsonEncode({
-          'id': id,
-        }),
-        status: 'PENDING',
-        createdAt: DateTime.now(),
-      );
+      bool pushedOnline = false;
+      if (_apiClient != null) {
+        try {
+          await _apiClient!.delete('/api/v1/customers/$id');
+          pushedOnline = true;
+        } catch (_) {
+          pushedOnline = false;
+        }
+      }
+
+      if (!pushedOnline) {
+        await _db.syncEventDao.insertRawEvent(
+          id: _uuid.v4(),
+          storeId: existing.storeId,
+          deviceId: _deviceId ?? 'pos-device',
+          entityType: 'Customer',
+          entityId: id,
+          operation: 'DELETE_CUSTOMER',
+          payload: jsonEncode({
+            'id': id,
+          }),
+          status: 'PENDING',
+          createdAt: DateTime.now(),
+        );
+      }
     }
   }
 }
