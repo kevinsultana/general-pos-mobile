@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -259,7 +260,9 @@ class TransactionRepositoryImpl implements ITransactionRepository {
           try {
             await _apiClient!.post('/api/v1/transactions', syncPayload);
             pushedOnline = true;
-          } catch (_) {
+            debugPrint('[TransactionRepo] Successfully pushed transaction $transactionNumber to /api/v1/transactions');
+          } catch (pushErr) {
+            debugPrint('[TransactionRepo] Direct online push for $transactionNumber failed: $pushErr. Enqueuing to sync_events queue.');
             pushedOnline = false;
           }
         }

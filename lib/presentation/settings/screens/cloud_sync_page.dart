@@ -99,11 +99,11 @@ class _CloudSyncPageState extends ConsumerState<CloudSyncPage> {
       final tier = await tokens.getTier();
       final canSync = await tokens.canCloudSync();
 
-      if (tier != 'PRO' || !canSync) {
+      if ((tier != 'PRO' && tier != 'PAID') || !canSync) {
         statusNotifier.setError();
         if (mounted) {
           _showUpgradeDialog(
-            'Fitur sinkronisasi data Cloud memerlukan paket PRO aktif. Silakan periksa status langganan atau upgrade melalui Web Dashboard.',
+            'Fitur sinkronisasi data Cloud memerlukan paket PAID atau PRO aktif. Silakan periksa status langganan atau upgrade melalui Web Dashboard.',
           );
         }
         return;

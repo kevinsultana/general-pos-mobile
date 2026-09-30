@@ -33,6 +33,7 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
   // Common Controllers
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _serverUrlCtrl = TextEditingController();
 
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -74,6 +75,12 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
 
     // Auto-fill local store info if available
     try {
+      final tokens = ref.read(tokenStorageProvider);
+      final savedUrl = await tokens.getServerUrl();
+      _serverUrlCtrl.text = (savedUrl != null && savedUrl.isNotEmpty)
+          ? savedUrl
+          : AppConfig.defaultBaseUrl;
+
       final storeRepo = ref.read(storeRepositoryProvider);
       final currentStore = await storeRepo.getCurrentStore();
       if (currentStore != null) {
@@ -94,6 +101,7 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
     _emailCtrl.dispose();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
+    _serverUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -110,7 +118,11 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
     try {
       final tokens = ref.read(tokenStorageProvider);
       final deviceId = await ref.read(deviceIdProvider.future);
-      const serverUrl = AppConfig.defaultBaseUrl;
+      final serverUrl = AppConfig.normalizeUrl(
+        _serverUrlCtrl.text.trim().isNotEmpty
+            ? _serverUrlCtrl.text.trim()
+            : AppConfig.defaultBaseUrl,
+      );
 
       await tokens.saveServerConfig(
         serverUrl: serverUrl,
@@ -189,17 +201,34 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
             context.go('/');
           }
         } else {
-          // PRO tier: Set cloud mode, clear cashier session, proceed to staff login
+          // PRO/PAID tier: Set cloud mode, clear cashier session, migrate local data, proceed to staff login
           await tokens.setCloudMode(true);
           await ref
               .read(appOperationalModeProvider.notifier)
               .switchMode(AppOperationalMode.cloud);
           await tokens.clearCashierSession();
+
+          // Auto-migrate local offline data (products, categories, offline transactions) to cloud
+          try {
+            setState(() {
+              _loadingStatusText = 'Menyelaraskan data offline & transaksi ke Cloud...';
+            });
+            final migrationService = ref.read(dataMigrationServiceProvider);
+            await migrationService.migrateAndPushLocalDataToCloud(cloudUser.storeId);
+            await tokens.setProMigrated(true);
+          } catch (migErr) {
+            debugPrint('[CloudLogin] Auto-migration notice: $migErr');
+          }
+
+          try {
+            await ref.read(syncCoordinatorProvider).syncCycle();
+          } catch (_) {}
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  '🎉 Toko PRO Berhasil Didaftarkan! Silakan login sebagai staf kasir.',
+                  '🎉 Toko Cloud Berhasil Didaftarkan! Data lokal telah disinkronkan ke server.',
                 ),
                 backgroundColor: Colors.green,
               ),
@@ -267,16 +296,33 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
             context.go('/');
           }
         } else {
-          // PRO tier: Set cloud mode, clear cashier session, proceed to staff login
+          // PRO/PAID tier: Set cloud mode, clear cashier session, migrate local data, proceed to staff login
           await tokens.setCloudMode(true);
           await ref
               .read(appOperationalModeProvider.notifier)
               .switchMode(AppOperationalMode.cloud);
           await tokens.clearCashierSession();
+
+          // Auto-migrate local offline data (products, categories, offline transactions) to cloud
+          try {
+            setState(() {
+              _loadingStatusText = 'Menyelaraskan data offline & transaksi ke Cloud...';
+            });
+            final migrationService = ref.read(dataMigrationServiceProvider);
+            await migrationService.migrateAndPushLocalDataToCloud(user.storeId);
+            await tokens.setProMigrated(true);
+          } catch (migErr) {
+            debugPrint('[CloudLogin] Auto-migration notice: $migErr');
+          }
+
+          try {
+            await ref.read(syncCoordinatorProvider).syncCycle();
+          } catch (_) {}
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✅ Perangkat terhubung ke Toko PRO! Silakan login staf kasir.'),
+                content: Text('✅ Perangkat terhubung ke Toko Cloud! Data transaksi disinkronkan.'),
                 backgroundColor: Colors.green,
               ),
             );
@@ -536,6 +582,58 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
                     ),
                     validator: (v) =>
                         (v == null || v.length < 6) ? 'Password minimal 6 karakter' : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ──── SERVER ENDPOINT CONFIGURATION ────
+                  _SectionLabel(label: 'Server Cloud (Backend API)'),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _serverUrlCtrl,
+                    decoration: _inputDecoration(
+                      context,
+                      hint: 'http://localhost:5000',
+                      icon: Icons.dns_outlined,
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        tooltip: 'Reset ke default sistem',
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _serverUrlCtrl.text = AppConfig.defaultBaseUrl;
+                          });
+                        },
+                      ),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'URL Server wajib diisi';
+                      if (!v.startsWith('http://') && !v.startsWith('https://')) {
+                        return 'URL harus diawali http:// atau https://';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.computer, size: 14),
+                        label: const Text('Localhost (5000)', style: TextStyle(fontSize: 11)),
+                        onPressed: () => setState(() => _serverUrlCtrl.text = 'http://localhost:5000'),
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.phone_android, size: 14),
+                        label: const Text('Emulator (10.0.2.2)', style: TextStyle(fontSize: 11)),
+                        onPressed: () => setState(() => _serverUrlCtrl.text = 'http://10.0.2.2:5000'),
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.cloud_queue, size: 14),
+                        label: const Text('Production', style: TextStyle(fontSize: 11)),
+                        onPressed: () => setState(() => _serverUrlCtrl.text = 'https://pos-api.kevinsultana.online'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
 

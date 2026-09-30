@@ -31,7 +31,7 @@ class CloudUser {
     final tier = (user['tier'] ?? store['subscriptionPlan'] ?? store['plan'] ?? 'FREE')
         .toString()
         .toUpperCase();
-    final canCloudSync = user['canCloudSync'] == true || tier == 'PRO';
+    final canCloudSync = user['canCloudSync'] == true || tier == 'PRO' || tier == 'PAID';
     final role = (user['role'] is Map<String, dynamic>)
         ? (user['role']['name'] ?? 'CASHIER').toString()
         : (user['role'] ?? 'CASHIER').toString();
@@ -91,7 +91,7 @@ class CloudAuthService {
         tier: user.tier,
         canCloudSync: user.canCloudSync,
       );
-      await _tokenStorage.setCloudMode(user.tier == 'PRO');
+      await _tokenStorage.setCloudMode(user.tier == 'PRO' || user.tier == 'PAID' || user.canCloudSync);
 
       return user;
     } on DioException catch (e) {
@@ -142,7 +142,7 @@ class CloudAuthService {
         tier: user.tier,
         canCloudSync: user.canCloudSync,
       );
-      await _tokenStorage.setCloudMode(user.tier == 'PRO');
+      await _tokenStorage.setCloudMode(user.tier == 'PRO' || user.tier == 'PAID' || user.canCloudSync);
 
       return user;
     } on DioException catch (e) {
@@ -220,7 +220,7 @@ class CloudAuthService {
         tier: user.tier,
         canCloudSync: user.canCloudSync,
       );
-      await _tokenStorage.setCloudMode(user.tier == 'PRO');
+      await _tokenStorage.setCloudMode(user.tier == 'PRO' || user.tier == 'PAID' || user.canCloudSync);
 
       return user;
     } catch (_) {
