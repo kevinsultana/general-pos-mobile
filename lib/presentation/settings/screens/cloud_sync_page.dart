@@ -748,7 +748,7 @@ class _OperationalModeCard extends ConsumerWidget {
                   }
                   await ref.read(appOperationalModeProvider.notifier).switchMode(AppOperationalMode.local);
                 } else {
-                  // Switching to Cloud: verify login
+                  // Switching to Cloud: verify login & PRO subscription
                   final tokens = ref.read(tokenStorageProvider);
                   final token = await tokens.getAccessToken();
                   if (token == null && context.mounted) {
@@ -760,12 +760,87 @@ class _OperationalModeCard extends ConsumerWidget {
                     );
                     return;
                   }
+
+                  final tier = await tokens.getTier();
+                  final canSync = await tokens.canCloudSync();
+
+                  if (tier != 'PRO' || !canSync) {
+                    if (context.mounted) {
+                      _showProUpgradeBottomSheet(context);
+                    }
+                    return;
+                  }
+
                   await ref.read(appOperationalModeProvider.notifier).switchMode(AppOperationalMode.cloud);
                 }
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showProUpgradeBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Icon(
+              Icons.workspace_premium_rounded,
+              color: Colors.amber,
+              size: 54,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Langganan PRO Diperlukan',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Mode Cloud dan Sinkronisasi Multi-Kasir hanya tersedia untuk toko dengan langganan paket PRO aktif.\n\nAkun toko Anda saat ini berstatus FREE. Silakan upgrade paket melalui Web Dashboard atau tetap gunakan Mode Lokal (FREE) secara gratis.',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.black87,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Tetap di Mode Lokal (FREE)'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

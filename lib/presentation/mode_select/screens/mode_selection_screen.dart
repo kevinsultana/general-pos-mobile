@@ -90,7 +90,17 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
         accessToken = await tokens.getAccessToken();
 
         if (accessToken != null && accessToken.isNotEmpty) {
-          // Already logged in
+          final tier = await tokens.getTier();
+          final canSync = await tokens.canCloudSync();
+
+          if (tier != 'PRO' || !canSync) {
+            if (mounted) {
+              _showProUpgradeBottomSheet(context);
+            }
+            return;
+          }
+
+          // Already logged in as PRO
           await tokens.setCloudMode(true);
           await ref
               .read(appOperationalModeProvider.notifier)
@@ -112,6 +122,89 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showProUpgradeBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Icon(
+              Icons.workspace_premium_rounded,
+              color: Colors.amber,
+              size: 54,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Langganan PRO Diperlukan',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Mode Cloud dan Sinkronisasi Multi-Kasir hanya tersedia untuk toko dengan langganan paket PRO aktif.\n\nAkun toko Anda saat ini berstatus FREE. Silakan upgrade paket melalui Web Dashboard atau tetap gunakan Mode Lokal (FREE) secara gratis.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black87,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _selectLocalMode();
+                },
+                child: const Text(
+                  'Lanjutkan dengan Mode Lokal (FREE)',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.push('/cloud-login');
+              },
+              child: const Text(
+                'Hubungkan dengan Akun Toko Lain',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showResetAppDialog() async {

@@ -20,10 +20,10 @@ void main() {
   });
 
   group('P4.1 Store Subscription Plan & Status Tests', () {
-    test('ensureDefaultStore initializes with default PRO subscription plan and ACTIVE status', () async {
+    test('ensureDefaultStore initializes with default FREE subscription plan and ACTIVE status', () async {
       final store = await storeRepo.ensureDefaultStore();
 
-      expect(store.subscriptionPlan, 'PRO');
+      expect(store.subscriptionPlan, 'FREE');
       expect(store.subscriptionStatus, 'ACTIVE');
       expect(store.subscriptionExpiresAt, isNull);
     });

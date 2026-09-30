@@ -31,7 +31,7 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
       if (existing != null) return existing;
     } catch (_) {
       try {
-        await customStatement("UPDATE \"stores\" SET \"subscription_plan\" = 'PRO' WHERE \"subscription_plan\" IS NULL;");
+        await customStatement("UPDATE \"stores\" SET \"subscription_plan\" = 'FREE' WHERE \"subscription_plan\" IS NULL;");
         await customStatement("UPDATE \"stores\" SET \"subscription_status\" = 'ACTIVE' WHERE \"subscription_status\" IS NULL;");
         final healed = await getFirstStore();
         if (healed != null) return healed;
@@ -54,7 +54,7 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
       cashRoundingEnabled: const Value(true),
       cashRoundingIncrement: const Value(100),
       cashRoundingMode: const Value('ROUND_NEAREST'),
-      subscriptionPlan: const Value('PRO'),
+      subscriptionPlan: const Value('FREE'),
       subscriptionStatus: const Value('ACTIVE'),
       subscriptionExpiresAt: const Value(null),
       orderTypeEnabled: const Value(true),

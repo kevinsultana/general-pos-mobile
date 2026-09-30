@@ -120,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
               'ALTER TABLE "stores" ADD COLUMN "cash_rounding_enabled" INTEGER NOT NULL DEFAULT 0;',
               'ALTER TABLE "stores" ADD COLUMN "cash_rounding_increment" INTEGER NOT NULL DEFAULT 100;',
               'ALTER TABLE "stores" ADD COLUMN "cash_rounding_mode" TEXT NOT NULL DEFAULT \'ROUND_NEAREST\';',
-              'ALTER TABLE "stores" ADD COLUMN "subscription_plan" TEXT NOT NULL DEFAULT \'PRO\';',
+              'ALTER TABLE "stores" ADD COLUMN "subscription_plan" TEXT NOT NULL DEFAULT \'FREE\';',
               'ALTER TABLE "stores" ADD COLUMN "subscription_status" TEXT NOT NULL DEFAULT \'ACTIVE\';',
               'ALTER TABLE "stores" ADD COLUMN "subscription_expires_at" INTEGER;',
             ];
@@ -160,7 +160,7 @@ class AppDatabase extends _$AppDatabase {
             'ALTER TABLE "stores" ADD COLUMN "cash_rounding_enabled" INTEGER NOT NULL DEFAULT 0;',
             'ALTER TABLE "stores" ADD COLUMN "cash_rounding_increment" INTEGER NOT NULL DEFAULT 100;',
             'ALTER TABLE "stores" ADD COLUMN "cash_rounding_mode" TEXT NOT NULL DEFAULT \'ROUND_NEAREST\';',
-            'ALTER TABLE "stores" ADD COLUMN "subscription_plan" TEXT NOT NULL DEFAULT \'PRO\';',
+            'ALTER TABLE "stores" ADD COLUMN "subscription_plan" TEXT NOT NULL DEFAULT \'FREE\';',
             'ALTER TABLE "stores" ADD COLUMN "subscription_status" TEXT NOT NULL DEFAULT \'ACTIVE\';',
             'ALTER TABLE "stores" ADD COLUMN "subscription_expires_at" INTEGER;',
             'ALTER TABLE "stores" ADD COLUMN "order_type_enabled" INTEGER NOT NULL DEFAULT 1;',
@@ -174,7 +174,7 @@ class AppDatabase extends _$AppDatabase {
 
           // Backfill any NULL values in existing store records to prevent null check errors
           try {
-            await customStatement("UPDATE \"stores\" SET \"subscription_plan\" = 'PRO' WHERE \"subscription_plan\" IS NULL;");
+            await customStatement("UPDATE \"stores\" SET \"subscription_plan\" = 'FREE' WHERE \"subscription_plan\" IS NULL;");
           } catch (_) {}
           try {
             await customStatement("UPDATE \"stores\" SET \"subscription_status\" = 'ACTIVE' WHERE \"subscription_status\" IS NULL;");
