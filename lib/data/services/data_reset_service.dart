@@ -27,6 +27,9 @@ class DataResetService {
     await tokenStorage.clearAll();
   }
 
+  /// Alias for resetEverything
+  Future<void> resetAllData() => resetEverything();
+
   /// Wipes all tables in the given database.
   Future<void> _clearDatabase(AppDatabase db) async {
     await db.transaction(() async {

@@ -185,7 +185,7 @@ class _StaffLoginPageState extends ConsumerState<StaffLoginPage> {
                             .unpairStore(ownerPassword: passwordCtrl.text);
 
                         final resetService = ref.read(dataResetServiceProvider);
-                        await resetService.resetAllData();
+                        await resetService.resetEverything();
                         await ref
                             .read(appOperationalModeProvider.notifier)
                             .switchMode(AppOperationalMode.local);
