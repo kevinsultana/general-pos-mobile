@@ -168,6 +168,15 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
     }
   }
 
+  Future<CloudUser?> refreshProfile() async {
+    final authService = ref.read(cloudAuthServiceProvider);
+    final user = await authService.refreshProfile();
+    if (user != null) {
+      state = AsyncData(user);
+    }
+    return user;
+  }
+
   Future<void> switchCashier() async {
     final authService = ref.read(cloudAuthServiceProvider);
     await authService.switchCashier();

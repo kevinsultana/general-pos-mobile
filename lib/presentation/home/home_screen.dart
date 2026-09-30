@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/cloud_providers.dart';
+import '../../core/providers/database_providers.dart';
 import '../../core/providers/permission_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/services/cash_rounding_calculator.dart';
@@ -16,7 +17,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   final int _testAmount = 9997;
   final bool _roundingEnabled = true;
   final int _increment = 1000;
@@ -25,9 +26,121 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final CashRoundingCalculator _calculator = const CashRoundingCalculator();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshCloudTier();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshCloudTier();
+    }
+  }
+
+  Future<void> _refreshCloudTier() async {
+    try {
+      final tokens = ref.read(tokenStorageProvider);
+      final oldTier = (await tokens.getTier()) ?? 'FREE';
+
+      final user = await ref.read(cloudAuthProvider.notifier).refreshProfile();
+      if (user != null && mounted) {
+        final localDb = ref.read(localDatabaseProvider);
+        final cloudDb = ref.read(cloudCacheDatabaseProvider);
+        for (final db in [localDb, cloudDb]) {
+          await db.storeDao.ensureStoreWithId(
+            id: user.storeId,
+            name: user.storeName,
+            subscriptionPlan: user.tier,
+            subscriptionStatus: 'ACTIVE',
+          );
+        }
+
+        // Detect Free -> PRO upgrade transition
+        if (oldTier != 'PRO' && user.tier == 'PRO') {
+          await tokens.setTier('PRO');
+          await tokens.setCanCloudSync(true);
+          await tokens.setCloudMode(true);
+
+          if (mounted) {
+            // Show loading dialog
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => PopScope(
+                canPop: false,
+                child: AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  content: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'Menyelaraskan data offline ke Cloud...',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+
+            try {
+              final migrationService = ref.read(dataMigrationServiceProvider);
+              await migrationService.migrateAndPushLocalDataToCloud(user.storeId);
+            } catch (_) {}
+
+            if (mounted) {
+              Navigator.of(context, rootNavigator: true).pop();
+            }
+
+            await ref
+                .read(appOperationalModeProvider.notifier)
+                .switchMode(AppOperationalMode.cloud);
+
+            try {
+              ref.read(syncCoordinatorProvider).startPeriodicSync();
+            } catch (_) {}
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    '🎉 Toko Anda telah aktif sebagai PRO! Semua data offline berhasil disinkronkan ke Cloud.',
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 5),
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isCloudMode = ref.watch(isCloudModeProvider);
+    final currentStore = ref.watch(currentStoreStreamProvider).valueOrNull;
+    final plan = currentStore?.subscriptionPlan ?? 'FREE';
     final canCreateTransaction = ref.watch(
       hasPermissionProvider(AppPermissions.createTransaction),
     );
@@ -151,18 +264,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     color: AppColors.accent.withValues(alpha: 0.35),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.offline_pin_rounded,
                       size: 13,
                       color: AppColors.accent,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
-                      'Mode Lokal (Free)',
-                      style: TextStyle(
+                      'Mode Lokal ($plan)',
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppColors.accent,
@@ -192,18 +305,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ],
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.cloud_done_rounded,
                       size: 13,
                       color: Colors.white,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
-                      'Cloud PRO',
-                      style: TextStyle(
+                      plan == 'PRO' ? 'Cloud PRO' : 'Cloud ($plan)',
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,

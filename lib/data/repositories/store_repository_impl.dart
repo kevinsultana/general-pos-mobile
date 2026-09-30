@@ -18,8 +18,8 @@ class StoreRepositoryImpl implements IStoreRepository {
   Stream<Store?> watchStore(String id) => _storeDao.watchStoreById(id);
 
   @override
-  Future<Store?> getCurrentStore() async {
-    final store = await _storeDao.getFirstStore();
+  Future<Store?> getCurrentStore([String? preferredStoreId]) async {
+    final store = await _storeDao.getActiveStore(preferredStoreId);
     if (store != null) {
       await _storeDao.healAllOrphanRecords(store.id);
     }
@@ -27,8 +27,8 @@ class StoreRepositoryImpl implements IStoreRepository {
   }
 
   @override
-  Stream<Store?> watchCurrentStore() {
-    return _storeDao.watchFirstStore().asyncMap((store) async {
+  Stream<Store?> watchCurrentStore([String? preferredStoreId]) {
+    return _storeDao.watchActiveStore(preferredStoreId).asyncMap((store) async {
       if (store != null) {
         await _storeDao.healAllOrphanRecords(store.id);
       }
@@ -87,6 +87,22 @@ class StoreRepositoryImpl implements IStoreRepository {
 
   @override
   Future<Store> ensureDefaultStore() => _storeDao.ensureDefaultStore();
+
+  @override
+  Future<Store> ensureStoreWithId({
+    required String id,
+    required String name,
+    required String subscriptionPlan,
+    String subscriptionStatus = 'ACTIVE',
+    DateTime? expiresAt,
+  }) =>
+      _storeDao.ensureStoreWithId(
+        id: id,
+        name: name,
+        subscriptionPlan: subscriptionPlan,
+        subscriptionStatus: subscriptionStatus,
+        expiresAt: expiresAt,
+      );
 
   @override
   Future<bool> isStoreRegistered() => _storeDao.isStoreRegistered();

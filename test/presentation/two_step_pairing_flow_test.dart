@@ -1,6 +1,8 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_pos/data/services/api_client.dart';
+import 'package:mobile_pos/data/services/cloud_auth_service.dart';
 import 'package:mobile_pos/data/local/app_database.dart';
 import 'package:mobile_pos/data/local/daos/store_dao.dart';
 import 'package:mobile_pos/data/repositories/store_repository_impl.dart';

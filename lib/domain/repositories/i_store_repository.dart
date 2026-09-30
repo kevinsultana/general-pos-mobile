@@ -3,8 +3,8 @@ import '../../data/local/app_database.dart';
 abstract class IStoreRepository {
   Future<Store?> getStore(String id);
   Stream<Store?> watchStore(String id);
-  Future<Store?> getCurrentStore();
-  Stream<Store?> watchCurrentStore();
+  Future<Store?> getCurrentStore([String? preferredStoreId]);
+  Stream<Store?> watchCurrentStore([String? preferredStoreId]);
   Future<void> saveStore(StoresCompanion store);
   Future<void> setCustomerEnabled(String storeId, bool enabled);
   Future<void> setOrderTypeEnabled(String storeId, bool enabled);
@@ -25,6 +25,13 @@ abstract class IStoreRepository {
     DateTime? expiresAt,
   });
   Future<Store> ensureDefaultStore();
+  Future<Store> ensureStoreWithId({
+    required String id,
+    required String name,
+    required String subscriptionPlan,
+    String subscriptionStatus = 'ACTIVE',
+    DateTime? expiresAt,
+  });
   Future<bool> isStoreRegistered();
   Future<Store> registerLocalStore({
     required String name,

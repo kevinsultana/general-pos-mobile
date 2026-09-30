@@ -131,21 +131,33 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
               email: _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null,
             );
 
-        // Bind authentic cloud store & owner into Drift SQLite
+        // Bind authentic cloud store & owner into Drift SQLite (both local and cloud cache)
         setState(() {
           _loadingStatusText = 'Menyiapkan database kasir offline lokal...';
         });
-        await storeRepo.bindCloudStoreAndUser(
-          storeId: cloudUser.storeId,
-          storeName: cloudUser.storeName,
-          subscriptionPlan: cloudUser.tier,
-          userId: cloudUser.userId,
-          username: cloudUser.username,
-          displayName: cloudUser.displayName,
-          ownerName: _ownerNameCtrl.text.trim().isNotEmpty
-              ? _ownerNameCtrl.text.trim()
-              : null,
-        );
+        final localDb = ref.read(localDatabaseProvider);
+        final cloudDb = ref.read(cloudCacheDatabaseProvider);
+
+        for (final db in [localDb, cloudDb]) {
+          await db.storeDao.ensureStoreWithId(
+            id: cloudUser.storeId,
+            name: cloudUser.storeName,
+            subscriptionPlan: cloudUser.tier,
+            subscriptionStatus: 'ACTIVE',
+          );
+          await db.storeDao.bindCloudStoreAndUser(
+            storeId: cloudUser.storeId,
+            storeName: cloudUser.storeName,
+            subscriptionPlan: cloudUser.tier,
+            userId: cloudUser.userId,
+            username: cloudUser.username,
+            displayName: cloudUser.displayName,
+            ownerName: _ownerNameCtrl.text.trim().isNotEmpty
+                ? _ownerNameCtrl.text.trim()
+                : null,
+          );
+          await db.storeDao.healAllOrphanRecords(cloudUser.storeId);
+        }
         await tokens.setStorePaired(true);
 
         if (cloudUser.tier == 'FREE' || !cloudUser.canCloudSync) {
@@ -177,7 +189,11 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
             context.go('/');
           }
         } else {
-          // PRO tier: Paired store -> Step 2: Staff Login
+          // PRO tier: Set cloud mode, clear cashier session, proceed to staff login
+          await tokens.setCloudMode(true);
+          await ref
+              .read(appOperationalModeProvider.notifier)
+              .switchMode(AppOperationalMode.cloud);
           await tokens.clearCashierSession();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -198,18 +214,30 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
               password: _passwordCtrl.text,
             );
 
-        // Bind authentic cloud store & user into Drift SQLite
+        // Bind authentic cloud store & user into Drift SQLite (both local and cloud cache)
         setState(() {
           _loadingStatusText = 'Memperbarui database toko lokal...';
         });
-        await storeRepo.bindCloudStoreAndUser(
-          storeId: user.storeId,
-          storeName: user.storeName,
-          subscriptionPlan: user.tier,
-          userId: user.userId,
-          username: user.username,
-          displayName: user.displayName,
-        );
+        final localDb = ref.read(localDatabaseProvider);
+        final cloudDb = ref.read(cloudCacheDatabaseProvider);
+
+        for (final db in [localDb, cloudDb]) {
+          await db.storeDao.ensureStoreWithId(
+            id: user.storeId,
+            name: user.storeName,
+            subscriptionPlan: user.tier,
+            subscriptionStatus: 'ACTIVE',
+          );
+          await db.storeDao.bindCloudStoreAndUser(
+            storeId: user.storeId,
+            storeName: user.storeName,
+            subscriptionPlan: user.tier,
+            userId: user.userId,
+            username: user.username,
+            displayName: user.displayName,
+          );
+          await db.storeDao.healAllOrphanRecords(user.storeId);
+        }
         await tokens.setStorePaired(true);
 
         if (user.tier == 'FREE' || !user.canCloudSync) {
@@ -239,7 +267,11 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
             context.go('/');
           }
         } else {
-          // PRO tier: Device paired! Next step is Staff Login
+          // PRO tier: Set cloud mode, clear cashier session, proceed to staff login
+          await tokens.setCloudMode(true);
+          await ref
+              .read(appOperationalModeProvider.notifier)
+              .switchMode(AppOperationalMode.cloud);
           await tokens.clearCashierSession();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

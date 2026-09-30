@@ -60,27 +60,41 @@ class _StaffLoginPageState extends ConsumerState<StaffLoginPage> {
     });
 
     try {
+      final tokens = ref.read(tokenStorageProvider);
+      final pairedStoreId = await tokens.getStoreId();
+
       final staffUser = await ref.read(cloudAuthProvider.notifier).loginStaff(
             username: _usernameCtrl.text.trim(),
             password: _passwordCtrl.text,
           );
 
-      // Save/update staff user in local Drift SQLite cache
-      final db = ref.read(localDatabaseProvider);
+      if (pairedStoreId != null &&
+          pairedStoreId.isNotEmpty &&
+          staffUser.storeId.isNotEmpty &&
+          staffUser.storeId != pairedStoreId) {
+        throw Exception('Akun staf ini tidak terdaftar di toko ini.');
+      }
+
+      // Save/update staff user in BOTH local and cloud cache Drift SQLite
+      final localDb = ref.read(localDatabaseProvider);
+      final cloudDb = ref.read(cloudCacheDatabaseProvider);
       final now = DateTime.now();
-      await db.userDao.insertUser(
-        UsersCompanion.insert(
-          id: staffUser.userId,
-          storeId: staffUser.storeId,
-          username: staffUser.username,
-          displayName: staffUser.displayName,
-          passwordHash: 'CLOUD_AUTHENTICATED',
-          role: const drift.Value('CASHIER'),
-          active: const drift.Value(true),
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
+
+      for (final db in [localDb, cloudDb]) {
+        await db.userDao.insertUser(
+          UsersCompanion.insert(
+            id: staffUser.userId,
+            storeId: staffUser.storeId,
+            username: staffUser.username,
+            displayName: staffUser.displayName,
+            passwordHash: 'CLOUD_AUTHENTICATED',
+            role: drift.Value(staffUser.role.isNotEmpty ? staffUser.role : 'CASHIER'),
+            active: const drift.Value(true),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
 
       // Set mode to CLOUD and start background sync coordinator
       final tokens = ref.read(tokenStorageProvider);

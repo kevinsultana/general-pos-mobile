@@ -28,6 +28,37 @@ class SyncPushResult {
   bool get hasFailures => failed > 0;
 }
 
+/// Structured sync event format for migration & manual push
+class CloudSyncEventData {
+  final String eventId;
+  final String deviceId;
+  final String occurredAt;
+  final String operation;
+  final String entityId;
+  final Map<String, dynamic> payload;
+  final String clientVersion;
+
+  const CloudSyncEventData({
+    required this.eventId,
+    required this.deviceId,
+    required this.occurredAt,
+    required this.operation,
+    required this.entityId,
+    required this.payload,
+    this.clientVersion = '1.0.0',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'eventId': eventId,
+        'deviceId': deviceId,
+        'occurredAt': occurredAt,
+        'operation': operation,
+        'entityId': entityId,
+        'payload': payload,
+        'clientVersion': clientVersion,
+      };
+}
+
 /// Retry delay schedule in seconds: 2s, 5s, 15s, 30s, 60s.
 const _retryDelays = [2, 5, 15, 30, 60];
 
@@ -128,6 +159,19 @@ class CloudSyncService {
       }
       rethrow;
     }
+  }
+
+  /// Directly push a batch of raw sync events to the cloud server.
+  Future<SyncPushResult> pushEvents(List<Map<String, dynamic>> rawEvents) async {
+    if (rawEvents.isEmpty) return SyncPushResult.empty();
+    final response = await _apiClient.post('/api/v1/sync/push', {'events': rawEvents});
+    final data = (response['data'] as Map<String, dynamic>?) ?? {};
+    return SyncPushResult(
+      received: data['received'] as int? ?? rawEvents.length,
+      synced: data['synced'] as int? ?? 0,
+      failed: data['failed'] as int? ?? 0,
+      skipped: data['skipped'] as int? ?? 0,
+    );
   }
 
   // ──────────────── Pull ────────────────

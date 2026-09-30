@@ -67,15 +67,11 @@ final storeRepositoryProvider = Provider<IStoreRepository>((ref) {
 });
 
 /// Active store ID based on operational mode:
-/// In Cloud mode -> gets storeId from authenticated cloud user or token storage
-/// In Local mode -> defaults to AppConstants.defaultStoreId ('store-default-001')
+/// Prefers authenticated cloud user or token storage storeId, then current store, then fallback
 final activeStoreIdProvider = Provider<String>((ref) {
-  final isCloud = ref.watch(isCloudModeProvider);
-  if (isCloud) {
-    final cloudUser = ref.watch(cloudAuthProvider).valueOrNull;
-    if (cloudUser != null && cloudUser.storeId.isNotEmpty) {
-      return cloudUser.storeId;
-    }
+  final cloudUser = ref.watch(cloudAuthProvider).valueOrNull;
+  if (cloudUser != null && cloudUser.storeId.isNotEmpty) {
+    return cloudUser.storeId;
   }
   final currentStore = ref.watch(currentStoreStreamProvider).valueOrNull;
   if (currentStore != null && currentStore.id.isNotEmpty) {
@@ -88,10 +84,16 @@ final currentStoreStreamProvider = StreamProvider.autoDispose<Store?>((ref) asyn
   final storeRepo = ref.watch(storeRepositoryProvider);
   final isCloud = ref.watch(isCloudModeProvider);
   final cloudUser = ref.watch(cloudAuthProvider).valueOrNull;
+  final tokens = ref.watch(tokenStorageProvider);
+  final pairedStoreId = await tokens.getStoreId();
 
-  if (isCloud && cloudUser != null && cloudUser.storeId.isNotEmpty) {
-    final existing = await storeRepo.getStore(cloudUser.storeId);
-    if (existing == null) {
+  final effectiveStoreId = (cloudUser != null && cloudUser.storeId.isNotEmpty)
+      ? cloudUser.storeId
+      : pairedStoreId;
+
+  if (effectiveStoreId != null && effectiveStoreId.isNotEmpty) {
+    final existing = await storeRepo.getStore(effectiveStoreId);
+    if (existing == null && isCloud && cloudUser != null) {
       await storeRepo.saveStore(
         StoresCompanion.insert(
           id: cloudUser.storeId,
@@ -115,7 +117,7 @@ final currentStoreStreamProvider = StreamProvider.autoDispose<Store?>((ref) asyn
         ),
       );
     }
-    yield* storeRepo.watchStore(cloudUser.storeId);
+    yield* storeRepo.watchStore(effectiveStoreId);
   } else {
     final isRegistered = await storeRepo.isStoreRegistered();
     if (!isRegistered) {

@@ -25,6 +25,34 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
     return (select(stores)..limit(1)).watchSingleOrNull();
   }
 
+  Future<Store?> getActiveStore([String? preferredStoreId]) async {
+    if (preferredStoreId != null && preferredStoreId.isNotEmpty) {
+      final store = await getStoreById(preferredStoreId);
+      if (store != null) return store;
+    }
+    // Fallback: exclude placeholder 'store-default-01' if a real store exists
+    final realStore = await (select(stores)
+          ..where((tbl) => tbl.id.isNotIn(['store-default-01', 'store-default-001']))
+          ..limit(1))
+        .getSingleOrNull();
+    if (realStore != null) return realStore;
+    return getFirstStore();
+  }
+
+  Stream<Store?> watchActiveStore([String? preferredStoreId]) {
+    if (preferredStoreId != null && preferredStoreId.isNotEmpty) {
+      return watchStoreById(preferredStoreId);
+    }
+    return (select(stores)
+          ..where((tbl) => tbl.id.isNotIn(['store-default-01', 'store-default-001']))
+          ..limit(1))
+        .watchSingleOrNull()
+        .asyncMap((realStore) async {
+      if (realStore != null) return realStore;
+      return getFirstStore();
+    });
+  }
+
   Future<Store> ensureDefaultStore() async {
     try {
       final existing = await getFirstStore();
@@ -153,6 +181,68 @@ class StoreDao extends DatabaseAccessor<AppDatabase> with _$StoreDaoMixin {
       await customStatement("UPDATE promotions SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
       await customStatement("UPDATE printers SET store_id = '$storeId' WHERE store_id IN ('store-default-01', 'store-default-001', '');");
     } catch (_) {}
+  }
+
+  Future<Store> ensureStoreWithId({
+    required String id,
+    required String name,
+    required String subscriptionPlan,
+    String subscriptionStatus = 'ACTIVE',
+    DateTime? expiresAt,
+  }) async {
+    final now = DateTime.now();
+    final existingStore = await getStoreById(id);
+    if (existingStore == null) {
+      await into(stores).insert(
+        StoresCompanion.insert(
+          id: id,
+          name: name,
+          currency: const Value('IDR'),
+          timezone: const Value('Asia/Jakarta'),
+          language: const Value('id'),
+          businessType: const Value('GENERAL'),
+          customerEnabled: const Value(false),
+          draftEnabled: const Value(true),
+          splitPaymentEnabled: const Value(true),
+          refundEnabled: const Value(true),
+          cashRoundingEnabled: const Value(true),
+          cashRoundingIncrement: const Value(100),
+          cashRoundingMode: const Value('ROUND_NEAREST'),
+          subscriptionPlan: Value(subscriptionPlan),
+          subscriptionStatus: Value(subscriptionStatus),
+          subscriptionExpiresAt: Value(expiresAt),
+          orderTypeEnabled: const Value(true),
+          orderTypesJson: const Value('["Dine In","Takeaway","Delivery","Online"]'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    } else {
+      await (update(stores)..where((tbl) => tbl.id.equals(id))).write(
+        StoresCompanion(
+          name: Value(name),
+          subscriptionPlan: Value(subscriptionPlan),
+          subscriptionStatus: Value(subscriptionStatus),
+          subscriptionExpiresAt: Value(expiresAt),
+          updatedAt: Value(now),
+        ),
+      );
+    }
+
+    if (id != 'store-default-01') {
+      try {
+        final placeholder = await getStoreById('store-default-01');
+        if (placeholder != null) {
+          final hasAdmin = await db.userDao.hasAdminUser('store-default-01');
+          if (!hasAdmin) {
+            await (delete(stores)..where((tbl) => tbl.id.equals('store-default-01'))).go();
+          }
+        }
+      } catch (_) {}
+    }
+
+    return (await getStoreById(id))!;
   }
 
   Future<void> bindCloudStoreAndUser({

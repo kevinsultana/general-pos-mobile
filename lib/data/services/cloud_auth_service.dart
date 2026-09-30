@@ -10,6 +10,7 @@ class CloudUser {
   final String tier;
   final bool canCloudSync;
   final List<String> permissions;
+  final String role;
 
   const CloudUser({
     required this.userId,
@@ -20,26 +21,31 @@ class CloudUser {
     this.tier = 'FREE',
     this.canCloudSync = false,
     required this.permissions,
+    this.role = 'CASHIER',
   });
 
   factory CloudUser.fromJson(Map<String, dynamic> json) {
-    final user = json['user'] as Map<String, dynamic>;
-    final store = json['store'] as Map<String, dynamic>? ?? {};
+    final user = (json['user'] as Map<String, dynamic>?) ?? {};
+    final store = (json['store'] as Map<String, dynamic>?) ?? {};
     final perms = (json['permissions'] as List<dynamic>?)?.cast<String>() ?? [];
     final tier = (user['tier'] ?? store['subscriptionPlan'] ?? store['plan'] ?? 'FREE')
         .toString()
         .toUpperCase();
-    final canCloudSync = user['canCloudSync'] == true || tier != 'FREE';
+    final canCloudSync = user['canCloudSync'] == true || tier == 'PRO';
+    final role = (user['role'] is Map<String, dynamic>)
+        ? (user['role']['name'] ?? 'CASHIER').toString()
+        : (user['role'] ?? 'CASHIER').toString();
 
     return CloudUser(
-      userId: user['id'] as String,
-      username: user['username'] as String,
-      displayName: user['displayName'] as String? ?? user['username'],
+      userId: user['id'] as String? ?? '',
+      username: user['username'] as String? ?? '',
+      displayName: user['displayName'] as String? ?? user['username'] as String? ?? '',
       storeId: store['id'] as String? ?? user['storeId'] as String? ?? '',
       storeName: store['name'] as String? ?? user['storeName'] as String? ?? '',
       tier: tier,
       canCloudSync: canCloudSync,
       permissions: perms,
+      role: role,
     );
   }
 }
@@ -85,7 +91,7 @@ class CloudAuthService {
         tier: user.tier,
         canCloudSync: user.canCloudSync,
       );
-      await _tokenStorage.setCloudMode(user.canCloudSync);
+      await _tokenStorage.setCloudMode(user.tier == 'PRO');
 
       return user;
     } on DioException catch (e) {
@@ -136,7 +142,7 @@ class CloudAuthService {
         tier: user.tier,
         canCloudSync: user.canCloudSync,
       );
-      await _tokenStorage.setCloudMode(user.canCloudSync);
+      await _tokenStorage.setCloudMode(user.tier == 'PRO');
 
       return user;
     } on DioException catch (e) {
@@ -166,11 +172,24 @@ class CloudAuthService {
       final data = response['data'] as Map<String, dynamic>;
       final user = CloudUser.fromJson(data);
 
+      if (user.storeId.isNotEmpty && user.storeId != storeId) {
+        throw Exception('Akun staf ini tidak terdaftar di toko ini.');
+      }
+
+      if (data['accessToken'] != null) {
+        await _tokenStorage.saveTokens(
+          accessToken: data['accessToken'] as String,
+          refreshToken: (data['refreshToken'] ?? '') as String,
+          storeId: storeId,
+          userId: user.userId,
+        );
+      }
+
       await _tokenStorage.saveCashierSession(
         userId: user.userId,
         username: user.username,
         displayName: user.displayName,
-        role: 'CASHIER',
+        role: user.role.isNotEmpty ? user.role : 'CASHIER',
         permissions: user.permissions,
       );
 
@@ -178,6 +197,34 @@ class CloudAuthService {
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] ?? 'Gagal login staf kasir';
       throw Exception(msg);
+    }
+  }
+
+  /// Fetch latest user & store profile from /api/v1/auth/me and update token storage
+  Future<CloudUser?> refreshProfile() async {
+    try {
+      final token = await _tokenStorage.getAccessToken();
+      if (token == null || token.isEmpty) return null;
+
+      final response = await _apiClient.get('/api/v1/auth/me');
+      final data = response['data'] as Map<String, dynamic>;
+      final user = CloudUser.fromJson(data);
+
+      await _tokenStorage.saveUserData(
+        username: user.username,
+        displayName: user.displayName,
+        storeName: user.storeName,
+        permissions: user.permissions,
+      );
+      await _tokenStorage.saveTier(
+        tier: user.tier,
+        canCloudSync: user.canCloudSync,
+      );
+      await _tokenStorage.setCloudMode(user.tier == 'PRO');
+
+      return user;
+    } catch (_) {
+      return null;
     }
   }
 
