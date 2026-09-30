@@ -49,13 +49,25 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
     try {
       final tokens = ref.read(tokenStorageProvider);
       final storeId = await tokens.getStoreId();
-      final userId = await tokens.getUserId();
-      if (storeId != null && storeId.isNotEmpty && userId != null && userId.isNotEmpty) {
-        final storeRepo = ref.read(storeRepositoryProvider);
-        final isReg = await storeRepo.isStoreRegistered();
-        if (isReg && mounted) {
-          context.go('/');
-          return;
+      final isPaired = await tokens.isStorePaired();
+      final tier = await tokens.getTier() ?? 'FREE';
+      if (storeId != null && storeId.isNotEmpty && isPaired) {
+        if (tier == 'PRO') {
+          final cashierId = await tokens.getCashierUserId();
+          if (cashierId != null && cashierId.isNotEmpty && mounted) {
+            context.go('/');
+            return;
+          } else if (mounted) {
+            context.go('/staff-login');
+            return;
+          }
+        } else {
+          // FREE tier: single user owner
+          final userId = await tokens.getUserId();
+          if (userId != null && userId.isNotEmpty && mounted) {
+            context.go('/');
+            return;
+          }
         }
       }
     } catch (_) {}
@@ -134,8 +146,16 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
               ? _ownerNameCtrl.text.trim()
               : null,
         );
+        await tokens.setStorePaired(true);
 
         if (cloudUser.tier == 'FREE' || !cloudUser.canCloudSync) {
+          await tokens.saveCashierSession(
+            userId: cloudUser.userId,
+            username: cloudUser.username,
+            displayName: cloudUser.displayName,
+            role: 'OWNER',
+            permissions: cloudUser.permissions,
+          );
           await tokens.setCloudMode(false);
           await ref
               .read(appOperationalModeProvider.notifier)
@@ -157,27 +177,18 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
             context.go('/');
           }
         } else {
-          // PRO tier
-          await tokens.setCloudMode(true);
-          await tokens.setProMigrated(true);
-          await ref
-              .read(appOperationalModeProvider.notifier)
-              .switchMode(AppOperationalMode.cloud);
-          try {
-            ref.read(syncCoordinatorProvider).startPeriodicSync();
-          } catch (_) {}
-
+          // PRO tier: Paired store -> Step 2: Staff Login
+          await tokens.clearCashierSession();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  '🎉 Selamat! Toko Anda aktif dalam Mode Cloud PRO.',
+                  '🎉 Toko PRO Berhasil Didaftarkan! Silakan login sebagai staf kasir.',
                 ),
                 backgroundColor: Colors.green,
-                duration: Duration(seconds: 4),
               ),
             );
-            context.go('/');
+            context.go('/staff-login');
           }
         }
       } else {
@@ -199,8 +210,17 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
           username: user.username,
           displayName: user.displayName,
         );
+        await tokens.setStorePaired(true);
 
         if (user.tier == 'FREE' || !user.canCloudSync) {
+          // FREE tier: Single-user Owner, auto-bypass staff login
+          await tokens.saveCashierSession(
+            userId: user.userId,
+            username: user.username,
+            displayName: user.displayName,
+            role: 'OWNER',
+            permissions: user.permissions,
+          );
           await tokens.setCloudMode(false);
           await ref
               .read(appOperationalModeProvider.notifier)
@@ -212,42 +232,23 @@ class _CloudLoginPageState extends ConsumerState<CloudLoginPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✅ Berhasil masuk! Toko aktif dalam Mode Lokal (FREE).'),
+                content: Text('✅ Berhasil mengaktifkan toko! Mode Lokal (FREE) aktif.'),
                 backgroundColor: Colors.green,
               ),
             );
             context.go('/');
           }
         } else {
-          // PRO tier - sync check
-          final migrationService = ref.read(dataMigrationServiceProvider);
-          try {
-            setState(() {
-              _loadingStatusText = 'Memeriksa sinkronisasi data lokal ke Cloud...';
-            });
-            await migrationService.migrateLocalToCloud(
-              localStoreId: localStoreId,
-              cloudStoreId: user.storeId,
-            );
-          } catch (_) {}
-
-          await tokens.setCloudMode(true);
-          await tokens.setProMigrated(true);
-          await ref
-              .read(appOperationalModeProvider.notifier)
-              .switchMode(AppOperationalMode.cloud);
-          try {
-            ref.read(syncCoordinatorProvider).startPeriodicSync();
-          } catch (_) {}
-
+          // PRO tier: Device paired! Next step is Staff Login
+          await tokens.clearCashierSession();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✅ Berhasil masuk ke Cloud POS (Mode Cloud PRO Aktif)'),
+                content: Text('✅ Perangkat terhubung ke Toko PRO! Silakan login staf kasir.'),
                 backgroundColor: Colors.green,
               ),
             );
-            context.go('/');
+            context.go('/staff-login');
           }
         }
       }

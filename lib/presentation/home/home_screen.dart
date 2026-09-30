@@ -110,7 +110,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         actions: [
-          if (isCloudMode)
+          if (isCloudMode) ...[
+            IconButton(
+              icon: const Icon(
+                Icons.switch_account_rounded,
+                color: AppColors.primary,
+              ),
+              tooltip: 'Ganti Kasir (Shift)',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              onPressed: () async {
+                await ref.read(cloudAuthProvider.notifier).switchCashier();
+                if (context.mounted) {
+                  context.go('/staff-login');
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(
                 Icons.cloud_sync_rounded,
@@ -121,6 +136,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               onPressed: () => context.push('/cloud-sync'),
             ),
+          ],
           if (!isCloudMode)
             InkWell(
               borderRadius: BorderRadius.circular(20),

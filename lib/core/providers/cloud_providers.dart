@@ -69,6 +69,24 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
     final tier = await tokens.getTier() ?? 'FREE';
     final canSync = await tokens.canCloudSync();
 
+    // If a cashier session exists (PRO staff login), use cashier identity & permissions
+    final cashierId = await tokens.getCashierUserId();
+    if (cashierId != null && cashierId.isNotEmpty) {
+      final cashierUsername = await tokens.getCashierUsername() ?? 'kasir';
+      final cashierDisplayName = await tokens.getCashierDisplayName() ?? cashierUsername;
+      final cashierPerms = await tokens.getCashierPermissions();
+      return CloudUser(
+        userId: cashierId,
+        username: cashierUsername,
+        displayName: cashierDisplayName,
+        storeId: storeId,
+        storeName: storeName,
+        tier: tier,
+        canCloudSync: canSync,
+        permissions: cashierPerms.isNotEmpty ? cashierPerms : perms,
+      );
+    }
+
     return CloudUser(
       userId: userId,
       username: username,
@@ -129,6 +147,38 @@ class CloudAuthNotifier extends AsyncNotifier<CloudUser?> {
       state = AsyncError(e, st);
       rethrow;
     }
+  }
+
+  Future<CloudUser> loginStaff({
+    required String username,
+    required String password,
+  }) async {
+    state = const AsyncLoading();
+    final authService = ref.read(cloudAuthServiceProvider);
+    try {
+      final user = await authService.loginStaff(
+        username: username,
+        password: password,
+      );
+      state = AsyncData(user);
+      return user;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> switchCashier() async {
+    final authService = ref.read(cloudAuthServiceProvider);
+    await authService.switchCashier();
+    ref.invalidateSelf();
+  }
+
+  Future<bool> unpairStore({required String ownerPassword}) async {
+    final authService = ref.read(cloudAuthServiceProvider);
+    final result = await authService.unpairStore(ownerPassword: ownerPassword);
+    state = const AsyncData(null);
+    return result;
   }
 
   Future<void> logout() async {

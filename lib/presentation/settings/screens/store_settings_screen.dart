@@ -750,7 +750,7 @@ class StoreSettingsScreen extends ConsumerWidget {
                 elevation: 0.5,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: Colors.grey.shade200),
+                  side: BorderSide(color: Colors.teal.shade50),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
@@ -786,6 +786,55 @@ class StoreSettingsScreen extends ConsumerWidget {
                     color: Colors.grey,
                   ),
                   onTap: () => context.push('/backup'),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Putus Perangkat dari Toko (Unpair Store)
+              Card(
+                elevation: 0.5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.orange.shade300),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.link_off_rounded,
+                      color: Colors.orange.shade800,
+                      size: 24,
+                    ),
+                  ),
+                  title: Text(
+                    'Putus Perangkat dari Toko (Unpair Store)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.orange.shade900,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Putuskan tautan perangkat kasir ini dari toko. Memerlukan konfirmasi password Owner.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: Colors.orange.shade800,
+                  ),
+                  onTap: () => _showUnpairConfirmationDialog(context, ref, store.name),
                 ),
               ),
               const SizedBox(height: 12),
@@ -840,6 +889,121 @@ class StoreSettingsScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _showUnpairConfirmationDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String storeName,
+  ) {
+    final passwordCtrl = TextEditingController();
+    bool unpairLoading = false;
+    String? unpairError;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.link_off_rounded, color: Theme.of(ctx).colorScheme.error),
+              const SizedBox(width: 8),
+              const Text(
+                'Putus Perangkat?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Perangkat ini saat ini terhubung ke toko "$storeName". Untuk memutuskan hubungan perangkat ini, masukkan password Owner toko:',
+                style: const TextStyle(fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password Owner',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              if (unpairError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  unpairError!,
+                  style: TextStyle(color: Theme.of(ctx).colorScheme.error, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: unpairLoading ? null : () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error,
+              ),
+              onPressed: unpairLoading
+                  ? null
+                  : () async {
+                      if (passwordCtrl.text.isEmpty) {
+                        setDialogState(() => unpairError = 'Password wajib diisi');
+                        return;
+                      }
+                      setDialogState(() {
+                        unpairLoading = true;
+                        unpairError = null;
+                      });
+
+                      try {
+                        await ref
+                            .read(cloudAuthProvider.notifier)
+                            .unpairStore(ownerPassword: passwordCtrl.text);
+
+                        final resetService = ref.read(dataResetServiceProvider);
+                        await resetService.resetAllData();
+                        await ref
+                            .read(appOperationalModeProvider.notifier)
+                            .switchMode(AppOperationalMode.local);
+
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Perangkat berhasil diputuskan dari toko.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          context.go('/cloud-login');
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          unpairLoading = false;
+                          unpairError = e.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: unpairLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Putus Perangkat'),
+            ),
+          ],
+        ),
       ),
     );
   }

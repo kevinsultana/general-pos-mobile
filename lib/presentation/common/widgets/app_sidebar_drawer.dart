@@ -388,6 +388,32 @@ class AppSidebarDrawer extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.indigo,
+                          side: const BorderSide(color: AppColors.indigo),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.switch_account_rounded, size: 16),
+                        label: const Text(
+                          'Ganti Kasir (Shift)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await ref.read(cloudAuthProvider.notifier).switchCashier();
+                          if (context.mounted) {
+                            context.go('/staff-login');
+                          }
+                        },
+                      ),
+                    ),
                   ],
                   if (!isCloud) ...[
                     const SizedBox(height: 8),

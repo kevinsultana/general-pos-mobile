@@ -20,6 +20,12 @@ class _StorageKeys {
   static const isProMigrated = 'cloud_pro_migrated';
   static const tier = 'cloud_tier';
   static const canCloudSync = 'cloud_can_sync';
+  static const isStorePaired = 'cloud_store_paired';
+  static const cashierUserId = 'cloud_cashier_user_id';
+  static const cashierUsername = 'cloud_cashier_username';
+  static const cashierDisplayName = 'cloud_cashier_display_name';
+  static const cashierRole = 'cloud_cashier_role';
+  static const cashierPermissions = 'cloud_cashier_permissions';
 }
 
 /// Manages JWT tokens, cloud server URL, and cached user profile/permissions in secure storage.
@@ -114,6 +120,56 @@ class TokenStorage {
     ]);
   }
 
+  Future<bool> isStorePaired() async {
+    final val = await _storage.read(key: _StorageKeys.isStorePaired);
+    return val == 'true';
+  }
+
+  Future<void> setStorePaired(bool paired) =>
+      _storage.write(key: _StorageKeys.isStorePaired, value: paired.toString());
+
+  Future<String?> getCashierUserId() => _storage.read(key: _StorageKeys.cashierUserId);
+  Future<String?> getCashierUsername() => _storage.read(key: _StorageKeys.cashierUsername);
+  Future<String?> getCashierDisplayName() => _storage.read(key: _StorageKeys.cashierDisplayName);
+  Future<String?> getCashierRole() => _storage.read(key: _StorageKeys.cashierRole);
+
+  Future<List<String>> getCashierPermissions() async {
+    final val = await _storage.read(key: _StorageKeys.cashierPermissions);
+    if (val == null || val.isEmpty) return [];
+    try {
+      final list = jsonDecode(val) as List<dynamic>;
+      return list.cast<String>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveCashierSession({
+    required String userId,
+    required String username,
+    required String displayName,
+    String role = 'CASHIER',
+    List<String> permissions = const [],
+  }) async {
+    await Future.wait([
+      _storage.write(key: _StorageKeys.cashierUserId, value: userId),
+      _storage.write(key: _StorageKeys.cashierUsername, value: username),
+      _storage.write(key: _StorageKeys.cashierDisplayName, value: displayName),
+      _storage.write(key: _StorageKeys.cashierRole, value: role),
+      _storage.write(key: _StorageKeys.cashierPermissions, value: jsonEncode(permissions)),
+    ]);
+  }
+
+  Future<void> clearCashierSession() async {
+    await Future.wait([
+      _storage.delete(key: _StorageKeys.cashierUserId),
+      _storage.delete(key: _StorageKeys.cashierUsername),
+      _storage.delete(key: _StorageKeys.cashierDisplayName),
+      _storage.delete(key: _StorageKeys.cashierRole),
+      _storage.delete(key: _StorageKeys.cashierPermissions),
+    ]);
+  }
+
   Future<void> clearTokens() async {
     await Future.wait([
       _storage.delete(key: _StorageKeys.accessToken),
@@ -126,6 +182,12 @@ class TokenStorage {
       _storage.delete(key: _StorageKeys.storeName),
       _storage.delete(key: _StorageKeys.tier),
       _storage.delete(key: _StorageKeys.canCloudSync),
+      _storage.delete(key: _StorageKeys.isStorePaired),
+      _storage.delete(key: _StorageKeys.cashierUserId),
+      _storage.delete(key: _StorageKeys.cashierUsername),
+      _storage.delete(key: _StorageKeys.cashierDisplayName),
+      _storage.delete(key: _StorageKeys.cashierRole),
+      _storage.delete(key: _StorageKeys.cashierPermissions),
     ]);
   }
 

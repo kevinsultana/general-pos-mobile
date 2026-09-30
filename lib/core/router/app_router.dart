@@ -13,6 +13,7 @@ import '../../presentation/reports/screens/report_hub_screen.dart';
 import '../../presentation/settings/screens/backup_restore_screen.dart';
 import '../../presentation/settings/screens/printer_settings_screen.dart';
 import '../../presentation/settings/screens/cloud_login_page.dart';
+import '../../presentation/settings/screens/staff_login_page.dart';
 import '../../presentation/settings/screens/cloud_sync_page.dart';
 import '../../presentation/settings/screens/order_type_settings_screen.dart';
 import '../../presentation/settings/screens/cash_rounding_settings_screen.dart';
@@ -67,6 +68,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/cloud-login',
       builder: (context, state) => const CloudLoginPage(),
+    ),
+    GoRoute(
+      path: '/store-login',
+      builder: (context, state) => const CloudLoginPage(initialTab: 1),
+    ),
+    GoRoute(
+      path: '/staff-login',
+      builder: (context, state) => const StaffLoginPage(),
     ),
     GoRoute(
       path: '/cloud-sync',

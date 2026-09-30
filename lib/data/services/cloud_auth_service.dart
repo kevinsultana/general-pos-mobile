@@ -145,6 +145,73 @@ class CloudAuthService {
     }
   }
 
+  /// Login as a store staff member on a paired device.
+  Future<CloudUser> loginStaff({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final storeId = await _tokenStorage.getStoreId();
+      if (storeId == null || storeId.isEmpty) {
+        throw Exception('Perangkat belum dipasangkan ke toko');
+      }
+
+      final body = <String, dynamic>{
+        'username': username,
+        'password': password,
+        'storeId': storeId,
+      };
+
+      final response = await _apiClient.post('/api/v1/auth/login', body);
+      final data = response['data'] as Map<String, dynamic>;
+      final user = CloudUser.fromJson(data);
+
+      await _tokenStorage.saveCashierSession(
+        userId: user.userId,
+        username: user.username,
+        displayName: user.displayName,
+        role: 'CASHIER',
+        permissions: user.permissions,
+      );
+
+      return user;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'Gagal login staf kasir';
+      throw Exception(msg);
+    }
+  }
+
+  /// Switch cashier without unpairing store.
+  Future<void> switchCashier() async {
+    await _tokenStorage.clearCashierSession();
+  }
+
+  /// Unpair device from store after confirming owner password.
+  Future<bool> unpairStore({required String ownerPassword}) async {
+    final ownerUsername = await _tokenStorage.getUsername();
+    final storeId = await _tokenStorage.getStoreId();
+    if (ownerUsername == null || ownerUsername.isEmpty) {
+      await _tokenStorage.clearAll();
+      return true;
+    }
+
+    try {
+      final body = <String, dynamic>{
+        'username': ownerUsername,
+        'password': ownerPassword,
+        if (storeId != null) 'storeId': storeId,
+      };
+
+      await _apiClient.post('/api/v1/auth/login', body);
+      // Password verified! Clear all local store pairing & cache
+      await _tokenStorage.clearAll();
+      return true;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'Password Owner salah';
+      throw Exception(msg);
+    }
+  }
+
   /// Logout and clear tokens.
   Future<void> logout() async {
     try {
