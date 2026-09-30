@@ -17,6 +17,9 @@ class FailingPrinterTransport implements IPrinterTransport {
   Future<bool> isPermissionGranted() async => true;
 
   @override
+  Future<bool> requestPermission() async => true;
+
+  @override
   Future<bool> isBluetoothEnabled() async => true;
 
   @override

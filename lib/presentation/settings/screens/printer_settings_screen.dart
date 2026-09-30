@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:uuid/uuid.dart';
 
@@ -19,8 +20,93 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
   bool _isScanning = false;
   bool _isConnecting = false;
   String? _connectingPrinterId;
+  bool _hasBluetoothPermission = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissionStatus();
+  }
+
+  Future<void> _checkPermissionStatus() async {
+    final printerService = ref.read(printerServiceProvider);
+    final granted = await printerService.checkPermission();
+    if (mounted) {
+      setState(() => _hasBluetoothPermission = granted);
+    }
+  }
+
+  Future<bool> _requestBluetoothPermission() async {
+    final printerService = ref.read(printerServiceProvider);
+    final granted = await printerService.requestPermission();
+    if (mounted) {
+      setState(() => _hasBluetoothPermission = granted);
+      if (!granted) {
+        final permanentlyDenied =
+            await printerService.isPermissionPermanentlyDenied();
+        if (permanentlyDenied && mounted) {
+          _showPermissionSettingsDialog();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Izin Bluetooth (Perangkat di sekitar) diperlukan untuk menghubungkan printer.',
+              ),
+              backgroundColor: AppColors.danger,
+              action: SnackBarAction(
+                label: 'Pengaturan',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              ),
+            ),
+          );
+        }
+      }
+    }
+    return granted;
+  }
+
+  Future<void> _showPermissionSettingsDialog() async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.security_rounded, color: AppColors.danger),
+            SizedBox(width: 8),
+            Text('Izin Bluetooth Diperlukan'),
+          ],
+        ),
+        content: const Text(
+          'Izin akses perangkat Bluetooth (Perangkat di sekitar) belum aktif. '
+          'Silakan izinkan pada Pengaturan Aplikasi agar printer thermal dapat terhubung.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              openAppSettings();
+            },
+            child: const Text('Buka Pengaturan HP'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _scanAndAddPrinter() async {
+    final granted = await _requestBluetoothPermission();
+    if (!granted) return;
+
     setState(() => _isScanning = true);
     final printerService = ref.read(printerServiceProvider);
 
@@ -123,7 +209,9 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       text: existingPrinter?.name ?? initialName ?? 'Printer Thermal 58mm',
     );
     final macController = TextEditingController(
-      text: existingPrinter?.addressReference ?? initialMac ?? '',
+      text: existingPrinter?.addressReference ??
+          initialMac ??
+          '06:0A:8B:A2:BD:FC',
     );
 
     PrinterRole selectedRole = existingPrinter?.role ?? PrinterRole.receipt;
@@ -171,14 +259,32 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                   controller: macController,
                   decoration: InputDecoration(
                     labelText: 'Alamat MAC Bluetooth',
-                    hintText: '00:11:22:33:44:55',
+                    hintText: '06:0A:8B:A2:BD:FC',
                     prefixIcon: const Icon(Icons.bluetooth_rounded, size: 20),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(Icons.touch_app, size: 14),
+                      label: const Text(
+                        'Isi MAC: 06:0A:8B:A2:BD:FC',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          macController.text = '06:0A:8B:A2:BD:FC';
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
                 // Role Dropdown
                 const Text(
@@ -410,6 +516,9 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
   }
 
   Future<void> _handleConnect(PrinterDevice printer) async {
+    final granted = await _requestBluetoothPermission();
+    if (!granted) return;
+
     setState(() {
       _isConnecting = true;
       _connectingPrinterId = printer.id;
@@ -525,6 +634,68 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Bluetooth Permission Warning Banner
+          if (!_hasBluetoothPermission)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.bluetooth_disabled_rounded,
+                    color: Colors.amber.shade900,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Izin Bluetooth Diperlukan',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Berikan izin perangkat di sekitar agar POS dapat mendeteksi dan menghubungkan printer thermal.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade800,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: _requestBluetoothPermission,
+                    child: const Text('Beri Izin'),
+                  ),
+                ],
+              ),
+            ),
+
           // Info Banner
           Container(
             padding: const EdgeInsets.all(16),
@@ -675,6 +846,34 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
                           'Tekan tombol "Cari Printer Bluetooth" di atas untuk menambahkan printer thermal Anda.',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () {
+                            _showConfigurePrinterDialog(
+                              initialName: 'Thermal Printer 58mm',
+                              initialMac: '06:0A:8B:A2:BD:FC',
+                            );
+                          },
+                          icon: const Icon(Icons.print_rounded, size: 18),
+                          label: const Text(
+                            'Tambah Cepat Printer (06:0A:8B:A2:BD:FC)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),

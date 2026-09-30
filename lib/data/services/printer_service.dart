@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -12,6 +14,7 @@ import 'esc_pos_generator.dart';
 /// and mock transport in unit tests.
 abstract class IPrinterTransport {
   Future<bool> isPermissionGranted();
+  Future<bool> requestPermission() async => true;
   Future<bool> isBluetoothEnabled();
   Future<List<BluetoothInfo>> getPairedDevices();
   Future<bool> connect(String macAddress);
@@ -22,8 +25,55 @@ abstract class IPrinterTransport {
 
 class BluetoothPrinterTransport implements IPrinterTransport {
   @override
-  Future<bool> isPermissionGranted() =>
-      PrintBluetoothThermal.isPermissionBluetoothGranted;
+  Future<bool> isPermissionGranted() async {
+    if (kIsWeb) return true;
+    try {
+      final pluginGranted =
+          await PrintBluetoothThermal.isPermissionBluetoothGranted;
+      if (pluginGranted) return true;
+      if (Platform.isAndroid) {
+        final status = await Permission.bluetoothConnect.status;
+        return status.isGranted;
+      }
+      return pluginGranted;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> requestPermission() async {
+    if (kIsWeb) return true;
+    try {
+      if (Platform.isAndroid) {
+        final isAlreadyGranted =
+            await PrintBluetoothThermal.isPermissionBluetoothGranted;
+        if (isAlreadyGranted) return true;
+
+        final statuses = await [
+          Permission.bluetoothConnect,
+          Permission.bluetoothScan,
+          Permission.locationWhenInUse,
+        ].request();
+
+        final connectGranted =
+            statuses[Permission.bluetoothConnect]?.isGranted ?? false;
+        final scanGranted =
+            statuses[Permission.bluetoothScan]?.isGranted ?? false;
+        final pluginGranted =
+            await PrintBluetoothThermal.isPermissionBluetoothGranted;
+
+        return connectGranted || scanGranted || pluginGranted;
+      } else if (Platform.isIOS) {
+        final status = await Permission.bluetooth.request();
+        return status.isGranted;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error requesting Bluetooth permission: $e');
+      return false;
+    }
+  }
 
   @override
   Future<bool> isBluetoothEnabled() =>
@@ -54,6 +104,9 @@ class MockPrinterTransport implements IPrinterTransport {
 
   @override
   Future<bool> isPermissionGranted() async => true;
+
+  @override
+  Future<bool> requestPermission() async => true;
 
   @override
   Future<bool> isBluetoothEnabled() async => true;
@@ -107,6 +160,15 @@ class PrinterService {
   /// Scans for paired Bluetooth thermal printers
   Future<List<BluetoothInfo>> getAvailableBluetoothDevices() async {
     try {
+      final hasPerm = await checkPermission();
+      if (!hasPerm) {
+        final granted = await requestPermission();
+        if (!granted) {
+          debugPrint('Bluetooth permission not granted for device scan');
+          return [];
+        }
+      }
+
       final isEnabled = await _transport
           .isBluetoothEnabled()
           .timeout(_printerOperationTimeout, onTimeout: () => false);
@@ -131,6 +193,29 @@ class PrinterService {
     }
   }
 
+  /// Requests Bluetooth permission at runtime
+  Future<bool> requestPermission() async {
+    try {
+      return await _transport.requestPermission();
+    } catch (e) {
+      debugPrint('Error requesting bluetooth permission: $e');
+      return false;
+    }
+  }
+
+  /// Checks if Bluetooth permission is permanently denied
+  Future<bool> isPermissionPermanentlyDenied() async {
+    if (kIsWeb) return false;
+    try {
+      if (Platform.isAndroid) {
+        return await Permission.bluetoothConnect.isPermanentlyDenied;
+      } else if (Platform.isIOS) {
+        return await Permission.bluetooth.isPermanentlyDenied;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   /// Connects to a specific printer with a 5-second timeout
   Future<bool> connect(PrinterDevice printer) async {
     if (printer.addressReference == null || printer.addressReference!.isEmpty) {
@@ -138,6 +223,15 @@ class PrinterService {
     }
 
     try {
+      final hasPerm = await checkPermission();
+      if (!hasPerm) {
+        final granted = await requestPermission();
+        if (!granted) {
+          debugPrint('Bluetooth permission not granted before connect: ${printer.name}');
+          return false;
+        }
+      }
+
       final success = await _transport
           .connect(printer.addressReference!)
           .timeout(_printerOperationTimeout, onTimeout: () {

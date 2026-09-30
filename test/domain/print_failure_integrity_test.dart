@@ -15,6 +15,9 @@ class FailingPrinterTransport implements IPrinterTransport {
   Future<bool> isPermissionGranted() async => true;
 
   @override
+  Future<bool> requestPermission() async => true;
+
+  @override
   Future<bool> isBluetoothEnabled() async => true;
 
   @override
@@ -39,6 +42,10 @@ class FailingPrinterTransport implements IPrinterTransport {
 class ThrowingPrinterTransport implements IPrinterTransport {
   @override
   Future<bool> isPermissionGranted() async =>
+      throw Exception('Bluetooth permission exception');
+
+  @override
+  Future<bool> requestPermission() async =>
       throw Exception('Bluetooth permission exception');
 
   @override
