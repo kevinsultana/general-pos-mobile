@@ -261,6 +261,7 @@ class PosController with ChangeNotifier {
     String? customerPhone,
     required double cashPaid,
     required double changeAmount,
+    double? customTotalAmount,
   }) async {
     final trxId = IdGenerator.v4();
     final receiptNum = IdGenerator.receiptNumber();
@@ -290,7 +291,7 @@ class PosController with ChangeNotifier {
           ? customerName
           : (_selectedCustomer?.name ?? 'Pelanggan Umum'),
       customerPhone: customerPhone ?? _selectedCustomer?.phone,
-      totalAmount: totalCartAmount,
+      totalAmount: customTotalAmount ?? totalCartAmount,
       discountAmount: discountAmount,
       promoCode: _appliedPromo?.code,
       cashPaid: cashPaid,

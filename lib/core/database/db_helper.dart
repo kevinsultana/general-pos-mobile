@@ -20,7 +20,7 @@ class DbHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -39,6 +39,11 @@ class DbHelper {
         branch_id TEXT,
         branch_name TEXT,
         token TEXT,
+        logo_url TEXT,
+        receipt_show_logo INTEGER DEFAULT 1,
+        rounding_mode INTEGER DEFAULT 0,
+        printer_width INTEGER DEFAULT 58,
+        receipt_font_size TEXT DEFAULT 'NORMAL',
         updated_at TEXT
       )
     ''');
@@ -254,6 +259,24 @@ class DbHelper {
       } catch (_) {}
       try {
         await db.execute('ALTER TABLE transactions ADD COLUMN promo_code TEXT');
+      } catch (_) {}
+    }
+
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE local_tenant ADD COLUMN logo_url TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE local_tenant ADD COLUMN receipt_show_logo INTEGER DEFAULT 1');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE local_tenant ADD COLUMN rounding_mode INTEGER DEFAULT 0');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE local_tenant ADD COLUMN printer_width INTEGER DEFAULT 58');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE local_tenant ADD COLUMN receipt_font_size TEXT DEFAULT "NORMAL"');
       } catch (_) {}
     }
   }

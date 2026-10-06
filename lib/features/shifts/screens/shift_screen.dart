@@ -249,7 +249,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
         children: [
           // Active Shift Banner / Card
           GlassCard(

@@ -26,7 +26,10 @@ class _PaymentModalState extends State<PaymentModal> {
   void initState() {
     super.initState();
     final posCtrl = context.read<PosController>();
-    _cashPaid = posCtrl.totalCartAmount;
+    final authCtrl = context.read<AuthController>();
+    final rawTotal = posCtrl.totalCartAmount;
+    final rounding = authCtrl.currentTenant?.roundingMode ?? 0;
+    _cashPaid = rounding > 0 ? ((rawTotal / rounding).ceil() * rounding).toDouble() : rawTotal;
     _cashCtrl.text = _cashPaid.toInt().toString();
   }
 
@@ -48,7 +51,10 @@ class _PaymentModalState extends State<PaymentModal> {
   Widget build(BuildContext context) {
     final posCtrl = context.watch<PosController>();
     final authCtrl = context.watch<AuthController>();
-    final total = posCtrl.totalCartAmount;
+    final rawTotal = posCtrl.totalCartAmount;
+    final roundingMode = authCtrl.currentTenant?.roundingMode ?? 0;
+    final total = roundingMode > 0 ? ((rawTotal / roundingMode).ceil() * roundingMode).toDouble() : rawTotal;
+    final roundingDiff = total - rawTotal;
     final change = _cashPaid - total;
     final isSufficient = change >= 0;
 
@@ -110,17 +116,23 @@ class _PaymentModalState extends State<PaymentModal> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Total Tagihan',
                         style: TextStyle(color: AppColors.slate400, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Metode: Tunai (Cash)',
-                        style: TextStyle(color: AppColors.slate400, fontSize: 11),
+                        roundingDiff > 0
+                            ? 'Pembulatan (+${CurrencyFormatter.format(roundingDiff)})'
+                            : 'Metode: Tunai (Cash)',
+                        style: TextStyle(
+                          color: roundingDiff > 0 ? const Color(0xFFFBBF24) : AppColors.slate400,
+                          fontSize: 11,
+                          fontWeight: roundingDiff > 0 ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ],
                   ),
@@ -264,6 +276,7 @@ class _PaymentModalState extends State<PaymentModal> {
                           customerName: _customerNameCtrl.text.trim(),
                           cashPaid: _cashPaid,
                           changeAmount: change,
+                          customTotalAmount: total,
                         );
 
                         if (!mounted) return;
