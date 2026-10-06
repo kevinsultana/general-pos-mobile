@@ -1,65 +1,64 @@
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:mobile_pos/core/providers/database_providers.dart';
-import 'package:mobile_pos/data/local/app_database.dart';
-import 'package:mobile_pos/main.dart';
+import 'package:mobile/core/models/product_model.dart';
+import 'package:mobile/core/models/promotion_model.dart';
+import 'package:mobile/core/models/cart_item_model.dart';
+import 'package:mobile/core/utils/currency_formatter.dart';
 
 void main() {
-  late AppDatabase db;
+  group('OmniPOS Mobile Core Logic Tests', () {
+    test('CurrencyFormatter formats IDR correctly', () {
+      expect(CurrencyFormatter.format(15000), 'Rp 15.000');
+      expect(CurrencyFormatter.format(0), 'Rp 0');
+      expect(CurrencyFormatter.format(1250500), 'Rp 1.250.500');
+    });
 
-  setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
-    db = AppDatabase.forTesting(DatabaseConnection(NativeDatabase.memory()));
-  });
+    test('PromotionModel calculates percentage discount correctly', () {
+      final promo = PromotionModel(
+        id: 'promo-1',
+        tenantId: 'tenant-1',
+        name: 'Diskon 10%',
+        code: 'DISKON10',
+        discountType: 'PERCENTAGE',
+        discountValue: 10,
+        minOrderAmount: 50000,
+      );
 
-  tearDown(() async {
-    await db.close();
-  });
+      // Below min order
+      expect(promo.calculateDiscount(40000), 0.0);
 
-  testWidgets('App smoke test - Mode selection and local home flow', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-        ],
-        child: const GeneralPosApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      // Met min order
+      expect(promo.calculateDiscount(100000), 10000.0);
+    });
 
-    // Verify initial screen is Mode Selection Screen
-    expect(find.text('Mode Lokal (Offline POS)'), findsOneWidget);
-    expect(find.text('Mode Cloud (Online Sync)'), findsOneWidget);
+    test('PromotionModel calculates fixed nominal discount correctly', () {
+      final promo = PromotionModel(
+        id: 'promo-2',
+        tenantId: 'tenant-1',
+        name: 'Potongan 5000',
+        code: 'HEMAT5K',
+        discountType: 'FIXED',
+        discountValue: 5000,
+        minOrderAmount: 20000,
+      );
 
-    // Tap Masuk Mode Lokal to trigger onboarding registration
-    await tester.ensureVisible(find.text('Masuk Mode Lokal'));
-    await tester.tap(find.text('Masuk Mode Lokal'));
-    await tester.pumpAndSettle();
+      expect(promo.calculateDiscount(15000), 0.0);
+      expect(promo.calculateDiscount(30000), 5000.0);
+    });
 
-    // Verify redirected to Local Registration Screen
-    expect(find.text('Registrasi Toko Lokal'), findsOneWidget);
+    test('CartItemModel subtotal calculation is exact', () {
+      final product = ProductModel(
+        id: 'p-1',
+        tenantId: 't-1',
+        categoryId: 'c-1',
+        name: 'Es Kopi Susu',
+        price: 18000,
+        costPrice: 8000,
+        stock: 50,
+      );
 
-    // Fill in required registration fields
-    await tester.enterText(find.byKey(const Key('local_register_store_name')), 'Toko UMKM POS');
-    await tester.enterText(find.byKey(const Key('local_register_store_address')), 'Jl. POS Sejahtera');
-    await tester.enterText(find.byKey(const Key('local_register_store_phone')), '081234567890');
-    await tester.enterText(find.byKey(const Key('local_register_admin_password')), 'admin123');
-    await tester.enterText(find.byKey(const Key('local_register_admin_confirm_password')), 'admin123');
-
-    // Submit registration
-    final submitBtn = find.byKey(const Key('local_register_submit_button'));
-    await tester.ensureVisible(submitBtn);
-    await tester.tap(submitBtn);
-    await tester.pumpAndSettle();
-
-    // Verify that HomeScreen title and components are rendered
-    expect(find.text('Buka Kasir'), findsOneWidget);
-    // In local mode, cloud synchronization menu should NOT appear
-    expect(find.text('Sinkronisasi Cloud'), findsNothing);
+      final item = CartItemModel(product: product, quantity: 3, notes: 'Less sugar');
+      expect(item.subtotal, 54000);
+      expect(item.notes, 'Less sugar');
+    });
   });
 }

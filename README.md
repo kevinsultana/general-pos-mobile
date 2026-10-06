@@ -1,4 +1,4 @@
-# mobile_pos
+# mobile
 
 A new Flutter project.
 

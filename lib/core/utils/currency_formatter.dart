@@ -1,25 +1,18 @@
 import 'package:intl/intl.dart';
 
 class CurrencyFormatter {
-  CurrencyFormatter._();
-
-  static final NumberFormat _rupiahFormat = NumberFormat.currency(
+  static final NumberFormat _formatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
     decimalDigits: 0,
   );
 
   static String format(num amount) {
-    return _rupiahFormat.format(amount);
+    return _formatter.format(amount);
   }
 
-  static String formatWithSign(num amount) {
-    final formatted = _rupiahFormat.format(amount.abs());
-    if (amount > 0) {
-      return '+$formatted';
-    } else if (amount < 0) {
-      return '-$formatted';
-    }
-    return formatted;
+  /// Pembulatan ke atas (Math.ceil) untuk pecahan bila diperlukan
+  static int ceilToHundreds(num amount) {
+    return (amount / 100).ceil() * 100;
   }
 }
